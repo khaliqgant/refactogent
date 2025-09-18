@@ -9,6 +9,8 @@ import { StabilizeCommand } from './commands/stabilize.js';
 import { PlanCommand } from './commands/plan.js';
 import { ApplyCommand } from './commands/apply.js';
 import { GenerateCommand } from './commands/generate.js';
+import { TestCommand } from './commands/test.js';
+import { AnalyzeCommand } from './commands/analyze.js';
 import { CommandContext, RefactoringMode } from './types/index.js';
 
 const program = new Command();
@@ -209,6 +211,81 @@ program.command('generate')
         console.log(`Projects: ${result.data.projects.join(', ')}`);
       } else if (result.data?.projectPath) {
         console.log(`📁 Project created at: ${result.data.projectPath}`);
+      }
+    } else {
+      console.error(`❌ ${result.message}`);
+      process.exit(1);
+    }
+  });
+
+// Test command
+program.command('test')
+  .description('Run test harness to validate refactoring operations')
+  .option('--suite <path>', 'Path to test suite JSON file')
+  .option('--isolation <mode>', 'Isolation mode: local | sandbox | docker', 'local')
+  .option('--timeout <ms>', 'Test timeout in milliseconds', '30000')
+  .option('--generate-suite', 'Generate a comprehensive test suite')
+  .action(async (opts, command) => {
+    const globalOpts = command.parent.opts();
+    const context = await initializeCLI(globalOpts);
+    
+    const testCommand = new TestCommand(new Logger(context.verbose));
+    testCommand.setContext(context);
+    
+    const result = await testCommand.execute({
+      project: globalOpts.project,
+      suite: opts.suite,
+      isolation: opts.isolation,
+      timeout: parseInt(opts.timeout),
+      output: globalOpts.output,
+      generateSuite: opts.generateSuite,
+      verbose: globalOpts.verbose
+    });
+    
+    if (result.success) {
+      console.log(`✅ ${result.message}`);
+      if (result.data) {
+        console.log(`📊 Results: ${result.data.passed}/${result.data.passed + result.data.failed} tests passed`);
+        console.log(`📈 Coverage: ${result.data.coverage.toFixed(1)}%`);
+        if (result.data.reportPath) {
+          console.log(`📄 Report: ${result.data.reportPath}`);
+        }
+      }
+    } else {
+      console.error(`❌ ${result.message}`);
+      process.exit(1);
+    }
+  });
+
+// Analyze command
+program.command('analyze')
+  .description('Generate comprehensive project analysis and health report')
+  .option('--format <format>', 'Output format: json | html | markdown', 'html')
+  .option('--detailed', 'Include detailed analysis information')
+  .action(async (opts, command) => {
+    const globalOpts = command.parent.opts();
+    const context = await initializeCLI(globalOpts);
+    
+    const analyzeCommand = new AnalyzeCommand(new Logger(context.verbose));
+    analyzeCommand.setContext(context);
+    
+    const result = await analyzeCommand.execute({
+      project: globalOpts.project,
+      output: globalOpts.output,
+      format: opts.format,
+      detailed: opts.detailed,
+      verbose: globalOpts.verbose
+    });
+    
+    if (result.success) {
+      console.log(`✅ ${result.message}`);
+      if (result.data) {
+        console.log(`📊 Analysis complete: ${result.data.totalFiles} files, ${result.data.dependencies} dependencies`);
+        console.log(`🏥 Health Score: ${result.data.maintainabilityIndex}/100`);
+        if (result.data.riskFactors > 0) {
+          console.log(`⚠️  ${result.data.riskFactors} risk factors identified`);
+        }
+        console.log(`📄 Report: ${result.data.reportPath}`);
       }
     } else {
       console.error(`❌ ${result.message}`);
