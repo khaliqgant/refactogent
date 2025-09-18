@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: 'refactoagent-starter/package-lock.json'
+        
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.19'
+        
+    - name: Install dependencies
+      working-directory: ./refactoagent-starter
+      run: |
+        npm ci
+        cd cli && npm ci
+        cd ../vscode-extension && npm ci
+        
+    - name: Build CLI
+      working-directory: ./refactoagent-starter/cli
+      run: npm run build
+      
+    - name: Build VS Code Extension
+      working-directory: ./refactoagent-starter/vscode-extension
+      run: npm run compile
+      
+    - name: Run tests
+      working-directory: ./refactoagent-starter
+      run: npm test
+      
+    - name: Run linting
+      working-directory: ./refactoagent-starter
+      run: npm run lint
+      
+    - name: Test CLI functionality
+      working-directory: ./refactoagent-starter/cli
+      run: |
+        node dist/index.js --help
+        node dist/index.js plan --mode organize-only
+        
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run security audit
+      working-directory: ./refactoagent-starter
+      run: |
+        npm audit --audit-level moderate
+        cd cli && npm audit --audit-level moderate
+        cd ../vscode-extension && npm audit --audit-level moderate

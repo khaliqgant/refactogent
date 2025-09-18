@@ -1,0 +1,42 @@
+{
+  "name": "refactoagent-starter",
+  "version": "0.1.0",
+  "description": "RefactoAgent development workspace with CLI and VS Code extension",
+  "private": true,
+  "workspaces": [
+    "cli",
+    "vscode-extension"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "npm run clean --workspaces",
+    "dev": "npm run dev --workspaces"
+  },
+  "keywords": [
+    "refactoring",
+    "code-quality",
+    "ast",
+    "safety",
+    "typescript",
+    "python",
+    "go"
+  ],
+  "author": "RefactoAgent Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/khaliqgant/refactoagent.git",
+    "directory": "refactoagent-starter"
+  },
+  "bugs": {
+    "url": "https://github.com/khaliqgant/refactoagent/issues"
+  },
+  "homepage": "https://github.com/khaliqgant/refactoagent#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "packageManager": "npm@>=8.0.0"
+}

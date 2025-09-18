@@ -1,0 +1,24 @@
+{
+  "name": "RefactoAgent",
+  "url": "https://github.com/khaliqgant/refactoagent",
+  "hook_attributes": {
+    "url": "https://your-domain.com/refactoagent/webhooks"
+  },
+  "redirect_url": "https://your-domain.com/refactoagent/setup",
+  "callback_url": "https://your-domain.com/refactoagent/oauth/callback",
+  "request_oauth_on_install": false,
+  "public": false,
+  "default_permissions": {
+    "contents": "write",
+    "pull_requests": "write",
+    "checks": "write",
+    "metadata": "read",
+    "issues": "write"
+  },
+  "default_events": [
+    "push",
+    "pull_request",
+    "check_run",
+    "issue_comment"
+  ]
+}

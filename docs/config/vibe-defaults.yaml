@@ -1,0 +1,32 @@
+# .refactor-agent.yaml — Vibe-Coded Defaults
+version: 1
+max_pr_loc: 300
+branch_prefix: "refactor/"
+modes_allowed: ["organize-only", "name-hygiene", "tests-first", "micro-simplify"]
+protected_paths:
+  - "api/public/**"
+  - "pages/**"
+  - "app/**"
+  - "cli/**"
+gates:
+  require_characterization_tests: true
+  require_green_ci: true
+  min_line_coverage_delta: ">=0"
+  min_branch_coverage_delta: ">=0"
+  mutation_score_threshold: 0.05
+  forbid_public_api_changes: true
+  forbid_dependency_changes: true
+languages:
+  ts:
+    build: "npm run build"
+    test: "npm test -- --runInBand"
+    lints: ["npm run lint", "tsc --noEmit"]
+  py:
+    build: "python -m compileall ."
+    test: "pytest -q"
+    lints: ["ruff check .", "mypy --strict"]
+semantics:
+  http_golden_routes: ["GET /**", "POST /**"]
+  tolerate:
+    json_fields_ignored: ["id", "createdAt", "updatedAt", "traceId"]
+    header_fields_ignored: ["date", "etag"]
