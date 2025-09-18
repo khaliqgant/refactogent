@@ -14,6 +14,7 @@ import { AnalyzeCommand } from './commands/analyze.js';
 import { ASTAnalyzeCommand } from './commands/ast-analyze.js';
 import { createSafetyAnalyzeCommand } from './commands/safety-analyze.js';
 import { createCoverageAnalyzeCommand } from './commands/coverage-analyze.js';
+import { createRefactorSuggestCommand } from './commands/refactor-suggest.js';
 import { CommandContext, RefactoringMode } from './types/index.js';
 
 const program = new Command();
@@ -342,6 +343,9 @@ program.addCommand(createSafetyAnalyzeCommand());
 
 // Coverage Analyze command
 program.addCommand(createCoverageAnalyzeCommand());
+
+// Refactor Suggest command
+program.addCommand(createRefactorSuggestCommand());
 
 // LSP command (stub for now)
 program.command('lsp')

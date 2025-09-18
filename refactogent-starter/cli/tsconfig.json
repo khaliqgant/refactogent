@@ -9,9 +9,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
     "types": ["node"]
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "src/test/**/*"
   ]
 }
