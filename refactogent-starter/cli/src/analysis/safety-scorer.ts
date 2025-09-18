@@ -1,6 +1,7 @@
 import { Logger } from '../utils/logger.js';
 import { ProjectAST, ModuleAST, ASTMetrics } from './ast-types.js';
 import { APIEndpoint } from './api-surface-detector.js';
+import { CoverageReport } from './coverage-analyzer.js';
 
 export interface SafetyScore {
   overall: number; // 0-100, higher is safer
@@ -124,7 +125,8 @@ export class SafetyScorer {
     projectAST: ProjectAST,
     apiEndpoints: APIEndpoint[],
     coverageData?: CoverageData[],
-    changeFrequencyData?: ChangeFrequencyData[]
+    changeFrequencyData?: ChangeFrequencyData[],
+    coverageReport?: CoverageReport
   ): Promise<SafetyScore> {
     this.logger.info('Calculating project safety score', {
       fileCount: projectAST.modules.length,
@@ -132,7 +134,7 @@ export class SafetyScorer {
     });
 
     const complexity = this.calculateComplexityMetric(projectAST);
-    const testCoverage = this.calculateTestCoverageMetric(projectAST, coverageData);
+    const testCoverage = this.calculateTestCoverageMetric(projectAST, coverageData, coverageReport);
     const apiExposure = this.calculateApiExposureMetric(projectAST, apiEndpoints);
     const dependencyRisk = this.calculateDependencyRiskMetric(projectAST);
     const changeFrequency = this.calculateChangeFrequencyMetric(projectAST, changeFrequencyData);
@@ -215,7 +217,19 @@ export class SafetyScorer {
   /**
    * Calculate test coverage-based safety metric
    */
-  private calculateTestCoverageMetric(projectAST: ProjectAST, coverageData?: CoverageData[]): SafetyMetric {
+  private calculateTestCoverageMetric(projectAST: ProjectAST, coverageData?: CoverageData[], coverageReport?: CoverageReport): SafetyMetric {
+    // Use comprehensive coverage report if available
+    if (coverageReport) {
+      const coverage = coverageReport.overallCoverage.linePercentage;
+      const riskLevel = this.getRiskLevel(coverage);
+      
+      return {
+        score: coverage,
+        weight: this.weights.testCoverage,
+        details: `Line coverage: ${coverage.toFixed(1)}% (${coverageReport.overallCoverage.linesCovered}/${coverageReport.overallCoverage.totalLines} lines), Branch: ${coverageReport.overallCoverage.branchPercentage.toFixed(1)}%`,
+        riskLevel
+      };
+    }
     if (!coverageData || coverageData.length === 0) {
       // Estimate coverage based on test files
       const testFiles = projectAST.modules.filter(module => this.isTestFile(module.filePath));

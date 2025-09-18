@@ -13,6 +13,7 @@ import { TestCommand } from './commands/test.js';
 import { AnalyzeCommand } from './commands/analyze.js';
 import { ASTAnalyzeCommand } from './commands/ast-analyze.js';
 import { createSafetyAnalyzeCommand } from './commands/safety-analyze.js';
+import { createCoverageAnalyzeCommand } from './commands/coverage-analyze.js';
 import { CommandContext, RefactoringMode } from './types/index.js';
 
 const program = new Command();
@@ -32,24 +33,24 @@ async function initializeCLI(options: any): Promise<CommandContext> {
   const configLoader = new ConfigLoader(logger);
   const projectAnalyzer = new ProjectAnalyzer(logger);
 
-  logger.debug('Initializing Refactogent CLI', { 
+  logger.debug('Initializing Refactogent CLI', {
     projectPath: options.project,
     outputDir: options.output,
-    verbose: options.verbose 
+    verbose: options.verbose
   });
 
   try {
     // Analyze project
     const projectInfo = await projectAnalyzer.analyzeProject(options.project);
-    
+
     // Load configuration
     const config = await configLoader.loadConfig(options.project);
-    
+
     // Create context - output dir should be relative to project path
-    const outputDir = path.isAbsolute(options.output) 
-      ? options.output 
+    const outputDir = path.isAbsolute(options.output)
+      ? options.output
       : path.resolve(options.project, options.output);
-      
+
     const context: CommandContext = {
       config,
       projectInfo,
@@ -60,8 +61,8 @@ async function initializeCLI(options: any): Promise<CommandContext> {
     logger.success('CLI initialized successfully');
     return context;
   } catch (error) {
-    logger.error('Failed to initialize CLI', { 
-      error: error instanceof Error ? error.message : String(error) 
+    logger.error('Failed to initialize CLI', {
+      error: error instanceof Error ? error.message : String(error)
     });
     process.exit(1);
   }
@@ -75,12 +76,12 @@ program.command('stabilize')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     const context = await initializeCLI(globalOpts);
-    
+
     const stabilizeCommand = new StabilizeCommand(new Logger(context.verbose));
     stabilizeCommand.setContext(context);
-    
+
     const result = await stabilizeCommand.execute(opts);
-    
+
     if (result.success) {
       console.log(`✅ ${result.message}`);
       if (result.artifacts) {
@@ -99,19 +100,19 @@ program.command('plan')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     const context = await initializeCLI(globalOpts);
-    
+
     // Validate mode
     const validModes: RefactoringMode[] = ['organize-only', 'name-hygiene', 'tests-first', 'micro-simplify'];
     if (!validModes.includes(opts.mode as RefactoringMode)) {
       console.error(`❌ Invalid mode: ${opts.mode}. Valid modes: ${validModes.join(', ')}`);
       process.exit(1);
     }
-    
+
     const planCommand = new PlanCommand(new Logger(context.verbose));
     planCommand.setContext(context);
-    
+
     const result = await planCommand.execute(opts);
-    
+
     if (result.success) {
       console.log(`✅ ${result.message}`);
       if (result.artifacts) {
@@ -133,15 +134,15 @@ program.command('apply')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     const context = await initializeCLI(globalOpts);
-    
+
     // Parse max-files option
     opts.maxFiles = parseInt(opts.maxFiles, 10);
-    
+
     const applyCommand = new ApplyCommand(new Logger(context.verbose));
     applyCommand.setContext(context);
-    
+
     const result = await applyCommand.execute(opts);
-    
+
     if (result.success) {
       console.log(`✅ ${result.message}`);
       if (result.artifacts) {
@@ -163,7 +164,7 @@ program.command('patch')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     const context = await initializeCLI(globalOpts);
-    
+
     console.log(`🚧 Patch command not yet implemented`);
     console.log(`Output directory: ${context.outputDir}`);
   });
@@ -175,7 +176,7 @@ program.command('revert')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     await initializeCLI(globalOpts);
-    
+
     console.log(`🚧 Revert command not yet implemented`);
     console.log(`Would revert from: ${opts.from}`);
   });
@@ -193,9 +194,9 @@ program.command('generate')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     // Don't need full CLI initialization for generate command
-    
+
     const generateCommand = new GenerateCommand(new Logger(globalOpts.verbose));
-    
+
     const result = await generateCommand.execute({
       name: opts.name,
       type: opts.type,
@@ -205,7 +206,7 @@ program.command('generate')
       suite: opts.suite,
       output: opts.output
     });
-    
+
     if (result.success) {
       console.log(`✅ ${result.message}`);
       if (result.data?.projectCount) {
@@ -230,10 +231,10 @@ program.command('test')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     const context = await initializeCLI(globalOpts);
-    
+
     const testCommand = new TestCommand(new Logger(context.verbose));
     testCommand.setContext(context);
-    
+
     const result = await testCommand.execute({
       project: globalOpts.project,
       suite: opts.suite,
@@ -243,7 +244,7 @@ program.command('test')
       generateSuite: opts.generateSuite,
       verbose: globalOpts.verbose
     });
-    
+
     if (result.success) {
       console.log(`✅ ${result.message}`);
       if (result.data) {
@@ -267,10 +268,10 @@ program.command('analyze')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     const context = await initializeCLI(globalOpts);
-    
+
     const analyzeCommand = new AnalyzeCommand(new Logger(context.verbose));
     analyzeCommand.setContext(context);
-    
+
     const result = await analyzeCommand.execute({
       project: globalOpts.project,
       output: globalOpts.output,
@@ -278,7 +279,7 @@ program.command('analyze')
       detailed: opts.detailed,
       verbose: globalOpts.verbose
     });
-    
+
     if (result.success) {
       console.log(`✅ ${result.message}`);
       if (result.data) {
@@ -305,10 +306,10 @@ program.command('ast')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     const context = await initializeCLI(globalOpts);
-    
+
     const astAnalyzeCommand = new ASTAnalyzeCommand(new Logger(context.verbose));
     astAnalyzeCommand.setContext(context);
-    
+
     const result = await astAnalyzeCommand.execute({
       project: globalOpts.project,
       output: globalOpts.output,
@@ -318,7 +319,7 @@ program.command('ast')
       dependencies: opts.dependencies,
       verbose: globalOpts.verbose
     });
-    
+
     if (result.success) {
       console.log(`✅ ${result.message}`);
       if (result.data) {
@@ -339,16 +340,19 @@ program.command('ast')
 // Safety Analyze command
 program.addCommand(createSafetyAnalyzeCommand());
 
+// Coverage Analyze command
+program.addCommand(createCoverageAnalyzeCommand());
+
 // LSP command (stub for now)
 program.command('lsp')
   .description('Start a minimal JSON-RPC server for IDE integration (stdio)')
   .action(async (opts, command) => {
     const globalOpts = command.parent.opts();
     await initializeCLI(globalOpts);
-    
+
     console.log('🚧 LSP server not yet implemented');
     console.log('Refactogent LSP stub running on stdio.');
-    
+
     // Keep the basic echo functionality for now
     process.stdin.setEncoding('utf8');
     process.stdin.on('data', (chunk) => {
