@@ -1,4 +1,4 @@
-# RefactoAgent
+# Refactogent
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -7,7 +7,7 @@
 
 > **Safe, incremental, and reviewable code refactoring with strong behavior preservation guarantees**
 
-RefactoAgent is an AI-powered refactoring assistant that helps developers improve code quality without breaking functionality. It uses characterization tests, semantic equivalence checks, and comprehensive safety gates to ensure that refactoring operations never introduce bugs.
+Refactogent is an AI-powered refactoring assistant that helps developers improve code quality without breaking functionality. It uses characterization tests, semantic equivalence checks, and comprehensive safety gates to ensure that refactoring operations never introduce bugs.
 
 ## 🎯 Key Features
 
@@ -23,7 +23,7 @@ RefactoAgent is an AI-powered refactoring assistant that helps developers improv
 
 ```bash
 # Set up the starter project
-cd refactoagent-starter
+cd refactogent-starter
 npm install
 
 # Try the CLI
@@ -35,7 +35,7 @@ node dist/index.js plan --mode organize-only
 ### VS Code Extension
 
 ```bash
-cd refactoagent-starter/vscode-extension
+cd refactogent-starter/vscode-extension
 npm install && npm run compile
 # Load in VS Code using "Run -> Start Debugging"
 ```
@@ -51,14 +51,14 @@ The project is organized into 10 phases:
 
 ## 📚 Documentation
 
-- **[Unified Specification](.kiro/specs/refactoagent-unified/)** - Complete requirements, design, and implementation plan
+- **[Unified Specification](.kiro/specs/refactogent-unified/)** - Complete requirements, design, and implementation plan
 - **[Documentation](docs/)** - All project documentation and examples
-- **[Starter Project](refactoagent-starter/)** - Local development setup
+- **[Starter Project](refactogent-starter/)** - Local development setup
 
 ## 🏗️ Project Structure
 
 ```
-├── .kiro/specs/refactoagent-unified/    # Main specification
+├── .kiro/specs/refactogent-unified/    # Main specification
 │   ├── requirements.md                  # Requirements document
 │   ├── design.md                       # System design
 │   └── tasks.md                        # Implementation plan
@@ -66,7 +66,7 @@ The project is organized into 10 phases:
 │   ├── specs/                          # Original specifications
 │   ├── config/                         # Configuration examples
 │   └── examples/                       # Templates and examples
-├── refactoagent-starter/               # Starter project
+├── refactogent-starter/               # Starter project
 │   ├── cli/                           # CLI implementation
 │   └── vscode-extension/              # VS Code extension
 └── README.md                          # This file
@@ -76,9 +76,9 @@ The project is organized into 10 phases:
 
 ### Getting Started
 
-1. **Review the Specification**: Start with the [unified specification](.kiro/specs/refactoagent-unified/)
-2. **Set Up Local Environment**: Use the [starter project](refactoagent-starter/)
-3. **Begin Implementation**: Start with Phase 1 tasks from [tasks.md](.kiro/specs/refactoagent-unified/tasks.md)
+1. **Review the Specification**: Start with the [unified specification](.kiro/specs/refactogent-unified/)
+2. **Set Up Local Environment**: Use the [starter project](refactogent-starter/)
+3. **Begin Implementation**: Start with Phase 1 tasks from [tasks.md](.kiro/specs/refactogent-unified/tasks.md)
 
 ### Implementation Approach
 
@@ -104,14 +104,14 @@ The project is organized into 10 phases:
 
 ## 🤝 Contributing
 
-We welcome contributions! RefactoAgent is built by the community, for the community.
+We welcome contributions! Refactogent is built by the community, for the community.
 
 ### Getting Started
 
 1. **Fork the repository** and clone your fork
 2. **Read our [Contributing Guide](CONTRIBUTING.md)** for detailed instructions
 3. **Review the [Code of Conduct](CODE_OF_CONDUCT.md)** 
-4. **Check the [implementation plan](.kiro/specs/refactoagent-unified/tasks.md)** for available tasks
+4. **Check the [implementation plan](.kiro/specs/refactogent-unified/tasks.md)** for available tasks
 5. **Join our discussions** in GitHub Issues and Discussions
 
 ### Ways to Contribute
@@ -127,11 +127,11 @@ We welcome contributions! RefactoAgent is built by the community, for the commun
 
 ```bash
 # Clone your fork
-git clone https://github.com/yourusername/refactoagent.git
-cd refactoagent
+git clone https://github.com/yourusername/refactogent.git
+cd refactogent
 
 # Set up the development environment
-cd refactoagent-starter
+cd refactogent-starter
 npm install
 
 # Run tests
@@ -142,7 +142,7 @@ npm test
 
 See our [Development Guide](docs/DEVELOPMENT.md) for detailed setup instructions.
 
-## 🌟 Why RefactoAgent?
+## 🌟 Why Refactogent?
 
 - **🛡️ Zero-Risk Refactoring**: Comprehensive safety checks ensure no behavior changes
 - **🧪 Test-First Approach**: Generates characterization tests before making any changes

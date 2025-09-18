@@ -1,8 +1,8 @@
-# RefactoAgent Unified Implementation - Design Document
+# Refactogent Unified Implementation - Design Document
 
 ## Overview
 
-RefactoAgent is designed as a modular, safety-first refactoring system that can operate in multiple modes: local-only CLI, IDE integration, and GitHub App. The architecture prioritizes incremental development and testing, starting with robust local capabilities before expanding to collaborative features.
+Refactogent is designed as a modular, safety-first refactoring system that can operate in multiple modes: local-only CLI, IDE integration, and GitHub App. The architecture prioritizes incremental development and testing, starting with robust local capabilities before expanding to collaborative features.
 
 The system follows a pipeline architecture where each stage has clear inputs, outputs, and validation gates. This design ensures that failures are caught early and that the system can be tested and validated at each phase of development.
 
@@ -222,7 +222,7 @@ interface TestResult {
 ### Configuration Models
 
 ```typescript
-interface RefactoAgentConfig {
+interface RefactogentConfig {
   version: string;
   modes: RefactoringMode[];
   languages: LanguageConfig[];

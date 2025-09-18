@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide provides detailed instructions for setting up and working with the RefactoAgent development environment.
+This guide provides detailed instructions for setting up and working with the Refactogent development environment.
 
 ## 🛠️ Prerequisites
 
@@ -30,18 +30,18 @@ This guide provides detailed instructions for setting up and working with the Re
 
 ```bash
 # Fork the repository on GitHub, then clone your fork
-git clone https://github.com/yourusername/refactoagent.git
-cd refactoagent
+git clone https://github.com/yourusername/refactogent.git
+cd refactogent
 
 # Add upstream remote
-git remote add upstream https://github.com/khaliqgant/refactoagent.git
+git remote add upstream https://github.com/khaliqgant/refactogent.git
 ```
 
 ### 2. Environment Setup
 
 ```bash
 # Install Node.js dependencies
-cd refactoagent-starter
+cd refactogent-starter
 npm install
 
 # Set up CLI
@@ -62,7 +62,7 @@ cd ../..
 
 ```bash
 # Test CLI
-cd refactoagent-starter/cli
+cd refactogent-starter/cli
 node dist/index.js --help
 
 # Run tests
@@ -76,8 +76,8 @@ code . # Open in VS Code and press F5 to run extension
 ## 📁 Project Structure
 
 ```
-refactoagent/
-├── .kiro/specs/refactoagent-unified/    # Main specification
+refactogent/
+├── .kiro/specs/refactogent-unified/    # Main specification
 │   ├── requirements.md                  # Project requirements
 │   ├── design.md                       # System architecture
 │   └── tasks.md                        # Implementation roadmap
@@ -86,7 +86,7 @@ refactoagent/
 │   ├── config/                         # Configuration examples
 │   ├── examples/                       # Templates and examples
 │   └── DEVELOPMENT.md                  # This file
-├── refactoagent-starter/               # Development workspace
+├── refactogent-starter/               # Development workspace
 │   ├── cli/                           # CLI implementation
 │   │   ├── src/                       # TypeScript source
 │   │   ├── dist/                      # Compiled JavaScript
@@ -138,7 +138,7 @@ refactoagent/
 
 ### Working with the Implementation Plan
 
-The project follows a structured implementation plan in [tasks.md](.kiro/specs/refactoagent-unified/tasks.md):
+The project follows a structured implementation plan in [tasks.md](.kiro/specs/refactogent-unified/tasks.md):
 
 1. **Check current phase**: See which phase is currently active
 2. **Pick a task**: Choose an unassigned task from the current phase
@@ -233,7 +233,7 @@ describe('ProjectAnalyzer', () => {
 
 ```bash
 # Enable debug logging
-DEBUG=refactoagent:* node dist/index.js plan --mode organize-only
+DEBUG=refactogent:* node dist/index.js plan --mode organize-only
 
 # Use Node.js debugger
 node --inspect-brk dist/index.js plan --mode organize-only
@@ -241,7 +241,7 @@ node --inspect-brk dist/index.js plan --mode organize-only
 
 ### VS Code Extension Debugging
 
-1. Open `refactoagent-starter/vscode-extension` in VS Code
+1. Open `refactogent-starter/vscode-extension` in VS Code
 2. Press F5 to launch Extension Development Host
 3. Set breakpoints in TypeScript source
 4. Use the extension in the development host
@@ -294,7 +294,7 @@ node --prof-process isolate-*.log > profile.txt
 ### Resources
 
 - **Documentation**: Check the [docs](.) directory
-- **Specification**: Review the [unified spec](../.kiro/specs/refactoagent-unified/)
+- **Specification**: Review the [unified spec](../.kiro/specs/refactogent-unified/)
 - **Examples**: Look at existing implementations
 - **Tests**: Study test cases for usage patterns
 
@@ -315,4 +315,4 @@ node --prof-process isolate-*.log > profile.txt
 
 ---
 
-Happy coding! 🚀 Remember, RefactoAgent is all about making refactoring safe and reliable, so take your time to ensure quality in every contribution.
+Happy coding! 🚀 Remember, Refactogent is all about making refactoring safe and reliable, so take your time to ensure quality in every contribution.

@@ -1,6 +1,6 @@
-# RefactoAgent Documentation
+# Refactogent Documentation
 
-This directory contains comprehensive documentation for the RefactoAgent project.
+This directory contains comprehensive documentation for the Refactogent project.
 
 ## 📚 Documentation Structure
 
@@ -12,14 +12,14 @@ This directory contains comprehensive documentation for the RefactoAgent project
 ## 🚀 Quick Links
 
 ### Core Documentation
-- **[Main Specification](../.kiro/specs/refactoagent-unified/requirements.md)** - Unified requirements document
-- **[Design Document](../.kiro/specs/refactoagent-unified/design.md)** - System architecture and design
-- **[Implementation Plan](../.kiro/specs/refactoagent-unified/tasks.md)** - 10-phase implementation roadmap
+- **[Main Specification](../.kiro/specs/refactogent-unified/requirements.md)** - Unified requirements document
+- **[Design Document](../.kiro/specs/refactogent-unified/design.md)** - System architecture and design
+- **[Implementation Plan](../.kiro/specs/refactogent-unified/tasks.md)** - 10-phase implementation roadmap
 
 ### Development Resources
 - **[Development Guide](DEVELOPMENT.md)** - Complete setup and workflow instructions
 - **[Contributing Guidelines](../CONTRIBUTING.md)** - How to contribute to the project
-- **[Starter Project](../refactoagent-starter/)** - Local development workspace
+- **[Starter Project](../refactogent-starter/)** - Local development workspace
 
 ### Project Management
 - **[Code of Conduct](../CODE_OF_CONDUCT.md)** - Community guidelines
@@ -31,13 +31,13 @@ This directory contains comprehensive documentation for the RefactoAgent project
 ### For Contributors
 1. **Read the [Contributing Guide](../CONTRIBUTING.md)** for project overview and guidelines
 2. **Set up your environment** using the [Development Guide](DEVELOPMENT.md)
-3. **Review the [Implementation Plan](../.kiro/specs/refactoagent-unified/tasks.md)** to find tasks to work on
+3. **Review the [Implementation Plan](../.kiro/specs/refactogent-unified/tasks.md)** to find tasks to work on
 4. **Join the community** through GitHub Discussions and Issues
 
 ### For Users
-1. **Explore the [Starter Project](../refactoagent-starter/)** to try RefactoAgent locally
+1. **Explore the [Starter Project](../refactogent-starter/)** to try Refactogent locally
 2. **Review [Configuration Examples](config/)** for your project type
-3. **Check the [Implementation Status](../.kiro/specs/refactoagent-unified/tasks.md)** to see what's available
+3. **Check the [Implementation Status](../.kiro/specs/refactogent-unified/tasks.md)** to see what's available
 
 ## 📖 Documentation Standards
 

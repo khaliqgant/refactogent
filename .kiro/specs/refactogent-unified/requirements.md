@@ -1,8 +1,8 @@
-# RefactoAgent Unified Implementation - Requirements Document
+# Refactogent Unified Implementation - Requirements Document
 
 ## Introduction
 
-RefactoAgent is a comprehensive refactoring assistant that provides safe, incremental, and reviewable code refactoring capabilities. The system prioritizes behavior preservation through characterization tests, semantic equivalence checks, and strict validation gates. It supports both local-first development workflows and GitHub App integration, with special consideration for "vibe-coded" repositories that may have technical debt or limited test coverage.
+Refactogent is a comprehensive refactoring assistant that provides safe, incremental, and reviewable code refactoring capabilities. The system prioritizes behavior preservation through characterization tests, semantic equivalence checks, and strict validation gates. It supports both local-first development workflows and GitHub App integration, with special consideration for "vibe-coded" repositories that may have technical debt or limited test coverage.
 
 The implementation will be phased in 10 steps, starting with robust local testing capabilities to ensure the system works reliably across different project types before expanding to full GitHub integration.
 
@@ -10,7 +10,7 @@ The implementation will be phased in 10 steps, starting with robust local testin
 
 ### Requirement 1: Local Testing Infrastructure
 
-**User Story:** As a developer, I want to test RefactoAgent locally on different project types so that I can validate its behavior before deploying it to production repositories.
+**User Story:** As a developer, I want to test Refactogent locally on different project types so that I can validate its behavior before deploying it to production repositories.
 
 #### Acceptance Criteria
 
@@ -46,7 +46,7 @@ The implementation will be phased in 10 steps, starting with robust local testin
 
 ### Requirement 4: Multi-Language Support
 
-**User Story:** As a developer working with polyglot codebases, I want RefactoAgent to support multiple programming languages so that I can refactor my entire project consistently.
+**User Story:** As a developer working with polyglot codebases, I want Refactogent to support multiple programming languages so that I can refactor my entire project consistently.
 
 #### Acceptance Criteria
 
@@ -70,7 +70,7 @@ The implementation will be phased in 10 steps, starting with robust local testin
 
 ### Requirement 6: CLI and IDE Integration
 
-**User Story:** As a developer, I want convenient access to RefactoAgent through command-line and IDE interfaces so that I can integrate it into my existing workflow.
+**User Story:** As a developer, I want convenient access to Refactogent through command-line and IDE interfaces so that I can integrate it into my existing workflow.
 
 #### Acceptance Criteria
 
@@ -82,7 +82,7 @@ The implementation will be phased in 10 steps, starting with robust local testin
 
 ### Requirement 7: GitHub Integration
 
-**User Story:** As a team lead, I want RefactoAgent to work with GitHub repositories so that refactoring can be part of our collaborative development process.
+**User Story:** As a team lead, I want Refactogent to work with GitHub repositories so that refactoring can be part of our collaborative development process.
 
 #### Acceptance Criteria
 
@@ -106,7 +106,7 @@ The implementation will be phased in 10 steps, starting with robust local testin
 
 ### Requirement 9: Vibe-Coded Repository Support
 
-**User Story:** As a developer with a messy codebase, I want RefactoAgent to work safely with under-tested and inconsistent code so that I can gradually improve code quality.
+**User Story:** As a developer with a messy codebase, I want Refactogent to work safely with under-tested and inconsistent code so that I can gradually improve code quality.
 
 #### Acceptance Criteria
 
@@ -118,7 +118,7 @@ The implementation will be phased in 10 steps, starting with robust local testin
 
 ### Requirement 10: Extensibility and Plugin System
 
-**User Story:** As a developer with specific refactoring needs, I want to extend RefactoAgent with custom transformations so that I can address project-specific patterns.
+**User Story:** As a developer with specific refactoring needs, I want to extend Refactogent with custom transformations so that I can address project-specific patterns.
 
 #### Acceptance Criteria
 

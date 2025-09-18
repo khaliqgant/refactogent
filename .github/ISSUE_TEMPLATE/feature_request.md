@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for RefactoAgent
+about: Suggest an idea for Refactogent
 title: '[FEATURE] '
 labels: 'enhancement'
 assignees: ''
@@ -36,7 +36,7 @@ Describe specific scenarios where this feature would be useful:
 **API/Interface design** (if applicable):
 ```typescript
 // Example of how the feature might be used
-refactoagent.newFeature({
+refactogent.newFeature({
   option1: 'value',
   option2: true
 });

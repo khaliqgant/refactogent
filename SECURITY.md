@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-RefactoAgent is currently in active development. Security updates will be provided for:
+Refactogent is currently in active development. Security updates will be provided for:
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -10,7 +10,7 @@ RefactoAgent is currently in active development. Security updates will be provid
 
 ## Reporting a Vulnerability
 
-We take security seriously. If you discover a security vulnerability in RefactoAgent, please report it responsibly.
+We take security seriously. If you discover a security vulnerability in Refactogent, please report it responsibly.
 
 ### How to Report
 
@@ -34,17 +34,17 @@ Include the following information:
 - **Regular Updates**: We will keep you informed of our progress throughout the investigation
 - **Resolution**: We aim to resolve critical vulnerabilities within 30 days
 
-### Security Considerations for RefactoAgent
+### Security Considerations for Refactogent
 
-RefactoAgent operates on source code and has several security considerations:
+Refactogent operates on source code and has several security considerations:
 
 #### Code Execution
-- RefactoAgent executes build and test commands from project configurations
+- Refactogent executes build and test commands from project configurations
 - Always review `.refactor-agent.yaml` configurations before use
 - Use containerized environments when possible
 
 #### File System Access
-- RefactoAgent reads and writes source code files
+- Refactogent reads and writes source code files
 - Ensure proper file permissions and access controls
 - Be cautious with protected or sensitive directories
 
@@ -64,13 +64,13 @@ RefactoAgent operates on source code and has several security considerations:
 2. **Use Version Control**: Ensure all changes are tracked in git
 3. **Test in Isolation**: Use separate branches for refactoring operations
 4. **Validate Changes**: Review all generated changes before merging
-5. **Keep Updated**: Use the latest version of RefactoAgent
+5. **Keep Updated**: Use the latest version of Refactogent
 6. **Secure Credentials**: Protect GitHub tokens and other credentials
 
 ### Scope
 
 This security policy applies to:
-- RefactoAgent CLI tool
+- Refactogent CLI tool
 - VS Code extension
 - GitHub App integration
 - Configuration files and templates
@@ -86,9 +86,9 @@ The following are generally not considered security vulnerabilities:
 
 ### Recognition
 
-We appreciate security researchers who help keep RefactoAgent safe. With your permission, we will:
+We appreciate security researchers who help keep Refactogent safe. With your permission, we will:
 - Acknowledge your contribution in our security advisories
 - Include you in our hall of fame (if you wish)
 - Provide updates on the fix and release timeline
 
-Thank you for helping keep RefactoAgent and our community safe!
+Thank you for helping keep Refactogent and our community safe!

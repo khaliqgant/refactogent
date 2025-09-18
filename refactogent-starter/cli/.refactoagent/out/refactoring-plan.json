@@ -1,0 +1,40 @@
+{
+  "mode": "organize-only",
+  "projectType": "mixed",
+  "timestamp": "2025-09-18T11:02:56.644Z",
+  "configuration": {
+    "maxPrLoc": 300,
+    "branchPrefix": "refactor/",
+    "protectedPaths": [
+      "api/public/**",
+      "pages/**",
+      "app/**",
+      "cli/**"
+    ]
+  },
+  "operations": [
+    {
+      "type": "file-organization",
+      "description": "Reorganize files and directories for better structure",
+      "target": "project-structure",
+      "safety": "low-risk"
+    },
+    {
+      "type": "import-cleanup",
+      "description": "Clean up and organize import statements",
+      "target": "import-statements",
+      "safety": "low-risk"
+    }
+  ],
+  "safetyChecks": {
+    "characterizationTests": true,
+    "buildValidation": true,
+    "coverageValidation": true,
+    "policyValidation": true
+  },
+  "estimatedImpact": {
+    "filesAffected": 0,
+    "linesChanged": 0,
+    "riskLevel": "low"
+  }
+}

@@ -7,10 +7,10 @@ function runCLI(args: string[], cwd?: string) {
   cli.stdout.on('data', (d) => output += d.toString());
   cli.stderr.on('data', (d) => output += d.toString());
   cli.on('close', (code) => {
-    const ch = vscode.window.createOutputChannel('RefactoAgent');
+    const ch = vscode.window.createOutputChannel('Refactogent');
     ch.appendLine(output);
     ch.show(true);
-    if (code !== 0) vscode.window.showErrorMessage(`RefactoAgent CLI exited with code ${code}`);
+    if (code !== 0) vscode.window.showErrorMessage(`Refactogent CLI exited with code ${code}`);
   });
 }
 

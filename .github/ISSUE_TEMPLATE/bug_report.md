@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve RefactoAgent
+about: Create a report to help us improve Refactogent
 title: '[BUG] '
 labels: 'bug'
 assignees: ''
@@ -33,7 +33,7 @@ If applicable, add screenshots to help explain your problem.
 
 - **OS**: [e.g. macOS 13.0, Ubuntu 22.04, Windows 11]
 - **Node.js version**: [e.g. 18.17.0]
-- **RefactoAgent version**: [e.g. 0.1.0]
+- **Refactogent version**: [e.g. 0.1.0]
 - **Project type**: [e.g. TypeScript, Python, Go]
 - **Project size**: [e.g. small (<100 files), medium (100-1000 files), large (>1000 files)]
 
@@ -62,5 +62,5 @@ If you have ideas about what might be causing this or how to fix it, please shar
 
 - [ ] I have searched existing issues to make sure this isn't a duplicate
 - [ ] I have provided all the requested information
-- [ ] I have tested this with the latest version of RefactoAgent
+- [ ] I have tested this with the latest version of Refactogent
 - [ ] I have included relevant configuration and logs

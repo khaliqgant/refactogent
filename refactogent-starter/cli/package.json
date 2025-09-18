@@ -1,11 +1,11 @@
 {
-  "name": "refactoagent-cli",
+  "name": "refactogent-cli",
   "version": "0.1.0",
-  "description": "RefactoAgent CLI - Safe, incremental code refactoring assistant",
+  "description": "Refactogent CLI - Safe, incremental code refactoring assistant",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "refactoagent": "./dist/index.js"
+    "refactogent": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -29,17 +29,17 @@
     "go",
     "developer-tools"
   ],
-  "author": "RefactoAgent Contributors",
+  "author": "Refactogent Contributors",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/khaliqgant/refactoagent.git",
-    "directory": "refactoagent-starter/cli"
+    "url": "https://github.com/khaliqgant/refactogent.git",
+    "directory": "refactogent-starter/cli"
   },
   "bugs": {
-    "url": "https://github.com/khaliqgant/refactoagent/issues"
+    "url": "https://github.com/khaliqgant/refactogent/issues"
   },
-  "homepage": "https://github.com/khaliqgant/refactoagent#readme",
+  "homepage": "https://github.com/khaliqgant/refactogent#readme",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -49,10 +49,12 @@
     "LICENSE"
   ],
   "dependencies": {
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",

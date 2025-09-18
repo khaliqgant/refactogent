@@ -1,14 +1,14 @@
-# RefactoAgent — Alternative Integration Modes (No GitHub App Required)
+# Refactogent — Alternative Integration Modes (No GitHub App Required)
 
 ## Local‑Only IDE Mode
-- Runs entirely offline; generates patches in `.refactoagent/out/`.
-- Supports VS Code and JetBrains plugins via JSON-RPC (`refactoagent --lsp`).
+- Runs entirely offline; generates patches in `.refactogent/out/`.
+- Supports VS Code and JetBrains plugins via JSON-RPC (`refactogent --lsp`).
 
 ## CLI Workflow
 ```bash
-refactoagent stabilize --routes 10
-refactoagent plan --mode organize-only
-refactoagent patch --out ./.refactoagent/out
+refactogent stabilize --routes 10
+refactogent plan --mode organize-only
+refactogent patch --out ./.refactogent/out
 ```
 
 ## Git Hooks
@@ -23,4 +23,4 @@ refactoagent patch --out ./.refactoagent/out
 - Localhost web UI to preview diffs/artifacts/logs.
 - No data leaves machine unless user opts in.
 
-> **Note:** These integration modes are incorporated into the [unified specification](../../.kiro/specs/refactoagent-unified/). This file is kept for reference.
+> **Note:** These integration modes are incorporated into the [unified specification](../../.kiro/specs/refactogent-unified/). This file is kept for reference.

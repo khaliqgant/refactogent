@@ -1,4 +1,4 @@
-# RefactoAgent Unified Implementation - Implementation Plan
+# Refactogent Unified Implementation - Implementation Plan
 
 ## Phase 1: Local Test Infrastructure Foundation
 

@@ -23,7 +23,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: 'refactoagent-starter/package-lock.json'
+        cache-dependency-path: 'refactogent-starter/package-lock.json'
         
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -36,30 +36,30 @@ jobs:
         go-version: '1.19'
         
     - name: Install dependencies
-      working-directory: ./refactoagent-starter
+      working-directory: ./refactogent-starter
       run: |
         npm ci
         cd cli && npm ci
         cd ../vscode-extension && npm ci
         
     - name: Build CLI
-      working-directory: ./refactoagent-starter/cli
+      working-directory: ./refactogent-starter/cli
       run: npm run build
       
     - name: Build VS Code Extension
-      working-directory: ./refactoagent-starter/vscode-extension
+      working-directory: ./refactogent-starter/vscode-extension
       run: npm run compile
       
     - name: Run tests
-      working-directory: ./refactoagent-starter
+      working-directory: ./refactogent-starter
       run: npm test
       
     - name: Run linting
-      working-directory: ./refactoagent-starter
+      working-directory: ./refactogent-starter
       run: npm run lint
       
     - name: Test CLI functionality
-      working-directory: ./refactoagent-starter/cli
+      working-directory: ./refactogent-starter/cli
       run: |
         node dist/index.js --help
         node dist/index.js plan --mode organize-only
@@ -72,7 +72,7 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Run security audit
-      working-directory: ./refactoagent-starter
+      working-directory: ./refactogent-starter
       run: |
         npm audit --audit-level moderate
         cd cli && npm audit --audit-level moderate

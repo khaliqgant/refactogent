@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to RefactoAgent will be documented in this file.
+All notable changes to Refactogent will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -80,7 +80,7 @@ When creating releases, use this template:
 
 ## Development Phases
 
-RefactoAgent development follows a structured 10-phase approach:
+Refactogent development follows a structured 10-phase approach:
 
 - **Phase 1-3**: Local foundation and testing infrastructure
 - **Phase 4-6**: Core refactoring engine and safety systems  

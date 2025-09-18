@@ -1,10 +1,10 @@
-# Contributing to RefactoAgent
+# Contributing to Refactogent
 
-Thank you for your interest in contributing to RefactoAgent! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to Refactogent! This document provides guidelines and information for contributors.
 
 ## 🎯 Project Vision
 
-RefactoAgent aims to make code refactoring safe, automated, and accessible to all developers. We prioritize:
+Refactogent aims to make code refactoring safe, automated, and accessible to all developers. We prioritize:
 
 - **Safety first**: No changes without comprehensive validation
 - **Developer experience**: Tools that enhance rather than complicate workflows  
@@ -27,13 +27,13 @@ RefactoAgent aims to make code refactoring safe, automated, and accessible to al
 
 1. **Fork and clone the repository**
    ```bash
-   git clone https://github.com/yourusername/refactoagent.git
-   cd refactoagent
+   git clone https://github.com/yourusername/refactogent.git
+   cd refactogent
    ```
 
 2. **Set up the development environment**
    ```bash
-   cd refactoagent-starter
+   cd refactogent-starter
    npm install
    cd cli && npm install && npm run build
    cd ../vscode-extension && npm install
@@ -67,7 +67,7 @@ RefactoAgent aims to make code refactoring safe, automated, and accessible to al
 - Consider implementation complexity
 
 #### 💻 Code Contributions
-- Check the [implementation plan](.kiro/specs/refactoagent-unified/tasks.md)
+- Check the [implementation plan](.kiro/specs/refactogent-unified/tasks.md)
 - Look for issues labeled `good first issue` or `help wanted`
 - Comment on the issue before starting work
 
@@ -229,7 +229,7 @@ npm run test:integration
 
 ## 🎯 Implementation Phases
 
-We're implementing RefactoAgent in phases. Check the [implementation plan](.kiro/specs/refactoagent-unified/tasks.md) for current priorities:
+We're implementing Refactogent in phases. Check the [implementation plan](.kiro/specs/refactogent-unified/tasks.md) for current priorities:
 
 - **Phase 1-3**: Local foundation and testing infrastructure
 - **Phase 4-6**: Core refactoring engine and safety systems
@@ -257,4 +257,4 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ---
 
-Thank you for contributing to RefactoAgent! Together, we're making code refactoring safer and more accessible for everyone. 🚀
+Thank you for contributing to Refactogent! Together, we're making code refactoring safer and more accessible for everyone. 🚀

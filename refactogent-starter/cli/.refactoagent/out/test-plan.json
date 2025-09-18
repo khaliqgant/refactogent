@@ -1,0 +1,45 @@
+{
+  "projectType": "mixed",
+  "languages": [
+    "typescript",
+    "javascript"
+  ],
+  "characterizationTests": {
+    "http": {
+      "enabled": true,
+      "routesToTest": 5,
+      "methods": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE"
+      ],
+      "status": "planned"
+    },
+    "cli": {
+      "enabled": true,
+      "commandsToTest": 2,
+      "status": "planned"
+    },
+    "library": {
+      "enabled": true,
+      "status": "planned"
+    }
+  },
+  "safetyChecks": {
+    "buildValidation": true,
+    "testExecution": true,
+    "coverageAnalysis": true,
+    "semanticEquivalence": true
+  },
+  "timeline": {
+    "created": "2025-09-18T10:55:21.444Z",
+    "estimatedDuration": "15-30 minutes",
+    "phases": [
+      "Project analysis",
+      "Test generation",
+      "Baseline establishment",
+      "Safety validation"
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-# RefactoAgent — Product & Technical Spec (v1.0)
+# Refactogent — Product & Technical Spec (v1.0)
 
 **Owner:** You  
 **Target repos:** GitHub (via GitHub App)  
@@ -75,4 +75,4 @@
 
 *[Rest of the original specification content continues...]*
 
-> **Note:** This is the original specification. See the [unified specification](../../.kiro/specs/refactoagent-unified/) for the current implementation plan.
+> **Note:** This is the original specification. See the [unified specification](../../.kiro/specs/refactogent-unified/) for the current implementation plan.

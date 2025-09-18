@@ -1,11 +1,11 @@
 {
-  "name": "RefactoAgent",
-  "url": "https://github.com/khaliqgant/refactoagent",
+  "name": "Refactogent",
+  "url": "https://github.com/khaliqgant/refactogent",
   "hook_attributes": {
-    "url": "https://your-domain.com/refactoagent/webhooks"
+    "url": "https://your-domain.com/refactogent/webhooks"
   },
-  "redirect_url": "https://your-domain.com/refactoagent/setup",
-  "callback_url": "https://your-domain.com/refactoagent/oauth/callback",
+  "redirect_url": "https://your-domain.com/refactogent/setup",
+  "callback_url": "https://your-domain.com/refactogent/oauth/callback",
   "request_oauth_on_install": false,
   "public": false,
   "default_permissions": {

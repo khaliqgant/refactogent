@@ -9,4 +9,4 @@ This addendum tailors the base spec to messy, fast‑hacked, under‑tested repo
 
 *[Content from refactoring-agent-spec-addendum-vibecoders.md]*
 
-> **Note:** This addendum has been integrated into the [unified specification](../../.kiro/specs/refactoagent-unified/). This file is kept for reference.
+> **Note:** This addendum has been integrated into the [unified specification](../../.kiro/specs/refactogent-unified/). This file is kept for reference.

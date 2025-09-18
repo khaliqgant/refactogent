@@ -1,9 +1,9 @@
 {
-  "name": "refactoagent-vscode",
-  "displayName": "RefactoAgent",
+  "name": "refactogent-vscode",
+  "displayName": "Refactogent",
   "description": "Safe, incremental code refactoring with behavior preservation guarantees",
   "version": "0.1.0",
-  "publisher": "refactoagent",
+  "publisher": "refactogent",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -32,31 +32,31 @@
       {
         "command": "refacto.stabilize",
         "title": "Stabilize Project",
-        "category": "RefactoAgent",
+        "category": "Refactogent",
         "icon": "$(shield)"
       },
       {
         "command": "refacto.organizeOnly",
         "title": "Organize Code",
-        "category": "RefactoAgent",
+        "category": "Refactogent",
         "icon": "$(file-directory)"
       },
       {
         "command": "refacto.nameHygiene",
         "title": "Improve Naming",
-        "category": "RefactoAgent",
+        "category": "Refactogent",
         "icon": "$(symbol-string)"
       },
       {
         "command": "refacto.microSimplify",
         "title": "Micro-Simplify",
-        "category": "RefactoAgent",
+        "category": "Refactogent",
         "icon": "$(lightbulb)"
       },
       {
         "command": "refacto.publicSurface",
         "title": "Show Public API Surface",
-        "category": "RefactoAgent",
+        "category": "Refactogent",
         "icon": "$(eye)"
       }
     ],
@@ -85,22 +85,22 @@
       ]
     },
     "configuration": {
-      "title": "RefactoAgent",
+      "title": "Refactogent",
       "properties": {
-        "refactoagent.cliPath": {
+        "refactogent.cliPath": {
           "type": "string",
-          "default": "refactoagent",
-          "description": "Path to the RefactoAgent CLI executable"
+          "default": "refactogent",
+          "description": "Path to the Refactogent CLI executable"
         },
-        "refactoagent.autoStabilize": {
+        "refactogent.autoStabilize": {
           "type": "boolean",
           "default": false,
           "description": "Automatically run stabilization tests before refactoring"
         },
-        "refactoagent.outputChannel": {
+        "refactogent.outputChannel": {
           "type": "boolean",
           "default": true,
-          "description": "Show RefactoAgent output in VS Code output channel"
+          "description": "Show Refactogent output in VS Code output channel"
         }
       }
     }
@@ -118,13 +118,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/khaliqgant/refactoagent.git",
-    "directory": "refactoagent-starter/vscode-extension"
+    "url": "https://github.com/khaliqgant/refactogent.git",
+    "directory": "refactogent-starter/vscode-extension"
   },
   "bugs": {
-    "url": "https://github.com/khaliqgant/refactoagent/issues"
+    "url": "https://github.com/khaliqgant/refactogent/issues"
   },
-  "homepage": "https://github.com/khaliqgant/refactoagent#readme",
+  "homepage": "https://github.com/khaliqgant/refactogent#readme",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.12",
