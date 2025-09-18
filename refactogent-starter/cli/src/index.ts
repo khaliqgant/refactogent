@@ -11,6 +11,8 @@ import { ApplyCommand } from './commands/apply.js';
 import { GenerateCommand } from './commands/generate.js';
 import { TestCommand } from './commands/test.js';
 import { AnalyzeCommand } from './commands/analyze.js';
+import { ASTAnalyzeCommand } from './commands/ast-analyze.js';
+import { createSafetyAnalyzeCommand } from './commands/safety-analyze.js';
 import { CommandContext, RefactoringMode } from './types/index.js';
 
 const program = new Command();
@@ -292,6 +294,50 @@ program.command('analyze')
       process.exit(1);
     }
   });
+
+// AST Analyze command
+program.command('ast')
+  .description('Perform comprehensive AST analysis across languages')
+  .option('--format <format>', 'Output format: json | html | markdown', 'html')
+  .option('--symbols', 'Include detailed symbol analysis')
+  .option('--complexity', 'Include complexity analysis')
+  .option('--dependencies', 'Include dependency analysis')
+  .action(async (opts, command) => {
+    const globalOpts = command.parent.opts();
+    const context = await initializeCLI(globalOpts);
+    
+    const astAnalyzeCommand = new ASTAnalyzeCommand(new Logger(context.verbose));
+    astAnalyzeCommand.setContext(context);
+    
+    const result = await astAnalyzeCommand.execute({
+      project: globalOpts.project,
+      output: globalOpts.output,
+      format: opts.format,
+      symbols: opts.symbols,
+      complexity: opts.complexity,
+      dependencies: opts.dependencies,
+      verbose: globalOpts.verbose
+    });
+    
+    if (result.success) {
+      console.log(`✅ ${result.message}`);
+      if (result.data) {
+        console.log(`🔍 Languages: ${result.data.languages.join(', ')}`);
+        console.log(`📊 Symbols: ${result.data.totalSymbols} across ${result.data.totalFiles} files`);
+        console.log(`🏗️  Architecture Score: ${result.data.architecturalScore}/100`);
+        if (result.data.recommendations > 0) {
+          console.log(`💡 ${result.data.recommendations} recommendations generated`);
+        }
+        console.log(`📄 Report: ${result.data.reportPath}`);
+      }
+    } else {
+      console.error(`❌ ${result.message}`);
+      process.exit(1);
+    }
+  });
+
+// Safety Analyze command
+program.addCommand(createSafetyAnalyzeCommand());
 
 // LSP command (stub for now)
 program.command('lsp')
