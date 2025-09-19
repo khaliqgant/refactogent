@@ -1,4 +1,11 @@
-import { Project, SourceFile, Node, SyntaxKind, FunctionDeclaration, MethodDeclaration } from 'ts-morph';
+import {
+  Project,
+  SourceFile,
+  Node,
+  SyntaxKind,
+  FunctionDeclaration,
+  MethodDeclaration,
+} from 'ts-morph';
 import fs from 'fs';
 import path from 'path';
 import { Logger } from '../utils/logger.js';
@@ -83,8 +90,8 @@ export class LibraryRecorder {
    * Start recording library function characterization
    */
   async startRecording(options: LibraryRecordingOptions): Promise<string> {
-    this.logger.info('Starting library function recording session', { 
-      projectPath: options.projectPath 
+    this.logger.info('Starting library function recording session', {
+      projectPath: options.projectPath,
     });
 
     const sessionId = `library-session-${Date.now()}`;
@@ -122,7 +129,7 @@ export class LibraryRecorder {
 
         const fileExtension = path.extname(filePath);
         const isTypeScript = ['.ts', '.tsx'].includes(fileExtension);
-        
+
         if (isTypeScript) {
           const fileFunctions = await this.analyzeTypeScriptFile(filePath, options);
           functions.push(...fileFunctions);
@@ -130,19 +137,18 @@ export class LibraryRecorder {
           const fileFunctions = await this.analyzeJavaScriptFile(filePath, options);
           functions.push(...fileFunctions);
         }
-
       } catch (error) {
-        this.logger.warn('Failed to analyze file', { 
-          filePath, 
-          error: error instanceof Error ? error.message : String(error) 
+        this.logger.warn('Failed to analyze file', {
+          filePath,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
 
     this.session.functions = functions;
-    this.logger.info('Function analysis completed', { 
+    this.logger.info('Function analysis completed', {
       functions: functions.length,
-      files: sourceFiles.length 
+      files: sourceFiles.length,
     });
 
     return functions;
@@ -161,9 +167,9 @@ export class LibraryRecorder {
 
     for (const func of this.session.functions) {
       try {
-        this.logger.info('Generating test cases for function', { 
+        this.logger.info('Generating test cases for function', {
           function: func.name,
-          parameters: func.parameters.length 
+          parameters: func.parameters.length,
         });
 
         // Generate boundary value test cases
@@ -179,19 +185,18 @@ export class LibraryRecorder {
           const propertyTests = this.generatePropertyTests(func, options.propertyTestingLibrary);
           testCases.push(...propertyTests);
         }
-
       } catch (error) {
-        this.logger.warn('Failed to generate test cases for function', { 
+        this.logger.warn('Failed to generate test cases for function', {
           function: func.name,
-          error: error instanceof Error ? error.message : String(error) 
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
 
     this.session.testCases = testCases;
-    this.logger.info('Test case generation completed', { 
+    this.logger.info('Test case generation completed', {
       testCases: testCases.length,
-      functions: this.session.functions.length 
+      functions: this.session.functions.length,
     });
 
     return testCases;
@@ -279,7 +284,12 @@ export class LibraryRecorder {
    */
   private findSourceFiles(options: LibraryRecordingOptions): string[] {
     const files: string[] = [];
-    const includePatterns = options.includePatterns || ['**/*.ts', '**/*.js', '**/*.tsx', '**/*.jsx'];
+    const includePatterns = options.includePatterns || [
+      '**/*.ts',
+      '**/*.js',
+      '**/*.tsx',
+      '**/*.jsx',
+    ];
     const excludePatterns = options.excludePatterns || [
       '**/node_modules/**',
       '**/dist/**',
@@ -322,16 +332,19 @@ export class LibraryRecorder {
   /**
    * Analyze TypeScript file for functions
    */
-  private async analyzeTypeScriptFile(filePath: string, options: LibraryRecordingOptions): Promise<FunctionSignature[]> {
+  private async analyzeTypeScriptFile(
+    filePath: string,
+    options: LibraryRecordingOptions
+  ): Promise<FunctionSignature[]> {
     const code = fs.readFileSync(filePath, 'utf8');
     const sourceFile = this.project.createSourceFile(filePath, code, { overwrite: true });
     const functions: FunctionSignature[] = [];
 
     // Find function declarations
-    sourceFile.forEachDescendant((node) => {
+    sourceFile.forEachDescendant(node => {
       if (Node.isFunctionDeclaration(node) || Node.isMethodDeclaration(node)) {
         const signature = this.extractFunctionSignature(node, filePath, sourceFile);
-        
+
         // Filter based on options
         if (!options.includePrivate && !signature.isExported) {
           return;
@@ -347,7 +360,10 @@ export class LibraryRecorder {
   /**
    * Analyze JavaScript file for functions (simplified)
    */
-  private async analyzeJavaScriptFile(filePath: string, options: LibraryRecordingOptions): Promise<FunctionSignature[]> {
+  private async analyzeJavaScriptFile(
+    filePath: string,
+    options: LibraryRecordingOptions
+  ): Promise<FunctionSignature[]> {
     const code = fs.readFileSync(filePath, 'utf8');
     const functions: FunctionSignature[] = [];
 
@@ -359,9 +375,9 @@ export class LibraryRecorder {
       const [fullMatch, name, paramString] = match;
       const isExported = fullMatch.includes('export');
       const isAsync = fullMatch.includes('async');
-      
+
       const parameters = this.parseJavaScriptParameters(paramString);
-      
+
       functions.push({
         name,
         parameters,
@@ -395,10 +411,10 @@ export class LibraryRecorder {
 
     const returnType = node.getReturnTypeNode()?.getText() || 'any';
     const isAsync = node.isAsync();
-    
+
     // Check if exported
-    const isExported = Node.isFunctionDeclaration(node) 
-      ? node.isExported() 
+    const isExported = Node.isFunctionDeclaration(node)
+      ? node.isExported()
       : node.getModifiers().some(m => m.getKind() === SyntaxKind.ExportKeyword);
 
     const start = sourceFile.getLineAndColumnAtPos(node.getStart());
@@ -425,7 +441,7 @@ export class LibraryRecorder {
     return paramString.split(',').map(param => {
       const trimmed = param.trim();
       const [name, defaultValue] = trimmed.split('=').map(s => s.trim());
-      
+
       return {
         name: name.replace(/[{}[\]]/g, ''), // Remove destructuring syntax
         type: 'any',
@@ -440,10 +456,10 @@ export class LibraryRecorder {
    */
   private generateBoundaryTests(func: FunctionSignature, maxTests: number): TestCase[] {
     const testCases: TestCase[] = [];
-    
+
     // Generate test cases based on parameter types
     const boundaryValues = this.getBoundaryValues(func.parameters);
-    
+
     for (let i = 0; i < Math.min(maxTests, boundaryValues.length); i++) {
       testCases.push({
         id: `test-${this.testCaseCount++}`,
@@ -466,10 +482,10 @@ export class LibraryRecorder {
    */
   private generateRandomTests(func: FunctionSignature, maxTests: number): TestCase[] {
     const testCases: TestCase[] = [];
-    
+
     for (let i = 0; i < maxTests; i++) {
       const inputs = func.parameters.map(param => this.generateRandomValue(param.type));
-      
+
       testCases.push({
         id: `test-${this.testCaseCount++}`,
         functionName: func.name,
@@ -491,7 +507,7 @@ export class LibraryRecorder {
    */
   private generatePropertyTests(func: FunctionSignature, library?: string): TestCase[] {
     const testCases: TestCase[] = [];
-    
+
     // This would integrate with property testing libraries
     // For now, generate a placeholder property test
     testCases.push({
@@ -514,13 +530,17 @@ export class LibraryRecorder {
    */
   private getBoundaryValues(parameters: Parameter[]): any[][] {
     const combinations: any[][] = [];
-    
+
     // Generate combinations of boundary values
     const parameterValues = parameters.map(param => this.getTypeSpecificBoundaryValues(param.type));
-    
+
     // Generate cartesian product (limited to avoid explosion)
     const maxCombinations = 10;
-    for (let i = 0; i < Math.min(maxCombinations, this.cartesianProductSize(parameterValues)); i++) {
+    for (
+      let i = 0;
+      i < Math.min(maxCombinations, this.cartesianProductSize(parameterValues));
+      i++
+    ) {
       const combination = parameters.map((param, index) => {
         const values = parameterValues[index];
         return values[i % values.length];
@@ -537,7 +557,16 @@ export class LibraryRecorder {
   private getTypeSpecificBoundaryValues(type: string): any[] {
     switch (type.toLowerCase()) {
       case 'number':
-        return [0, 1, -1, Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, NaN, Infinity, -Infinity];
+        return [
+          0,
+          1,
+          -1,
+          Number.MAX_SAFE_INTEGER,
+          Number.MIN_SAFE_INTEGER,
+          NaN,
+          Infinity,
+          -Infinity,
+        ];
       case 'string':
         return ['', 'a', 'test', ' ', '\n', '🚀', 'a'.repeat(1000)];
       case 'boolean':
@@ -583,16 +612,18 @@ export class LibraryRecorder {
   /**
    * Group functions by file
    */
-  private groupFunctionsByFile(functions: FunctionSignature[]): Record<string, FunctionSignature[]> {
+  private groupFunctionsByFile(
+    functions: FunctionSignature[]
+  ): Record<string, FunctionSignature[]> {
     const groups: Record<string, FunctionSignature[]> = {};
-    
+
     for (const func of functions) {
       if (!groups[func.filePath]) {
         groups[func.filePath] = [];
       }
       groups[func.filePath].push(func);
     }
-    
+
     return groups;
   }
 
@@ -615,13 +646,13 @@ export class LibraryRecorder {
     includePropertyTests: boolean
   ): string {
     const importPath = `./${relativePath}`;
-    
+
     if (framework === 'jest') {
       return this.generateJestLibraryTest(importPath, functions, session, includePropertyTests);
     } else if (framework === 'vitest') {
       return this.generateVitestLibraryTest(importPath, functions, session, includePropertyTests);
     }
-    
+
     return this.generateJestLibraryTest(importPath, functions, session, includePropertyTests);
   }
 
@@ -635,7 +666,7 @@ export class LibraryRecorder {
     includePropertyTests: boolean
   ): string {
     const functionNames = functions.map(f => f.name);
-    
+
     return `// Generated library characterization test
 // Generated at: ${new Date().toISOString()}
 
@@ -644,7 +675,9 @@ const testData = require('./test-data.json');
 ${includePropertyTests && session.metadata.propertyTestingLibrary ? `const fc = require('${session.metadata.propertyTestingLibrary}');` : ''}
 
 describe('Library characterization tests for ${importPath}', () => {
-${functions.map(func => `
+${functions
+  .map(
+    func => `
   describe('${func.name}', () => {
     const functionTestCases = testData.filter(tc => tc.functionName === '${func.name}');
     
@@ -669,7 +702,9 @@ ${functions.map(func => `
       }
     });
     
-    ${includePropertyTests ? `
+    ${
+      includePropertyTests
+        ? `
     // Property-based test
     test('property: function should be deterministic with same inputs', () => {
       fc.assert(fc.property(
@@ -681,8 +716,12 @@ ${functions.map(func => `
         }
       ));
     });
-    ` : ''}
-  });`).join('\n')}
+    `
+        : ''
+    }
+  });`
+  )
+  .join('\n')}
 });
 `;
   }
@@ -697,7 +736,7 @@ ${functions.map(func => `
     includePropertyTests: boolean
   ): string {
     const functionNames = functions.map(f => f.name);
-    
+
     return `// Generated library characterization test
 // Generated at: ${new Date().toISOString()}
 
@@ -707,7 +746,9 @@ import testData from './test-data.json';
 ${includePropertyTests && session.metadata.propertyTestingLibrary ? `import fc from '${session.metadata.propertyTestingLibrary}';` : ''}
 
 describe('Library characterization tests for ${importPath}', () => {
-${functions.map(func => `
+${functions
+  .map(
+    func => `
   describe('${func.name}', () => {
     const functionTestCases = testData.filter(tc => tc.functionName === '${func.name}');
     
@@ -729,7 +770,9 @@ ${functions.map(func => `
       }
     });
     
-    ${includePropertyTests ? `
+    ${
+      includePropertyTests
+        ? `
     test('property: function should be deterministic with same inputs', () => {
       fc.assert(fc.property(
         ${func.parameters.map(param => this.generatePropertyArbitrary(param.type)).join(', ')},
@@ -740,8 +783,12 @@ ${functions.map(func => `
         }
       ));
     });
-    ` : ''}
-  });`).join('\n')}
+    `
+        : ''
+    }
+  });`
+  )
+  .join('\n')}
 });
 `;
   }
@@ -772,11 +819,8 @@ ${functions.map(func => `
    */
   private matchesPattern(filePath: string, pattern: string): boolean {
     // Simple glob pattern matching
-    const regexPattern = pattern
-      .replace(/\*\*/g, '.*')
-      .replace(/\*/g, '[^/]*')
-      .replace(/\?/g, '.');
-    
+    const regexPattern = pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*').replace(/\?/g, '.');
+
     return new RegExp(`^${regexPattern}$`).test(filePath);
   }
 

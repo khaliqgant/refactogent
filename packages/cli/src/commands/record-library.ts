@@ -28,7 +28,8 @@ export class RecordLibraryCommand extends BaseCommand {
   async execute(options: RecordLibraryOptions): Promise<CommandResult> {
     this.validateContext();
 
-    const outputDir = options.output || path.join(this.context!.outputDir, 'library-characterization-tests');
+    const outputDir =
+      options.output || path.join(this.context!.outputDir, 'library-characterization-tests');
     const format = options.format || 'jest';
     const projectPath = this.context!.projectInfo.path;
 
@@ -59,7 +60,9 @@ export class RecordLibraryCommand extends BaseCommand {
       const functions = await this.recorder.recordFunctions(recordingOptions);
 
       if (functions.length === 0) {
-        return this.failure('No functions found to characterize. Check your include/exclude patterns.');
+        return this.failure(
+          'No functions found to characterize. Check your include/exclude patterns.'
+        );
       }
 
       // Generate test cases
@@ -110,17 +113,14 @@ export class RecordLibraryCommand extends BaseCommand {
           outputDir,
         }
       );
-
     } catch (error) {
-      return this.failure(`Library recording failed: ${error instanceof Error ? error.message : String(error)}`);
+      return this.failure(
+        `Library recording failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  private generateSummaryReport(
-    session: any,
-    generatedFiles: string[],
-    outputDir: string
-  ): string {
+  private generateSummaryReport(session: any, generatedFiles: string[], outputDir: string): string {
     const duration = session.endTime - session.startTime;
     const fileGroups = this.groupFunctionsByFile(session.functions);
     const exportedFunctions = session.functions.filter((f: any) => f.isExported);
@@ -144,17 +144,25 @@ export class RecordLibraryCommand extends BaseCommand {
 - **Test Cases Generated**: ${session.testCases.length}
 
 ## Functions by File
-${Object.entries(fileGroups).map(([filePath, functions]: [string, any[]]) => `
+${Object.entries(fileGroups)
+  .map(
+    ([filePath, functions]: [string, any[]]) => `
 ### ${path.relative(session.projectPath, filePath)}
 - **Functions**: ${functions.length}
 - **Exported**: ${functions.filter(f => f.isExported).length}
 - **Async**: ${functions.filter(f => f.isAsync).length}
 - **Function Names**: ${functions.map(f => f.name).join(', ')}
-`).join('')}
+`
+  )
+  .join('')}
 
 ## Test Case Distribution
-${this.getTestCaseDistribution(session.testCases).map(([strategy, count]) => `
-- **${strategy}**: ${count} test cases`).join('')}
+${this.getTestCaseDistribution(session.testCases)
+  .map(
+    ([strategy, count]) => `
+- **${strategy}**: ${count} test cases`
+  )
+  .join('')}
 
 ## Generated Files
 ${generatedFiles.map(file => `- ${path.relative(outputDir, file)}`).join('\n')}
@@ -178,12 +186,16 @@ The generated tests are characterization tests that capture current behavior:
 3. **Subsequent Runs**: Tests will validate against captured behavior
 
 ### Property Testing
-${session.metadata.propertyTestingLibrary ? `
+${
+  session.metadata.propertyTestingLibrary
+    ? `
 Property-based tests use ${session.metadata.propertyTestingLibrary}:
 \`\`\`bash
 npm install --save-dev ${session.metadata.propertyTestingLibrary}
 \`\`\`
-` : 'Property testing is disabled. Enable with --property-testing flag.'}
+`
+    : 'Property testing is disabled. Enable with --property-testing flag.'
+}
 
 ### Updating Tests
 When function behavior legitimately changes:
@@ -218,8 +230,12 @@ Generated at: ${new Date().toISOString()}
 # Install test framework
 npm install --save-dev ${session.metadata.testFramework}
 
-${session.metadata.propertyTestingLibrary ? `# Install property testing library
-npm install --save-dev ${session.metadata.propertyTestingLibrary}` : ''}
+${
+  session.metadata.propertyTestingLibrary
+    ? `# Install property testing library
+npm install --save-dev ${session.metadata.propertyTestingLibrary}`
+    : ''
+}
 \`\`\`
 
 ### Test Configuration
@@ -292,17 +308,21 @@ When functions are modified:
 4. Re-run tests to validate
 
 ### Property Testing
-${session.metadata.propertyTestingLibrary ? `
+${
+  session.metadata.propertyTestingLibrary
+    ? `
 Property-based tests automatically generate inputs and test invariants:
 - Tests run with many random inputs
 - Failures show minimal failing cases
 - Useful for finding edge cases
-` : `
+`
+    : `
 To enable property testing:
 1. Re-run with \`--property-testing\` flag
 2. Install property testing library
 3. Review generated property tests
-`}
+`
+}
 
 ## Integration with CI/CD
 
@@ -337,25 +357,25 @@ Generated at: ${new Date().toISOString()}
 
   private groupFunctionsByFile(functions: any[]): Record<string, any[]> {
     const groups: Record<string, any[]> = {};
-    
+
     for (const func of functions) {
       if (!groups[func.filePath]) {
         groups[func.filePath] = [];
       }
       groups[func.filePath].push(func);
     }
-    
+
     return groups;
   }
 
   private getTestCaseDistribution(testCases: any[]): [string, number][] {
     const distribution: Record<string, number> = {};
-    
+
     for (const testCase of testCases) {
       const strategy = testCase.metadata.generationStrategy;
       distribution[strategy] = (distribution[strategy] || 0) + 1;
     }
-    
+
     return Object.entries(distribution);
   }
 }
@@ -371,36 +391,45 @@ export function createRecordLibraryCommand(): Command {
     .option('--output <dir>', 'Output directory for generated tests')
     .option('--format <format>', 'Test framework: jest | vitest', 'jest')
     .option('--property-testing', 'Enable property-based testing')
-    .option('--property-library <lib>', 'Property testing library: fast-check | jsverify', 'fast-check')
+    .option(
+      '--property-library <lib>',
+      'Property testing library: fast-check | jsverify',
+      'fast-check'
+    )
     .option('--max-test-cases <n>', 'Maximum test cases per function', '5')
     .option('--include-private', 'Include non-exported functions')
     .action(async (opts, cmd) => {
       const globalOpts = cmd.parent?.parent?.opts() || {};
-      
+
       // Initialize CLI context
       const logger = new Logger(globalOpts.verbose);
-      
+
       try {
         // Create command instance
         const recordCommand = new RecordLibraryCommand(logger);
-        
+
         // Set up minimal context
         const projectPath = globalOpts.project || process.cwd();
         const outputDir = path.resolve(projectPath, globalOpts.output || '.refactogent/out');
-        
+
         // Ensure output directory exists
         if (!fs.existsSync(outputDir)) {
           fs.mkdirSync(outputDir, { recursive: true });
         }
-        
+
         // Mock context for this command
         const context = {
-          config: { 
+          config: {
             version: '1.0',
-            maxPrLoc: 300, 
-            branchPrefix: 'refactor/', 
+            maxPrLoc: 300,
+            branchPrefix: 'refactor/',
             protectedPaths: [],
-            modesAllowed: ['organize-only', 'name-hygiene', 'tests-first', 'micro-simplify'] as RefactoringMode[],
+            modesAllowed: [
+              'organize-only',
+              'name-hygiene',
+              'tests-first',
+              'micro-simplify',
+            ] as RefactoringMode[],
             gates: {
               requireCharacterizationTests: true,
               requireGreenCi: true,
@@ -413,21 +442,21 @@ export function createRecordLibraryCommand(): Command {
             languages: {
               typescript: { build: 'tsc', test: 'jest', lints: ['eslint'] },
               javascript: { build: 'babel', test: 'jest', lints: ['eslint'] },
-            }
+            },
           },
-          projectInfo: { 
-            path: projectPath, 
-            type: 'mixed' as const, 
-            languages: ['typescript', 'javascript'], 
-            hasTests: true, 
-            hasConfig: false 
+          projectInfo: {
+            path: projectPath,
+            type: 'mixed' as const,
+            languages: ['typescript', 'javascript'],
+            hasTests: true,
+            hasConfig: false,
           },
           outputDir,
           verbose: globalOpts.verbose || false,
         };
-        
+
         recordCommand.setContext(context);
-        
+
         // Execute command
         const result = await recordCommand.execute({
           include: opts.include,
@@ -439,7 +468,7 @@ export function createRecordLibraryCommand(): Command {
           maxTestCases: parseInt(opts.maxTestCases, 10),
           includePrivate: opts.includePrivate,
         });
-        
+
         if (result.success) {
           console.log(`✅ ${result.message}`);
           if (result.artifacts) {
@@ -457,7 +486,9 @@ export function createRecordLibraryCommand(): Command {
         }
       } catch (error) {
         logger.error('Library recording failed', { error });
-        console.error(`❌ Library recording failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(
+          `❌ Library recording failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });

@@ -37,7 +37,8 @@ export class RecordHTTPCommand extends BaseCommand {
   async execute(options: RecordHTTPOptions): Promise<CommandResult> {
     this.validateContext();
 
-    const outputDir = options.output || path.join(this.context!.outputDir, 'characterization-tests');
+    const outputDir =
+      options.output || path.join(this.context!.outputDir, 'characterization-tests');
     const routes = options.routes || ['/'];
     const format = options.format || 'jest';
 
@@ -123,17 +124,14 @@ export class RecordHTTPCommand extends BaseCommand {
           outputDir,
         }
       );
-
     } catch (error) {
-      return this.failure(`HTTP recording failed: ${error instanceof Error ? error.message : String(error)}`);
+      return this.failure(
+        `HTTP recording failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  private generateSummaryReport(
-    session: any,
-    generatedFiles: string[],
-    outputDir: string
-  ): string {
+  private generateSummaryReport(session: any, generatedFiles: string[], outputDir: string): string {
     const duration = session.endTime - session.startTime;
     const routeGroups = this.groupInteractionsByRoute(session.interactions);
 
@@ -147,13 +145,17 @@ export class RecordHTTPCommand extends BaseCommand {
 - **Routes Recorded**: ${Object.keys(routeGroups).length}
 
 ## Recorded Routes
-${Object.entries(routeGroups).map(([route, interactions]: [string, any[]]) => `
+${Object.entries(routeGroups)
+  .map(
+    ([route, interactions]: [string, any[]]) => `
 ### ${route}
 - **Interactions**: ${interactions.length}
 - **Methods**: ${[...new Set(interactions.map(i => i.request.method))].join(', ')}
 - **Status Codes**: ${[...new Set(interactions.map(i => i.response.status))].join(', ')}
 - **Avg Duration**: ${Math.round(interactions.reduce((sum, i) => sum + i.response.duration, 0) / interactions.length)}ms
-`).join('')}
+`
+  )
+  .join('')}
 
 ## Generated Files
 ${generatedFiles.map(file => `- ${path.relative(outputDir, file)}`).join('\n')}
@@ -195,7 +197,7 @@ Generated at: ${new Date().toISOString()}
 
   private groupInteractionsByRoute(interactions: any[]): Record<string, any[]> {
     const groups: Record<string, any[]> = {};
-    
+
     for (const interaction of interactions) {
       const route = interaction.route;
       if (!groups[route]) {
@@ -203,7 +205,7 @@ Generated at: ${new Date().toISOString()}
       }
       groups[route].push(interaction);
     }
-    
+
     return groups;
   }
 }
@@ -229,31 +231,36 @@ export function createRecordHTTPCommand(): Command {
     .option('--ignore-headers <headers...>', 'HTTP headers to ignore in comparisons')
     .action(async (opts, cmd) => {
       const globalOpts = cmd.parent?.parent?.opts() || {};
-      
+
       // Initialize CLI context
       const logger = new Logger(globalOpts.verbose);
-      
+
       try {
         // Create command instance
         const recordCommand = new RecordHTTPCommand(logger);
-        
+
         // Set up minimal context
         const projectPath = globalOpts.project || process.cwd();
         const outputDir = path.resolve(projectPath, globalOpts.output || '.refactogent/out');
-        
+
         // Ensure output directory exists
         if (!fs.existsSync(outputDir)) {
           fs.mkdirSync(outputDir, { recursive: true });
         }
-        
+
         // Mock context for this command
         const context = {
-          config: { 
+          config: {
             version: '1.0',
-            maxPrLoc: 300, 
-            branchPrefix: 'refactor/', 
+            maxPrLoc: 300,
+            branchPrefix: 'refactor/',
             protectedPaths: [],
-            modesAllowed: ['organize-only', 'name-hygiene', 'tests-first', 'micro-simplify'] as RefactoringMode[],
+            modesAllowed: [
+              'organize-only',
+              'name-hygiene',
+              'tests-first',
+              'micro-simplify',
+            ] as RefactoringMode[],
             gates: {
               requireCharacterizationTests: true,
               requireGreenCi: true,
@@ -266,21 +273,21 @@ export function createRecordHTTPCommand(): Command {
             languages: {
               typescript: { build: 'tsc', test: 'jest', lints: ['eslint'] },
               javascript: { build: 'babel', test: 'jest', lints: ['eslint'] },
-            }
+            },
           },
-          projectInfo: { 
-            path: projectPath, 
-            type: 'mixed' as const, 
-            languages: ['typescript', 'javascript'], 
-            hasTests: true, 
-            hasConfig: false 
+          projectInfo: {
+            path: projectPath,
+            type: 'mixed' as const,
+            languages: ['typescript', 'javascript'],
+            hasTests: true,
+            hasConfig: false,
           },
           outputDir,
           verbose: globalOpts.verbose || false,
         };
-        
+
         recordCommand.setContext(context);
-        
+
         // Prepare authentication options
         let auth: any = undefined;
         if (opts.authType) {
@@ -313,7 +320,7 @@ export function createRecordHTTPCommand(): Command {
           auth,
           tolerance: Object.keys(tolerance).length > 0 ? tolerance : undefined,
         });
-        
+
         if (result.success) {
           console.log(`✅ ${result.message}`);
           if (result.artifacts) {
@@ -331,7 +338,9 @@ export function createRecordHTTPCommand(): Command {
         }
       } catch (error) {
         logger.error('HTTP recording failed', { error });
-        console.error(`❌ HTTP recording failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(
+          `❌ HTTP recording failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });

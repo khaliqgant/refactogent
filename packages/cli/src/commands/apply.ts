@@ -191,19 +191,21 @@ export class ApplyCommand extends BaseCommand {
           });
 
           if (safetyScore.overall < 60) {
-            this.logger.warn('Skipping file with low safety score', { 
-              file: path.basename(file), 
+            this.logger.warn('Skipping file with low safety score', {
+              file: path.basename(file),
               score: safetyScore.overall,
-              recommendations: safetyScore.recommendations.length 
+              recommendations: safetyScore.recommendations.length,
             });
-            changes.push(`⚠️ Skipped ${path.basename(file)} (safety score: ${safetyScore.overall}/100)`);
+            changes.push(
+              `⚠️ Skipped ${path.basename(file)} (safety score: ${safetyScore.overall}/100)`
+            );
             continue;
           }
 
           if (safetyScore.overall < 80) {
-            this.logger.info('Processing file with medium safety score', { 
-              file: path.basename(file), 
-              score: safetyScore.overall 
+            this.logger.info('Processing file with medium safety score', {
+              file: path.basename(file),
+              score: safetyScore.overall,
             });
           }
         } catch (error) {
@@ -277,11 +279,13 @@ export class ApplyCommand extends BaseCommand {
           });
 
           if (safetyScore.overall < 60) {
-            this.logger.warn('Skipping file with low safety score', { 
-              file: path.basename(file), 
-              score: safetyScore.overall 
+            this.logger.warn('Skipping file with low safety score', {
+              file: path.basename(file),
+              score: safetyScore.overall,
             });
-            changes.push(`⚠️ Skipped ${path.basename(file)} (safety score: ${safetyScore.overall}/100)`);
+            changes.push(
+              `⚠️ Skipped ${path.basename(file)} (safety score: ${safetyScore.overall}/100)`
+            );
             continue;
           }
         } catch (error) {

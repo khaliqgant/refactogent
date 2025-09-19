@@ -32,7 +32,8 @@ export class RecordCLICommand extends BaseCommand {
   async execute(options: RecordCLIOptions): Promise<CommandResult> {
     this.validateContext();
 
-    const outputDir = options.output || path.join(this.context!.outputDir, 'cli-characterization-tests');
+    const outputDir =
+      options.output || path.join(this.context!.outputDir, 'cli-characterization-tests');
     const format = options.format || 'jest';
     const projectPath = this.context!.projectInfo.path;
 
@@ -45,7 +46,7 @@ export class RecordCLICommand extends BaseCommand {
     try {
       // Parse commands
       const commands = await this.parseCommands(options, projectPath);
-      
+
       if (commands.length === 0) {
         return this.failure('No commands specified. Use --commands or --commands-file option.');
       }
@@ -103,13 +104,17 @@ export class RecordCLICommand extends BaseCommand {
           outputDir,
         }
       );
-
     } catch (error) {
-      return this.failure(`CLI recording failed: ${error instanceof Error ? error.message : String(error)}`);
+      return this.failure(
+        `CLI recording failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  private async parseCommands(options: RecordCLIOptions, projectPath: string): Promise<CLICommand[]> {
+  private async parseCommands(
+    options: RecordCLIOptions,
+    projectPath: string
+  ): Promise<CLICommand[]> {
     const commands: CLICommand[] = [];
 
     // Parse from command line arguments
@@ -131,25 +136,28 @@ export class RecordCLICommand extends BaseCommand {
       const commandsFilePath = path.resolve(options.commandsFile);
       if (fs.existsSync(commandsFilePath)) {
         const fileContent = fs.readFileSync(commandsFilePath, 'utf8');
-        
+
         try {
           // Try parsing as JSON first
           const jsonCommands = JSON.parse(fileContent);
           if (Array.isArray(jsonCommands)) {
-            commands.push(...jsonCommands.map(cmd => ({
-              command: cmd.command || cmd.cmd,
-              args: cmd.args || [],
-              workingDirectory: cmd.workingDirectory || cmd.cwd || projectPath,
-              environment: cmd.environment || cmd.env,
-              timeout: cmd.timeout,
-            })));
+            commands.push(
+              ...jsonCommands.map(cmd => ({
+                command: cmd.command || cmd.cmd,
+                args: cmd.args || [],
+                workingDirectory: cmd.workingDirectory || cmd.cwd || projectPath,
+                environment: cmd.environment || cmd.env,
+                timeout: cmd.timeout,
+              }))
+            );
           }
         } catch {
           // Fall back to parsing as line-separated commands
-          const lines = fileContent.split('\n')
+          const lines = fileContent
+            .split('\n')
             .map(line => line.trim())
             .filter(line => line && !line.startsWith('#'));
-          
+
           for (const line of lines) {
             const parts = line.split(/\s+/);
             if (parts.length > 0) {
@@ -276,11 +284,7 @@ export class RecordCLICommand extends BaseCommand {
     return commands;
   }
 
-  private generateSummaryReport(
-    session: any,
-    generatedFiles: string[],
-    outputDir: string
-  ): string {
+  private generateSummaryReport(session: any, generatedFiles: string[], outputDir: string): string {
     const duration = session.endTime - session.startTime;
     const commandGroups = this.groupExecutionsByCommand(session.executions);
     const successfulExecutions = session.executions.filter((e: any) => e.result.exitCode === 0);
@@ -298,13 +302,17 @@ export class RecordCLICommand extends BaseCommand {
 - **Unique Commands**: ${Object.keys(commandGroups).length}
 
 ## Recorded Commands
-${Object.entries(commandGroups).map(([command, executions]: [string, any[]]) => `
+${Object.entries(commandGroups)
+  .map(
+    ([command, executions]: [string, any[]]) => `
 ### ${command}
 - **Executions**: ${executions.length}
 - **Success Rate**: ${Math.round((executions.filter(e => e.result.exitCode === 0).length / executions.length) * 100)}%
 - **Avg Duration**: ${Math.round(executions.reduce((sum, e) => sum + e.duration, 0) / executions.length)}ms
 - **Exit Codes**: ${[...new Set(executions.map(e => e.result.exitCode))].join(', ')}
-`).join('')}
+`
+  )
+  .join('')}
 
 ## Environment Information
 - **Platform**: ${session.metadata.platform}
@@ -352,7 +360,7 @@ Generated at: ${new Date().toISOString()}
 
   private groupExecutionsByCommand(executions: any[]): Record<string, any[]> {
     const groups: Record<string, any[]> = {};
-    
+
     for (const execution of executions) {
       const key = `${execution.command.command} ${execution.command.args.join(' ')}`;
       if (!groups[key]) {
@@ -360,7 +368,7 @@ Generated at: ${new Date().toISOString()}
       }
       groups[key].push(execution);
     }
-    
+
     return groups;
   }
 }
@@ -383,31 +391,36 @@ export function createRecordCLICommand(): Command {
     .option('--ignore-patterns <patterns...>', 'Regex patterns to ignore in output')
     .action(async (opts, cmd) => {
       const globalOpts = cmd.parent?.parent?.opts() || {};
-      
+
       // Initialize CLI context
       const logger = new Logger(globalOpts.verbose);
-      
+
       try {
         // Create command instance
         const recordCommand = new RecordCLICommand(logger);
-        
+
         // Set up minimal context
         const projectPath = globalOpts.project || process.cwd();
         const outputDir = path.resolve(projectPath, globalOpts.output || '.refactogent/out');
-        
+
         // Ensure output directory exists
         if (!fs.existsSync(outputDir)) {
           fs.mkdirSync(outputDir, { recursive: true });
         }
-        
+
         // Mock context for this command
         const context = {
-          config: { 
+          config: {
             version: '1.0',
-            maxPrLoc: 300, 
-            branchPrefix: 'refactor/', 
+            maxPrLoc: 300,
+            branchPrefix: 'refactor/',
             protectedPaths: [],
-            modesAllowed: ['organize-only', 'name-hygiene', 'tests-first', 'micro-simplify'] as RefactoringMode[],
+            modesAllowed: [
+              'organize-only',
+              'name-hygiene',
+              'tests-first',
+              'micro-simplify',
+            ] as RefactoringMode[],
             gates: {
               requireCharacterizationTests: true,
               requireGreenCi: true,
@@ -420,21 +433,21 @@ export function createRecordCLICommand(): Command {
             languages: {
               typescript: { build: 'tsc', test: 'jest', lints: ['eslint'] },
               javascript: { build: 'babel', test: 'jest', lints: ['eslint'] },
-            }
+            },
           },
-          projectInfo: { 
-            path: projectPath, 
-            type: 'mixed' as const, 
-            languages: ['typescript', 'javascript'], 
-            hasTests: true, 
-            hasConfig: false 
+          projectInfo: {
+            path: projectPath,
+            type: 'mixed' as const,
+            languages: ['typescript', 'javascript'],
+            hasTests: true,
+            hasConfig: false,
           },
           outputDir,
           verbose: globalOpts.verbose || false,
         };
-        
+
         recordCommand.setContext(context);
-        
+
         // Prepare tolerance options
         const tolerance: any = {};
         if (opts.ignoreExitCode) tolerance.ignoreExitCode = true;
@@ -452,7 +465,7 @@ export function createRecordCLICommand(): Command {
           timeout: parseInt(opts.timeout, 10),
           tolerance: Object.keys(tolerance).length > 0 ? tolerance : undefined,
         });
-        
+
         if (result.success) {
           console.log(`✅ ${result.message}`);
           if (result.artifacts) {
@@ -470,7 +483,9 @@ export function createRecordCLICommand(): Command {
         }
       } catch (error) {
         logger.error('CLI recording failed', { error });
-        console.error(`❌ CLI recording failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(
+          `❌ CLI recording failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });

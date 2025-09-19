@@ -54,7 +54,12 @@ export class SafetyAnalyzeCommand extends BaseCommand {
         results.push({ file: options.file, score });
       } else {
         // Analyze project files
-        const files = this.findSourceFiles(this.context!.projectInfo.path, ['.ts', '.js', '.tsx', '.jsx']);
+        const files = this.findSourceFiles(this.context!.projectInfo.path, [
+          '.ts',
+          '.js',
+          '.tsx',
+          '.jsx',
+        ]);
         const maxFiles = 10; // Limit for performance
 
         for (const file of files.slice(0, maxFiles)) {
@@ -75,7 +80,7 @@ export class SafetyAnalyzeCommand extends BaseCommand {
 
       // Generate report
       const report = this.generateSafetyReport(results, threshold, format, includeRecommendations);
-      
+
       // Write output
       let outputPath: string;
       if (options.output) {
@@ -109,7 +114,9 @@ export class SafetyAnalyzeCommand extends BaseCommand {
         }
       );
     } catch (error) {
-      return this.failure(`Safety analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+      return this.failure(
+        `Safety analysis failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -161,13 +168,16 @@ export class SafetyAnalyzeCommand extends BaseCommand {
     results: Array<{ file: string; score: SafetyScore }>,
     threshold: number
   ): string {
-    const header = '| File | Overall | Complexity | Test Coverage | API Exposure | Dependencies | Status |\n' +
-                  '|------|---------|------------|---------------|--------------|--------------|--------|\n';
+    const header =
+      '| File | Overall | Complexity | Test Coverage | API Exposure | Dependencies | Status |\n' +
+      '|------|---------|------------|---------------|--------------|--------------|--------|\n';
 
-    const rows = results.map(({ file, score }) => {
-      const status = score.overall >= threshold ? '✅ Safe' : '⚠️ Risky';
-      return `| ${file} | ${score.overall} | ${score.complexity} | ${score.testCoverage} | ${score.apiExposure} | ${score.dependencyFanOut} | ${status} |`;
-    }).join('\n');
+    const rows = results
+      .map(({ file, score }) => {
+        const status = score.overall >= threshold ? '✅ Safe' : '⚠️ Risky';
+        return `| ${file} | ${score.overall} | ${score.complexity} | ${score.testCoverage} | ${score.apiExposure} | ${score.dependencyFanOut} | ${status} |`;
+      })
+      .join('\n');
 
     return header + rows;
   }
@@ -239,12 +249,12 @@ export class SafetyAnalyzeCommand extends BaseCommand {
 
     // Overall recommendations
     report += `## 📋 Overall Recommendations\n\n`;
-    
+
     if (riskyFiles.length === 0) {
       report += `✅ All files appear safe for refactoring!\n\n`;
     } else {
       report += `⚠️ ${riskyFiles.length} files require attention before refactoring:\n\n`;
-      
+
       const highRiskFiles = riskyFiles.filter(r => r.score.overall < 50);
       if (highRiskFiles.length > 0) {
         report += `**High Risk Files** (score < 50):\n`;
@@ -254,9 +264,11 @@ export class SafetyAnalyzeCommand extends BaseCommand {
         report += '\n';
       }
 
-      const mediumRiskFiles = riskyFiles.filter(r => r.score.overall >= 50 && r.score.overall < threshold);
+      const mediumRiskFiles = riskyFiles.filter(
+        r => r.score.overall >= 50 && r.score.overall < threshold
+      );
       if (mediumRiskFiles.length > 0) {
-        report += `**Medium Risk Files** (score ${50}-${threshold-1}):\n`;
+        report += `**Medium Risk Files** (score ${50}-${threshold - 1}):\n`;
         mediumRiskFiles.forEach(({ file }) => {
           report += `- ${file}\n`;
         });
@@ -289,31 +301,36 @@ export function createSafetyAnalyzeCommand(): Command {
     .option('--no-recommendations', 'Exclude recommendations from output')
     .action(async (opts, cmd) => {
       const globalOpts = cmd.parent?.parent?.opts() || {};
-      
+
       // Initialize CLI context (simplified for this command)
       const logger = new Logger(globalOpts.verbose);
-      
+
       try {
         // Create command instance
         const safetyCommand = new SafetyAnalyzeCommand(logger);
-        
+
         // Set up minimal context
         const projectPath = globalOpts.project || process.cwd();
         const outputDir = path.resolve(projectPath, globalOpts.output || '.refactogent/out');
-        
+
         // Ensure output directory exists
         if (!fs.existsSync(outputDir)) {
           fs.mkdirSync(outputDir, { recursive: true });
         }
-        
+
         // Mock context for this command
         const context = {
-          config: { 
+          config: {
             version: '1.0',
-            maxPrLoc: 300, 
-            branchPrefix: 'refactor/', 
+            maxPrLoc: 300,
+            branchPrefix: 'refactor/',
             protectedPaths: [],
-            modesAllowed: ['organize-only', 'name-hygiene', 'tests-first', 'micro-simplify'] as RefactoringMode[],
+            modesAllowed: [
+              'organize-only',
+              'name-hygiene',
+              'tests-first',
+              'micro-simplify',
+            ] as RefactoringMode[],
             gates: {
               requireCharacterizationTests: true,
               requireGreenCi: true,
@@ -326,21 +343,21 @@ export function createSafetyAnalyzeCommand(): Command {
             languages: {
               typescript: { build: 'tsc', test: 'jest', lints: ['eslint'] },
               javascript: { build: 'babel', test: 'jest', lints: ['eslint'] },
-            }
+            },
           },
-          projectInfo: { 
-            path: projectPath, 
-            type: 'mixed' as const, 
-            languages: ['typescript', 'javascript'], 
-            hasTests: true, 
-            hasConfig: false 
+          projectInfo: {
+            path: projectPath,
+            type: 'mixed' as const,
+            languages: ['typescript', 'javascript'],
+            hasTests: true,
+            hasConfig: false,
           },
           outputDir,
           verbose: globalOpts.verbose || false,
         };
-        
+
         safetyCommand.setContext(context);
-        
+
         // Execute command
         const result = await safetyCommand.execute({
           file: opts.file,
@@ -349,7 +366,7 @@ export function createSafetyAnalyzeCommand(): Command {
           output: opts.output,
           includeRecommendations: opts.recommendations !== false,
         });
-        
+
         if (result.success) {
           console.log(`✅ ${result.message}`);
           if (result.artifacts) {
@@ -368,7 +385,9 @@ export function createSafetyAnalyzeCommand(): Command {
         }
       } catch (error) {
         logger.error('Safety analysis failed', { error });
-        console.error(`❌ Safety analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(
+          `❌ Safety analysis failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });

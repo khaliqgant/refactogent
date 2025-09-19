@@ -73,8 +73,8 @@ export class TestValidator {
    * Validate characterization tests
    */
   async validateTests(options: ValidationOptions): Promise<TestValidationResult[]> {
-    this.logger.info('Starting test validation', { 
-      directory: options.testDirectory 
+    this.logger.info('Starting test validation', {
+      directory: options.testDirectory,
     });
 
     const testFiles = this.findTestFiles(options);
@@ -86,26 +86,28 @@ export class TestValidator {
         const result = await this.validateTestFile(testFile, options);
         results.push(result);
       } catch (error) {
-        this.logger.warn('Failed to validate test file', { 
-          testFile, 
-          error: error instanceof Error ? error.message : String(error) 
+        this.logger.warn('Failed to validate test file', {
+          testFile,
+          error: error instanceof Error ? error.message : String(error),
         });
-        
+
         results.push({
           testFile,
           status: 'invalid',
-          issues: [{
-            type: 'syntax',
-            severity: 'critical',
-            message: `Failed to parse test file: ${error instanceof Error ? error.message : String(error)}`,
-          }],
+          issues: [
+            {
+              type: 'syntax',
+              severity: 'critical',
+              message: `Failed to parse test file: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
           suggestions: [],
           quality: { coverage: 0, maintainability: 0, reliability: 0, overall: 0 },
         });
       }
     }
 
-    this.logger.info('Test validation completed', { 
+    this.logger.info('Test validation completed', {
       totalTests: results.length,
       validTests: results.filter(r => r.status === 'valid').length,
     });
@@ -123,9 +125,10 @@ export class TestValidator {
     const outdatedTests = validationResults.filter(r => r.status === 'outdated').length;
     const redundantTests = validationResults.filter(r => r.status === 'redundant').length;
 
-    const averageQuality = totalTests > 0 
-      ? validationResults.reduce((sum, r) => sum + r.quality.overall, 0) / totalTests 
-      : 0;
+    const averageQuality =
+      totalTests > 0
+        ? validationResults.reduce((sum, r) => sum + r.quality.overall, 0) / totalTests
+        : 0;
 
     const recommendations = this.generateMaintenanceRecommendations(validationResults);
 
@@ -173,9 +176,9 @@ export class TestValidator {
             updatedFiles.push(outputPath);
           }
         } catch (error) {
-          this.logger.warn('Failed to update test file', { 
-            testFile: result.testFile, 
-            error 
+          this.logger.warn('Failed to update test file', {
+            testFile: result.testFile,
+            error,
           });
         }
       }
@@ -188,19 +191,19 @@ export class TestValidator {
    * Validate a single test file
    */
   private async validateTestFile(
-    testFile: string, 
+    testFile: string,
     options: ValidationOptions
   ): Promise<TestValidationResult> {
     const content = fs.readFileSync(testFile, 'utf8');
     const stats = fs.statSync(testFile);
-    
+
     const issues: ValidationIssue[] = [];
     const suggestions: ValidationSuggestion[] = [];
 
     // Check file age
     const ageInDays = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60 * 24);
     const maxAge = options.tolerance?.maxTestAge || 90;
-    
+
     if (ageInDays > maxAge) {
       issues.push({
         type: 'maintenance',
@@ -300,7 +303,6 @@ export class TestValidator {
           suggestion: 'Mark test functions as async when using await',
         });
       }
-
     } catch (error) {
       issues.push({
         type: 'syntax',
@@ -332,12 +334,10 @@ export class TestValidator {
 
     // Check for missing assertions
     const testBlocks = content.match(/test\([^{]+\{[^}]+\}/g) || [];
-    const testsWithoutAssertions = testBlocks.filter(block => 
-      !block.includes('expect(') && 
-      !block.includes('assert') && 
-      !block.includes('should')
+    const testsWithoutAssertions = testBlocks.filter(
+      block => !block.includes('expect(') && !block.includes('assert') && !block.includes('should')
     );
-    
+
     if (testsWithoutAssertions.length > 0) {
       issues.push({
         type: 'logic',
@@ -411,10 +411,10 @@ export class TestValidator {
     const testCases = (content.match(/test\(/g) || []).length;
     const assertions = (content.match(/expect\(/g) || []).length;
     const functions = (content.match(/function\s+\w+/g) || []).length;
-    
+
     // Rough coverage estimate
     const coverage = testCases > 0 ? Math.min(100, (assertions / testCases) * 50) : 0;
-    
+
     return {
       coverage,
       details: {
@@ -430,13 +430,15 @@ export class TestValidator {
    * Analyze code duplication
    */
   private analyzeDuplication(content: string): { percentage: number; details: any } {
-    const lines = content.split('\n').map(line => line.trim()).filter(line => line);
+    const lines = content
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line);
     const uniqueLines = new Set(lines);
-    
-    const duplicationPercentage = lines.length > 0 
-      ? ((lines.length - uniqueLines.size) / lines.length) * 100 
-      : 0;
-    
+
+    const duplicationPercentage =
+      lines.length > 0 ? ((lines.length - uniqueLines.size) / lines.length) * 100 : 0;
+
     return {
       percentage: duplicationPercentage,
       details: {
@@ -493,26 +495,28 @@ export class TestValidator {
    * Calculate quality metrics
    */
   private calculateQuality(
-    content: string, 
-    issues: ValidationIssue[], 
+    content: string,
+    issues: ValidationIssue[],
     coverageAnalysis: any
   ): { coverage: number; maintainability: number; reliability: number; overall: number } {
     const coverage = coverageAnalysis.coverage;
-    
+
     // Maintainability based on issues and code structure
     const criticalIssues = issues.filter(i => i.severity === 'critical').length;
     const highIssues = issues.filter(i => i.severity === 'high').length;
-    const maintainability = Math.max(0, 100 - (criticalIssues * 30) - (highIssues * 15));
-    
+    const maintainability = Math.max(0, 100 - criticalIssues * 30 - highIssues * 15);
+
     // Reliability based on test structure
     const hasAssertions = content.includes('expect(');
     const hasErrorHandling = content.includes('try') || content.includes('catch');
-    const reliability = (hasAssertions ? 50 : 0) + (hasErrorHandling ? 30 : 0) + 
-                      (issues.length === 0 ? 20 : Math.max(0, 20 - issues.length * 2));
-    
+    const reliability =
+      (hasAssertions ? 50 : 0) +
+      (hasErrorHandling ? 30 : 0) +
+      (issues.length === 0 ? 20 : Math.max(0, 20 - issues.length * 2));
+
     // Overall quality
-    const overall = (coverage * 0.3) + (maintainability * 0.4) + (reliability * 0.3);
-    
+    const overall = coverage * 0.3 + maintainability * 0.4 + reliability * 0.3;
+
     return {
       coverage,
       maintainability,
@@ -525,26 +529,26 @@ export class TestValidator {
    * Determine test status
    */
   private determineStatus(
-    issues: ValidationIssue[], 
-    quality: any, 
-    ageInDays: number, 
+    issues: ValidationIssue[],
+    quality: any,
+    ageInDays: number,
     maxAge: number
   ): 'valid' | 'invalid' | 'outdated' | 'redundant' {
     const criticalIssues = issues.filter(i => i.severity === 'critical');
     const highIssues = issues.filter(i => i.severity === 'high');
-    
+
     if (criticalIssues.length > 0) {
       return 'invalid';
     }
-    
+
     if (ageInDays > maxAge || quality.overall < 50) {
       return 'outdated';
     }
-    
+
     if (highIssues.length > 3 || quality.overall < 30) {
       return 'redundant';
     }
-    
+
     return 'valid';
   }
 
@@ -555,7 +559,7 @@ export class TestValidator {
     validationResults: TestValidationResult[]
   ): MaintenanceRecommendation[] {
     const recommendations: MaintenanceRecommendation[] = [];
-    
+
     // Recommend removing invalid tests
     const invalidTests = validationResults.filter(r => r.status === 'invalid');
     if (invalidTests.length > 0) {
@@ -567,7 +571,7 @@ export class TestValidator {
         effort: 'low',
       });
     }
-    
+
     // Recommend updating outdated tests
     const outdatedTests = validationResults.filter(r => r.status === 'outdated');
     if (outdatedTests.length > 0) {
@@ -579,7 +583,7 @@ export class TestValidator {
         effort: 'medium',
       });
     }
-    
+
     // Recommend merging redundant tests
     const redundantTests = validationResults.filter(r => r.status === 'redundant');
     if (redundantTests.length > 2) {
@@ -591,7 +595,7 @@ export class TestValidator {
         effort: 'medium',
       });
     }
-    
+
     return recommendations;
   }
 
@@ -640,7 +644,7 @@ export class TestValidator {
   private findSimilarTests(content: string): string[] {
     const testBlocks = content.match(/test\([^{]+\{[^}]+\}/g) || [];
     const similar: string[] = [];
-    
+
     // Simple similarity check based on structure
     for (let i = 0; i < testBlocks.length; i++) {
       for (let j = i + 1; j < testBlocks.length; j++) {
@@ -651,7 +655,7 @@ export class TestValidator {
         }
       }
     }
-    
+
     return similar;
   }
 
@@ -662,7 +666,7 @@ export class TestValidator {
     const words1 = str1.split(/\s+/);
     const words2 = str2.split(/\s+/);
     const commonWords = words1.filter(word => words2.includes(word));
-    
+
     return commonWords.length / Math.max(words1.length, words2.length);
   }
 
@@ -670,11 +674,8 @@ export class TestValidator {
    * Check if path matches pattern
    */
   private matchesPattern(filePath: string, pattern: string): boolean {
-    const regexPattern = pattern
-      .replace(/\*\*/g, '.*')
-      .replace(/\*/g, '[^/]*')
-      .replace(/\?/g, '.');
-    
+    const regexPattern = pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*').replace(/\?/g, '.');
+
     return new RegExp(`^${regexPattern}$`).test(filePath);
   }
 
@@ -693,9 +694,9 @@ export class TestValidator {
   private async applyAutoFixes(result: TestValidationResult): Promise<boolean> {
     // This would implement automatic fixes for common issues
     // For now, just log what would be fixed
-    this.logger.info('Auto-fix not implemented', { 
+    this.logger.info('Auto-fix not implemented', {
       testFile: result.testFile,
-      issues: result.issues.length 
+      issues: result.issues.length,
     });
     return false;
   }
@@ -705,11 +706,11 @@ export class TestValidator {
    */
   private async generateUpdatedTest(result: TestValidationResult): Promise<string> {
     const content = fs.readFileSync(result.testFile, 'utf8');
-    
+
     // This would implement test updates based on validation results
     // For now, just return original content with comments
     const header = `// Updated test file - ${new Date().toISOString()}\n// Issues found: ${result.issues.length}\n// Suggestions: ${result.suggestions.length}\n\n`;
-    
+
     return header + content;
   }
 }

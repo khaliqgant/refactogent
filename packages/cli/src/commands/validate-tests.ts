@@ -29,7 +29,8 @@ export class ValidateTestsCommand extends BaseCommand {
   async execute(options: ValidateTestsOptions): Promise<CommandResult> {
     this.validateContext();
 
-    const testDirectory = options.testDirectory || path.join(this.context!.projectInfo.path, 'tests');
+    const testDirectory =
+      options.testDirectory || path.join(this.context!.projectInfo.path, 'tests');
     const outputDir = options.output || path.join(this.context!.outputDir, 'test-validation');
 
     this.logger.info('Starting test validation', {
@@ -101,7 +102,10 @@ export class ValidateTestsCommand extends BaseCommand {
       }
 
       // Generate maintenance script
-      const maintenanceScript = this.generateMaintenanceScript(validationResults, maintenanceReport);
+      const maintenanceScript = this.generateMaintenanceScript(
+        validationResults,
+        maintenanceReport
+      );
       const scriptFile = path.join(outputDir, 'maintenance-actions.sh');
       fs.writeFileSync(scriptFile, maintenanceScript);
       fs.chmodSync(scriptFile, '755');
@@ -128,9 +132,10 @@ export class ValidateTestsCommand extends BaseCommand {
           outputDir,
         }
       );
-
     } catch (error) {
-      return this.failure(`Test validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      return this.failure(
+        `Test validation failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -157,60 +162,106 @@ ${this.generateQualityDistribution(validationResults)}
 ## Test Status Breakdown
 
 ### ✅ Valid Tests (${validTests.length})
-${validTests.length > 0 ? validTests.map(test => `
+${
+  validTests.length > 0
+    ? validTests
+        .map(
+          test => `
 #### ${path.basename(test.testFile)}
 - **Quality**: ${Math.round(test.quality.overall)}/100
 - **Coverage**: ${Math.round(test.quality.coverage)}%
 - **Maintainability**: ${Math.round(test.quality.maintainability)}%
 - **Reliability**: ${Math.round(test.quality.reliability)}%
 ${test.suggestions.length > 0 ? `- **Suggestions**: ${test.suggestions.length}` : ''}
-`).join('') : 'No valid tests found.'}
+`
+        )
+        .join('')
+    : 'No valid tests found.'
+}
 
 ### ❌ Invalid Tests (${invalidTests.length})
-${invalidTests.length > 0 ? invalidTests.map(test => `
+${
+  invalidTests.length > 0
+    ? invalidTests
+        .map(
+          test => `
 #### ${path.basename(test.testFile)}
 - **Issues**: ${test.issues.length}
 - **Critical Issues**: ${test.issues.filter((i: any) => i.severity === 'critical').length}
 - **High Issues**: ${test.issues.filter((i: any) => i.severity === 'high').length}
 
 **Top Issues:**
-${test.issues.slice(0, 3).map((issue: any) => `- **${issue.type}** (${issue.severity}): ${issue.message}`).join('\n')}
-`).join('') : 'No invalid tests found.'}
+${test.issues
+  .slice(0, 3)
+  .map((issue: any) => `- **${issue.type}** (${issue.severity}): ${issue.message}`)
+  .join('\n')}
+`
+        )
+        .join('')
+    : 'No invalid tests found.'
+}
 
 ### ⚠️ Outdated Tests (${outdatedTests.length})
-${outdatedTests.length > 0 ? outdatedTests.map(test => `
+${
+  outdatedTests.length > 0
+    ? outdatedTests
+        .map(
+          test => `
 #### ${path.basename(test.testFile)}
 - **Quality**: ${Math.round(test.quality.overall)}/100
 - **Issues**: ${test.issues.length}
 - **Suggestions**: ${test.suggestions.length}
 
 **Recommended Actions:**
-${test.suggestions.slice(0, 2).map((suggestion: any) => `- ${suggestion.message}`).join('\n')}
-`).join('') : 'No outdated tests found.'}
+${test.suggestions
+  .slice(0, 2)
+  .map((suggestion: any) => `- ${suggestion.message}`)
+  .join('\n')}
+`
+        )
+        .join('')
+    : 'No outdated tests found.'
+}
 
 ### 🔄 Redundant Tests (${redundantTests.length})
-${redundantTests.length > 0 ? redundantTests.map(test => `
+${
+  redundantTests.length > 0
+    ? redundantTests
+        .map(
+          test => `
 #### ${path.basename(test.testFile)}
 - **Quality**: ${Math.round(test.quality.overall)}/100
 - **Issues**: ${test.issues.length}
-`).join('') : 'No redundant tests found.'}
+`
+        )
+        .join('')
+    : 'No redundant tests found.'
+}
 
 ## Maintenance Recommendations
 
-${maintenanceReport.recommendations.map((rec: any) => `
+${maintenanceReport.recommendations
+  .map(
+    (rec: any) => `
 ### ${rec.action.toUpperCase()}: ${rec.target}
 - **Reason**: ${rec.reason}
 - **Impact**: ${rec.impact}
 - **Effort**: ${rec.effort}
-`).join('')}
+`
+  )
+  .join('')}
 
 ## Issue Analysis
 
 ### Issue Types
-${this.getIssueTypeDistribution(validationResults).map(([type, count]) => `- **${type}**: ${count} issues`).join('\n')}
+${this.getIssueTypeDistribution(validationResults)
+  .map(([type, count]) => `- **${type}**: ${count} issues`)
+  .join('\n')}
 
 ### Severity Distribution
-${this.getSeverityDistribution(validationResults).map(([severity, count]) => `- **${severity}**: ${count} issues`).join('\n')}
+${this.getSeverityDistribution(validationResults)
+  .map(([severity, count]) => `- **${severity}**: ${count} issues`)
+  .join('\n')}
 
 ## Actionable Next Steps
 
@@ -278,36 +329,38 @@ Generated by Refactogent Test Validator at ${new Date().toISOString()}
       { min: 0, max: 49, label: 'Poor (0-49)' },
     ];
 
-    return ranges.map(range => {
-      const count = results.filter(r => 
-        r.quality.overall >= range.min && r.quality.overall <= range.max
-      ).length;
-      const percentage = results.length > 0 ? Math.round((count / results.length) * 100) : 0;
-      return `- **${range.label}**: ${count} tests (${percentage}%)`;
-    }).join('\n');
+    return ranges
+      .map(range => {
+        const count = results.filter(
+          r => r.quality.overall >= range.min && r.quality.overall <= range.max
+        ).length;
+        const percentage = results.length > 0 ? Math.round((count / results.length) * 100) : 0;
+        return `- **${range.label}**: ${count} tests (${percentage}%)`;
+      })
+      .join('\n');
   }
 
   private getIssueTypeDistribution(results: any[]): [string, number][] {
     const distribution: Record<string, number> = {};
-    
+
     for (const result of results) {
       for (const issue of result.issues) {
         distribution[issue.type] = (distribution[issue.type] || 0) + 1;
       }
     }
-    
+
     return Object.entries(distribution).sort((a, b) => b[1] - a[1]);
   }
 
   private getSeverityDistribution(results: any[]): [string, number][] {
     const distribution: Record<string, number> = {};
-    
+
     for (const result of results) {
       for (const issue of result.issues) {
         distribution[issue.severity] = (distribution[issue.severity] || 0) + 1;
       }
     }
-    
+
     return Object.entries(distribution).sort((a, b) => b[1] - a[1]);
   }
 
@@ -327,23 +380,35 @@ echo "📦 Creating backup..."
 BACKUP_DIR="test-backup-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
-${invalidTests.length > 0 ? `
+${
+  invalidTests.length > 0
+    ? `
 # Remove invalid tests
 echo "❌ Removing ${invalidTests.length} invalid tests..."
 ${invalidTests.map(test => `# rm "${test.testFile}" # Uncomment to remove`).join('\n')}
-` : ''}
+`
+    : ''
+}
 
-${outdatedTests.length > 0 ? `
+${
+  outdatedTests.length > 0
+    ? `
 # Mark outdated tests for review
 echo "⚠️  Marking ${outdatedTests.length} outdated tests for review..."
 ${outdatedTests.map(test => `echo "TODO: Review and update ${test.testFile}"`).join('\n')}
-` : ''}
+`
+    : ''
+}
 
-${redundantTests.length > 0 ? `
+${
+  redundantTests.length > 0
+    ? `
 # Mark redundant tests for consolidation
 echo "🔄 Marking ${redundantTests.length} redundant tests for consolidation..."
 ${redundantTests.map(test => `echo "TODO: Consider merging ${test.testFile}"`).join('\n')}
-` : ''}
+`
+    : ''
+}
 
 echo "✅ Maintenance script completed!"
 echo "📊 Summary:"
@@ -379,31 +444,36 @@ export function createValidateTestsCommand(): Command {
     .option('--no-report', 'Skip generating detailed report')
     .action(async (opts, cmd) => {
       const globalOpts = cmd.parent?.parent?.opts() || {};
-      
+
       // Initialize CLI context
       const logger = new Logger(globalOpts.verbose);
-      
+
       try {
         // Create command instance
         const validateCommand = new ValidateTestsCommand(logger);
-        
+
         // Set up minimal context
         const projectPath = globalOpts.project || process.cwd();
         const outputDir = path.resolve(projectPath, globalOpts.output || '.refactogent/out');
-        
+
         // Ensure output directory exists
         if (!fs.existsSync(outputDir)) {
           fs.mkdirSync(outputDir, { recursive: true });
         }
-        
+
         // Mock context for this command
         const context = {
-          config: { 
+          config: {
             version: '1.0',
-            maxPrLoc: 300, 
-            branchPrefix: 'refactor/', 
+            maxPrLoc: 300,
+            branchPrefix: 'refactor/',
             protectedPaths: [],
-            modesAllowed: ['organize-only', 'name-hygiene', 'tests-first', 'micro-simplify'] as RefactoringMode[],
+            modesAllowed: [
+              'organize-only',
+              'name-hygiene',
+              'tests-first',
+              'micro-simplify',
+            ] as RefactoringMode[],
             gates: {
               requireCharacterizationTests: true,
               requireGreenCi: true,
@@ -416,21 +486,21 @@ export function createValidateTestsCommand(): Command {
             languages: {
               typescript: { build: 'tsc', test: 'jest', lints: ['eslint'] },
               javascript: { build: 'babel', test: 'jest', lints: ['eslint'] },
-            }
+            },
           },
-          projectInfo: { 
-            path: projectPath, 
-            type: 'mixed' as const, 
-            languages: ['typescript', 'javascript'], 
-            hasTests: true, 
-            hasConfig: false 
+          projectInfo: {
+            path: projectPath,
+            type: 'mixed' as const,
+            languages: ['typescript', 'javascript'],
+            hasTests: true,
+            hasConfig: false,
           },
           outputDir,
           verbose: globalOpts.verbose || false,
         };
-        
+
         validateCommand.setContext(context);
-        
+
         // Execute command
         const result = await validateCommand.execute({
           testDirectory: opts.testDirectory,
@@ -443,7 +513,7 @@ export function createValidateTestsCommand(): Command {
           autoFix: opts.autoFix,
           generateReport: opts.report,
         });
-        
+
         if (result.success) {
           console.log(`✅ ${result.message}`);
           if (result.artifacts) {
@@ -452,7 +522,9 @@ export function createValidateTestsCommand(): Command {
           }
           if (result.data) {
             console.log(`📊 Quality: ${result.data.averageQuality}/100`);
-            console.log(`⚠️  Issues: ${result.data.invalidTests + result.data.outdatedTests} tests need attention`);
+            console.log(
+              `⚠️  Issues: ${result.data.invalidTests + result.data.outdatedTests} tests need attention`
+            );
             if (result.data.recommendations > 0) {
               console.log(`💡 Recommendations: ${result.data.recommendations}`);
             }
@@ -463,7 +535,9 @@ export function createValidateTestsCommand(): Command {
         }
       } catch (error) {
         logger.error('Test validation failed', { error });
-        console.error(`❌ Test validation failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(
+          `❌ Test validation failed: ${error instanceof Error ? error.message : String(error)}`
+        );
         process.exit(1);
       }
     });

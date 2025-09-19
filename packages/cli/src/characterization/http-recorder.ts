@@ -124,7 +124,10 @@ export class HTTPRecorder {
   /**
    * Record interactions for specific routes
    */
-  async recordRoutes(routes: string[], options: { timeout?: number } = {}): Promise<HTTPInteraction[]> {
+  async recordRoutes(
+    routes: string[],
+    options: { timeout?: number } = {}
+  ): Promise<HTTPInteraction[]> {
     if (!this.page || !this.session) {
       throw new Error('Recording session not started');
     }
@@ -137,11 +140,11 @@ export class HTTPRecorder {
         this.logger.info('Recording route', { route });
 
         const url = new URL(route, this.session.baseUrl).toString();
-        
+
         // Navigate to route and wait for network idle
-        await this.page.goto(url, { 
+        await this.page.goto(url, {
           waitUntil: 'networkidle',
-          timeout 
+          timeout,
         });
 
         // Wait a bit for any async operations
@@ -150,15 +153,14 @@ export class HTTPRecorder {
         // Trigger common interactions
         await this.triggerInteractions();
 
-        this.logger.info('Route recorded successfully', { 
-          route, 
-          interactions: this.session.interactions.length 
+        this.logger.info('Route recorded successfully', {
+          route,
+          interactions: this.session.interactions.length,
         });
-
       } catch (error) {
-        this.logger.warn('Failed to record route', { 
-          route, 
-          error: error instanceof Error ? error.message : String(error) 
+        this.logger.warn('Failed to record route', {
+          route,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -239,9 +241,7 @@ export class HTTPRecorder {
 
       // Generate golden response files
       interactions.forEach((interaction, index) => {
-        const goldenFileName = this.sanitizeFileName(
-          `${route}.${index}.golden.json`
-        );
+        const goldenFileName = this.sanitizeFileName(`${route}.${index}.golden.json`);
         const goldenFilePath = path.join(outputDir, goldenFileName);
 
         const goldenData = this.createGoldenResponse(interaction, tolerance);
@@ -270,9 +270,7 @@ export class HTTPRecorder {
       const startTime = Date.now();
 
       // Skip ignored patterns
-      if (options.ignorePatterns?.some(pattern => 
-        new RegExp(pattern).test(request.url())
-      )) {
+      if (options.ignorePatterns?.some(pattern => new RegExp(pattern).test(request.url()))) {
         await route.continue();
         return;
       }
@@ -283,16 +281,18 @@ export class HTTPRecorder {
 
       // Skip non-API requests (images, CSS, etc.)
       const contentType = response.headers()['content-type'] || '';
-      if (!contentType.includes('application/json') && 
-          !contentType.includes('text/html') &&
-          !contentType.includes('application/xml')) {
+      if (
+        !contentType.includes('application/json') &&
+        !contentType.includes('text/html') &&
+        !contentType.includes('application/xml')
+      ) {
         await route.fulfill({ response });
         return;
       }
 
       try {
         const body = await response.text();
-        
+
         const interaction: HTTPInteraction = {
           id: `interaction-${this.interactionCount++}`,
           request: {
@@ -322,11 +322,10 @@ export class HTTPRecorder {
           status: interaction.response.status,
           duration: interaction.response.duration,
         });
-
       } catch (error) {
-        this.logger.warn('Failed to record interaction', { 
-          url: request.url(), 
-          error 
+        this.logger.warn('Failed to record interaction', {
+          url: request.url(),
+          error,
         });
       }
 
@@ -344,7 +343,7 @@ export class HTTPRecorder {
       case 'bearer':
         if (auth.credentials?.token) {
           await this.context?.setExtraHTTPHeaders({
-            'Authorization': `Bearer ${auth.credentials.token}`,
+            Authorization: `Bearer ${auth.credentials.token}`,
           });
         }
         break;
@@ -355,7 +354,7 @@ export class HTTPRecorder {
             `${auth.credentials.username}:${auth.credentials.password}`
           ).toString('base64');
           await this.context?.setExtraHTTPHeaders({
-            'Authorization': `Basic ${credentials}`,
+            Authorization: `Basic ${credentials}`,
           });
         }
         break;
@@ -365,7 +364,7 @@ export class HTTPRecorder {
           await this.page.goto(auth.loginUrl);
           await this.page.fill(auth.usernameSelector, auth.credentials?.username || '');
           await this.page.fill(auth.passwordSelector, auth.credentials?.password || '');
-          
+
           if (auth.loginSelector) {
             await this.page.click(auth.loginSelector);
             await this.page.waitForNavigation();
@@ -397,7 +396,8 @@ export class HTTPRecorder {
 
       for (const selector of clickableSelectors) {
         const elements = await this.page.$$(selector);
-        for (const element of elements.slice(0, 3)) { // Limit to first 3
+        for (const element of elements.slice(0, 3)) {
+          // Limit to first 3
           try {
             await element.click({ timeout: 1000 });
             await this.page.waitForTimeout(500);
@@ -408,16 +408,12 @@ export class HTTPRecorder {
       }
 
       // Fill common form fields
-      const formSelectors = [
-        'input[type="text"]',
-        'input[type="email"]',
-        'textarea',
-        'select',
-      ];
+      const formSelectors = ['input[type="text"]', 'input[type="email"]', 'textarea', 'select'];
 
       for (const selector of formSelectors) {
         const elements = await this.page.$$(selector);
-        for (const element of elements.slice(0, 2)) { // Limit to first 2
+        for (const element of elements.slice(0, 2)) {
+          // Limit to first 2
           try {
             await element.fill('test-data');
             await this.page.waitForTimeout(300);
@@ -426,7 +422,6 @@ export class HTTPRecorder {
           }
         }
       }
-
     } catch (error) {
       this.logger.debug('Error during interaction triggering', { error });
     }
@@ -439,18 +434,18 @@ export class HTTPRecorder {
     try {
       const urlObj = new URL(url);
       const baseUrlObj = new URL(baseUrl);
-      
+
       if (urlObj.origin !== baseUrlObj.origin) {
         return url; // External URL
       }
 
       let pathname = urlObj.pathname;
-      
+
       // Replace common dynamic segments with placeholders
       pathname = pathname.replace(/\/\d+/g, '/:id');
       pathname = pathname.replace(/\/[a-f0-9-]{36}/g, '/:uuid');
       pathname = pathname.replace(/\/[a-f0-9]{24}/g, '/:objectId');
-      
+
       return pathname;
     } catch {
       return url;
@@ -460,9 +455,11 @@ export class HTTPRecorder {
   /**
    * Group interactions by route
    */
-  private groupInteractionsByRoute(interactions: HTTPInteraction[]): Record<string, HTTPInteraction[]> {
+  private groupInteractionsByRoute(
+    interactions: HTTPInteraction[]
+  ): Record<string, HTTPInteraction[]> {
     const groups: Record<string, HTTPInteraction[]> = {};
-    
+
     for (const interaction of interactions) {
       const route = interaction.route;
       if (!groups[route]) {
@@ -470,7 +467,7 @@ export class HTTPRecorder {
       }
       groups[route].push(interaction);
     }
-    
+
     return groups;
   }
 
@@ -485,13 +482,13 @@ export class HTTPRecorder {
     tolerance?: any
   ): string {
     const testName = `Characterization test for ${route}`;
-    
+
     if (framework === 'jest') {
       return this.generateJestTest(testName, route, interactions, session, tolerance);
     } else if (framework === 'playwright') {
       return this.generatePlaywrightTest(testName, route, interactions, session, tolerance);
     }
-    
+
     return this.generateJestTest(testName, route, interactions, session, tolerance);
   }
 
@@ -520,7 +517,9 @@ describe('${testName}', () => {
     ${session.metadata.authentication ? this.generateAuthSetup(session.metadata.authentication) : '// No authentication required'}
   });
 
-${interactions.map((interaction, index) => `
+${interactions
+  .map(
+    (interaction, index) => `
   test('${interaction.request.method} ${interaction.endpoint} - interaction ${index + 1}', async () => {
     const goldenPath = path.join(__dirname, '${this.sanitizeFileName(`${route}.${index}.golden.json`)}');
     const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
@@ -536,15 +535,18 @@ ${interactions.map((interaction, index) => `
     // Validate response structure
     expect(response.status).toBe(golden.status);
     
-    ${tolerance?.ignoreFields ? 
-      `// Compare response body with tolerance for dynamic fields
+    ${
+      tolerance?.ignoreFields
+        ? `// Compare response body with tolerance for dynamic fields
     const responseBody = this.normalizeResponse(response.data, ${JSON.stringify(tolerance.ignoreFields)});
     const goldenBody = this.normalizeResponse(golden.body, ${JSON.stringify(tolerance.ignoreFields)});
-    expect(responseBody).toEqual(goldenBody);` :
-      `// Compare response body exactly
+    expect(responseBody).toEqual(goldenBody);`
+        : `// Compare response body exactly
     expect(response.data).toEqual(golden.body);`
     }
-  });`).join('\n')}
+  });`
+  )
+  .join('\n')}
 
   // Helper function to normalize responses for comparison
   function normalizeResponse(data, ignoreFields = []) {
@@ -590,7 +592,9 @@ import path from 'path';
 test.describe('${testName}', () => {
   const baseURL = '${session.baseUrl}';
 
-${interactions.map((interaction, index) => `
+${interactions
+  .map(
+    (interaction, index) => `
   test('${interaction.request.method} ${interaction.endpoint} - interaction ${index + 1}', async ({ request }) => {
     const goldenPath = path.join(__dirname, '${this.sanitizeFileName(`${route}.${index}.golden.json`)}');
     const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
@@ -603,14 +607,17 @@ ${interactions.map((interaction, index) => `
     expect(response.status()).toBe(golden.status);
     
     const responseBody = await response.json();
-    ${tolerance?.ignoreFields ? 
-      `// Compare with tolerance
+    ${
+      tolerance?.ignoreFields
+        ? `// Compare with tolerance
     const normalizedResponse = normalizeResponse(responseBody, ${JSON.stringify(tolerance.ignoreFields)});
     const normalizedGolden = normalizeResponse(golden.body, ${JSON.stringify(tolerance.ignoreFields)});
-    expect(normalizedResponse).toEqual(normalizedGolden);` :
-      `expect(responseBody).toEqual(golden.body);`
+    expect(normalizedResponse).toEqual(normalizedGolden);`
+        : `expect(responseBody).toEqual(golden.body);`
     }
-  });`).join('\n')}
+  });`
+  )
+  .join('\n')}
 });
 
 function normalizeResponse(data, ignoreFields = []) {
@@ -640,7 +647,7 @@ function normalizeResponse(data, ignoreFields = []) {
    */
   private createGoldenResponse(interaction: HTTPInteraction, tolerance?: any): any {
     let body = interaction.response.body;
-    
+
     try {
       body = JSON.parse(body);
     } catch {
@@ -666,13 +673,7 @@ function normalizeResponse(data, ignoreFields = []) {
    */
   private filterHeaders(headers: Record<string, string>): Record<string, string> {
     const filtered: Record<string, string> = {};
-    const sensitiveHeaders = [
-      'authorization',
-      'cookie',
-      'set-cookie',
-      'x-api-key',
-      'x-auth-token',
-    ];
+    const sensitiveHeaders = ['authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token'];
 
     for (const [key, value] of Object.entries(headers)) {
       if (!sensitiveHeaders.includes(key.toLowerCase())) {

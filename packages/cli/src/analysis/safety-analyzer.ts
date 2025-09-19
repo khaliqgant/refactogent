@@ -80,7 +80,7 @@ export class SafetyAnalyzer {
     try {
       const fileExtension = path.extname(filePath);
       const isTypeScript = ['.ts', '.tsx'].includes(fileExtension);
-      
+
       // Analyze code complexity
       const complexityMetrics = await this.analyzeComplexity(filePath);
       const complexityScore = this.calculateComplexityScore(complexityMetrics);
@@ -94,7 +94,7 @@ export class SafetyAnalyzer {
       const dependencyScore = this.calculateDependencyScore(dependencyMetrics);
 
       // Mock test coverage (would integrate with actual coverage tools)
-      const testCoverageScore = options.includeTestCoverage 
+      const testCoverageScore = options.includeTestCoverage
         ? await this.analyzeTestCoverage(filePath)
         : 85; // Default assumption
 
@@ -113,13 +113,18 @@ export class SafetyAnalyzer {
       });
 
       // Generate recommendations
-      const recommendations = this.generateRecommendations({
-        complexity: complexityScore,
-        testCoverage: testCoverageScore,
-        apiExposure: apiScore,
-        changeFrequency: changeFrequencyScore,
-        dependencyFanOut: dependencyScore,
-      }, complexityMetrics, apiMetrics, dependencyMetrics);
+      const recommendations = this.generateRecommendations(
+        {
+          complexity: complexityScore,
+          testCoverage: testCoverageScore,
+          apiExposure: apiScore,
+          changeFrequency: changeFrequencyScore,
+          dependencyFanOut: dependencyScore,
+        },
+        complexityMetrics,
+        apiMetrics,
+        dependencyMetrics
+      );
 
       return {
         overall,
@@ -132,7 +137,7 @@ export class SafetyAnalyzer {
       };
     } catch (error) {
       this.logger.error('Failed to calculate safety score', { filePath, error });
-      
+
       // Return conservative score on error
       return {
         overall: 50,
@@ -141,14 +146,16 @@ export class SafetyAnalyzer {
         apiExposure: 50,
         changeFrequency: 50,
         dependencyFanOut: 50,
-        recommendations: [{
-          type: 'warning',
-          category: 'structure',
-          message: 'Unable to analyze file safety - proceed with caution',
-          impact: 'high',
-          actionable: false,
-          details: error instanceof Error ? error.message : String(error),
-        }],
+        recommendations: [
+          {
+            type: 'warning',
+            category: 'structure',
+            message: 'Unable to analyze file safety - proceed with caution',
+            impact: 'high',
+            actionable: false,
+            details: error instanceof Error ? error.message : String(error),
+          },
+        ],
       };
     }
   }
@@ -167,9 +174,11 @@ export class SafetyAnalyzer {
     let functionCount = 0;
     let classCount = 0;
 
-    const linesOfCode = code.split('\n').filter(line => 
-      line.trim() && !line.trim().startsWith('//') && !line.trim().startsWith('*')
-    ).length;
+    const linesOfCode = code
+      .split('\n')
+      .filter(
+        line => line.trim() && !line.trim().startsWith('//') && !line.trim().startsWith('*')
+      ).length;
 
     sourceFile.forEachDescendant((node, traversal) => {
       const currentDepth = this.getNodeDepth(node);
@@ -200,8 +209,10 @@ export class SafetyAnalyzer {
         case SyntaxKind.BinaryExpression:
           if (Node.isBinaryExpression(node)) {
             const operator = node.getOperatorToken().getKind();
-            if (operator === SyntaxKind.AmpersandAmpersandToken || 
-                operator === SyntaxKind.BarBarToken) {
+            if (
+              operator === SyntaxKind.AmpersandAmpersandToken ||
+              operator === SyntaxKind.BarBarToken
+            ) {
               cyclomaticComplexity++;
               cognitiveComplexity++;
             }
@@ -241,13 +252,13 @@ export class SafetyAnalyzer {
     // Count exports
     const exportDeclarations = sourceFile.getExportDeclarations();
     const exportAssignments = sourceFile.getExportAssignments();
-    
-    sourceFile.forEachDescendant((node) => {
+
+    sourceFile.forEachDescendant(node => {
       // Check for exported declarations
       if (Node.isFunctionDeclaration(node) || Node.isClassDeclaration(node)) {
         const modifiers = (node as any).getModifiers?.() || [];
         const isExported = modifiers.some((m: any) => m.getKind() === SyntaxKind.ExportKeyword);
-        
+
         if (isExported) {
           if (Node.isFunctionDeclaration(node)) {
             exportedFunctions++;
@@ -285,7 +296,10 @@ export class SafetyAnalyzer {
 
     // Calculate exposure score based on public surface area
     const totalExports = exportedFunctions + exportedClasses + exportDeclarations.length;
-    const exposureScore = Math.min(100, (totalExports + publicMethods + httpRoutes + cliCommands) * 5);
+    const exposureScore = Math.min(
+      100,
+      (totalExports + publicMethods + httpRoutes + cliCommands) * 5
+    );
 
     return {
       exportedFunctions,
@@ -300,7 +314,10 @@ export class SafetyAnalyzer {
   /**
    * Analyze dependency metrics
    */
-  private async analyzeDependencies(filePath: string, projectRoot?: string): Promise<DependencyMetrics> {
+  private async analyzeDependencies(
+    filePath: string,
+    projectRoot?: string
+  ): Promise<DependencyMetrics> {
     const code = fs.readFileSync(filePath, 'utf8');
     const sourceFile = this.project.createSourceFile(filePath, code, { overwrite: true });
 
@@ -310,11 +327,11 @@ export class SafetyAnalyzer {
 
     // Analyze imports
     const importDeclarations = sourceFile.getImportDeclarations();
-    
+
     importDeclarations.forEach(importDecl => {
       const moduleSpecifier = importDecl.getModuleSpecifierValue();
       dependencies.add(moduleSpecifier);
-      
+
       if (moduleSpecifier.startsWith('.') || moduleSpecifier.startsWith('/')) {
         internalDependencies++;
       } else {
@@ -324,11 +341,11 @@ export class SafetyAnalyzer {
 
     // Calculate fan-out score (lower is better)
     const totalDependencies = internalDependencies + externalDependencies;
-    const fanOutScore = Math.max(0, 100 - (totalDependencies * 5));
+    const fanOutScore = Math.max(0, 100 - totalDependencies * 5);
 
     // Mock circular dependencies detection (would need full project analysis)
     const circularDependencies: string[] = [];
-    
+
     // Mock unused dependencies detection (would need usage analysis)
     const unusedDependencies: string[] = [];
 
@@ -347,12 +364,14 @@ export class SafetyAnalyzer {
   private async analyzeTestCoverage(filePath: string): Promise<number> {
     // This would integrate with actual coverage tools
     // For now, return a mock score based on file characteristics
-    
+
     const code = fs.readFileSync(filePath, 'utf8');
-    const hasTests = code.includes('test') || code.includes('spec') || 
-                    fs.existsSync(filePath.replace(/\.(ts|js)$/, '.test.$1')) ||
-                    fs.existsSync(filePath.replace(/\.(ts|js)$/, '.spec.$1'));
-    
+    const hasTests =
+      code.includes('test') ||
+      code.includes('spec') ||
+      fs.existsSync(filePath.replace(/\.(ts|js)$/, '.test.$1')) ||
+      fs.existsSync(filePath.replace(/\.(ts|js)$/, '.spec.$1'));
+
     return hasTests ? 85 : 45;
   }
 
@@ -362,11 +381,11 @@ export class SafetyAnalyzer {
   private async analyzeChangeFrequency(filePath: string): Promise<number> {
     // This would analyze git history to determine change frequency
     // For now, return a mock score
-    
+
     try {
       const stats = fs.statSync(filePath);
       const daysSinceModified = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60 * 24);
-      
+
       // Files modified recently have higher change frequency (lower score)
       if (daysSinceModified < 7) return 60;
       if (daysSinceModified < 30) return 75;
@@ -380,13 +399,8 @@ export class SafetyAnalyzer {
    * Calculate complexity score (0-100, higher is better)
    */
   private calculateComplexityScore(metrics: CodeComplexityMetrics): number {
-    const {
-      cyclomaticComplexity,
-      cognitiveComplexity,
-      linesOfCode,
-      nestingDepth,
-      functionCount,
-    } = metrics;
+    const { cyclomaticComplexity, cognitiveComplexity, linesOfCode, nestingDepth, functionCount } =
+      metrics;
 
     // Normalize metrics to 0-100 scale (lower complexity = higher score)
     const cyclomaticScore = Math.max(0, 100 - (cyclomaticComplexity - 1) * 5);
@@ -397,11 +411,11 @@ export class SafetyAnalyzer {
 
     // Weighted average
     return Math.round(
-      (cyclomaticScore * 0.3 +
-       cognitiveScore * 0.3 +
-       locScore * 0.2 +
-       nestingScore * 0.1 +
-       functionScore * 0.1)
+      cyclomaticScore * 0.3 +
+        cognitiveScore * 0.3 +
+        locScore * 0.2 +
+        nestingScore * 0.1 +
+        functionScore * 0.1
     );
   }
 
@@ -429,21 +443,15 @@ export class SafetyAnalyzer {
     changeFrequency: number;
     dependencyFanOut: number;
   }): number {
-    const {
-      complexity,
-      testCoverage,
-      apiExposure,
-      changeFrequency,
-      dependencyFanOut,
-    } = scores;
+    const { complexity, testCoverage, apiExposure, changeFrequency, dependencyFanOut } = scores;
 
     // Weighted average - complexity and test coverage are most important
     return Math.round(
       complexity * 0.25 +
-      testCoverage * 0.25 +
-      apiExposure * 0.2 +
-      changeFrequency * 0.15 +
-      dependencyFanOut * 0.15
+        testCoverage * 0.25 +
+        apiExposure * 0.2 +
+        changeFrequency * 0.15 +
+        dependencyFanOut * 0.15
     );
   }
 
@@ -478,7 +486,8 @@ export class SafetyAnalyzer {
           message: `Deep nesting detected (${complexityMetrics.nestingDepth} levels)`,
           impact: 'medium',
           actionable: true,
-          details: 'Consider using early returns or extracting nested logic into separate functions.',
+          details:
+            'Consider using early returns or extracting nested logic into separate functions.',
         });
       }
 
@@ -551,14 +560,14 @@ export class SafetyAnalyzer {
   private getNodeDepth(node: Node): number {
     let depth = 0;
     let current = node.getParent();
-    
+
     while (current) {
       if (this.isNestingNode(current)) {
         depth++;
       }
       current = current.getParent();
     }
-    
+
     return depth;
   }
 
@@ -587,20 +596,20 @@ export class SafetyAnalyzer {
    */
   private getCognitiveComplexityIncrement(node: Node, depth: number): number {
     const kind = node.getKind();
-    
+
     // Base increment
     let increment = 1;
-    
+
     // Add nesting penalty
     if (depth > 1) {
       increment += depth - 1;
     }
-    
+
     // Special cases
     if (kind === SyntaxKind.SwitchStatement) {
       increment = 1; // Switch statements have lower cognitive load
     }
-    
+
     return increment;
   }
 }

@@ -66,9 +66,9 @@ export class CLIRecorder {
    * Start recording CLI command executions
    */
   async startRecording(options: CLIRecordingOptions): Promise<string> {
-    this.logger.info('Starting CLI recording session', { 
+    this.logger.info('Starting CLI recording session', {
       projectPath: options.projectPath,
-      commands: options.commands.length 
+      commands: options.commands.length,
     });
 
     const sessionId = `cli-session-${Date.now()}`;
@@ -81,8 +81,9 @@ export class CLIRecorder {
         platform: process.platform,
         nodeVersion: process.version,
         environment: Object.fromEntries(
-          Object.entries({ ...process.env, ...options.environment })
-            .filter(([_, value]) => value !== undefined)
+          Object.entries({ ...process.env, ...options.environment }).filter(
+            ([_, value]) => value !== undefined
+          )
         ) as Record<string, string>,
       },
     };
@@ -103,9 +104,9 @@ export class CLIRecorder {
 
     for (const command of commands) {
       try {
-        this.logger.info('Recording CLI command', { 
+        this.logger.info('Recording CLI command', {
           command: command.command,
-          args: command.args 
+          args: command.args,
         });
 
         const execution = await this.executeCommand(command);
@@ -117,11 +118,10 @@ export class CLIRecorder {
           exitCode: execution.result.exitCode,
           duration: execution.duration,
         });
-
       } catch (error) {
-        this.logger.warn('Failed to record CLI command', { 
+        this.logger.warn('Failed to record CLI command', {
           command: command.command,
-          error: error instanceof Error ? error.message : String(error) 
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -196,9 +196,7 @@ export class CLIRecorder {
 
       // Generate golden result files
       executions.forEach((execution, index) => {
-        const goldenFileName = this.sanitizeFileName(
-          `${commandKey}.${index}.golden.json`
-        );
+        const goldenFileName = this.sanitizeFileName(`${commandKey}.${index}.golden.json`);
         const goldenFilePath = path.join(outputDir, goldenFileName);
 
         const goldenData = this.createGoldenResult(execution, tolerance);
@@ -245,17 +243,17 @@ export class CLIRecorder {
       }, timeout);
 
       // Collect stdout
-      child.stdout?.on('data', (data) => {
+      child.stdout?.on('data', data => {
         stdout += data.toString();
       });
 
       // Collect stderr
-      child.stderr?.on('data', (data) => {
+      child.stderr?.on('data', data => {
         stderr += data.toString();
       });
 
       // Handle completion
-      child.on('close', (code) => {
+      child.on('close', code => {
         clearTimeout(timeoutHandle);
         const endTime = Date.now();
 
@@ -263,7 +261,7 @@ export class CLIRecorder {
           id: executionId,
           command,
           result: {
-            exitCode: timedOut ? -1 : (code || 0),
+            exitCode: timedOut ? -1 : code || 0,
             stdout: stdout.trim(),
             stderr: stderr.trim(),
             error: timedOut ? 'Command timed out' : undefined,
@@ -276,7 +274,7 @@ export class CLIRecorder {
       });
 
       // Handle errors
-      child.on('error', (error) => {
+      child.on('error', error => {
         clearTimeout(timeoutHandle);
         const endTime = Date.now();
 
@@ -303,17 +301,17 @@ export class CLIRecorder {
    */
   private groupExecutionsByCommand(executions: CLIExecution[]): Record<string, CLIExecution[]> {
     const groups: Record<string, CLIExecution[]> = {};
-    
+
     for (const execution of executions) {
       const key = `${execution.command.command}_${execution.command.args.join('_')}`;
       const sanitizedKey = this.sanitizeFileName(key);
-      
+
       if (!groups[sanitizedKey]) {
         groups[sanitizedKey] = [];
       }
       groups[sanitizedKey].push(execution);
     }
-    
+
     return groups;
   }
 
@@ -328,13 +326,13 @@ export class CLIRecorder {
     tolerance?: any
   ): string {
     const testName = `CLI characterization test for ${commandKey}`;
-    
+
     if (framework === 'jest') {
       return this.generateJestTest(testName, commandKey, executions, session, tolerance);
     } else if (framework === 'vitest') {
       return this.generateVitestTest(testName, commandKey, executions, session, tolerance);
     }
-    
+
     return this.generateJestTest(testName, commandKey, executions, session, tolerance);
   }
 
@@ -397,7 +395,9 @@ describe('${testName}', () => {
     });
   }
 
-${executions.map((execution, index) => `
+${executions
+  .map(
+    (execution, index) => `
   test('${execution.command.command} ${execution.command.args.join(' ')} - execution ${index + 1}', async () => {
     const goldenPath = path.join(__dirname, '${this.sanitizeFileName(`${commandKey}.${index}.golden.json`)}');
     const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
@@ -411,18 +411,22 @@ ${executions.map((execution, index) => `
       }
     );
     
-    ${tolerance?.ignoreExitCode ? 
-      '// Exit code ignored due to tolerance settings' :
-      'expect(result.exitCode).toBe(golden.exitCode);'
+    ${
+      tolerance?.ignoreExitCode
+        ? '// Exit code ignored due to tolerance settings'
+        : 'expect(result.exitCode).toBe(golden.exitCode);'
     }
     
-    ${tolerance?.ignoreStderr ? 
-      '// Stderr ignored due to tolerance settings' :
-      'expect(normalizeOutput(result.stderr)).toBe(normalizeOutput(golden.stderr));'
+    ${
+      tolerance?.ignoreStderr
+        ? '// Stderr ignored due to tolerance settings'
+        : 'expect(normalizeOutput(result.stderr)).toBe(normalizeOutput(golden.stderr));'
     }
     
     expect(normalizeOutput(result.stdout)).toBe(normalizeOutput(golden.stdout));
-  }, 30000);`).join('\n')}
+  }, 30000);`
+  )
+  .join('\n')}
 
   // Helper function to normalize output for comparison
   function normalizeOutput(output) {
@@ -430,26 +434,38 @@ ${executions.map((execution, index) => `
     
     let normalized = output;
     
-    ${tolerance?.normalizeTimestamps ? `
+    ${
+      tolerance?.normalizeTimestamps
+        ? `
     // Normalize timestamps
     normalized = normalized.replace(/\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z/g, 'TIMESTAMP');
     normalized = normalized.replace(/\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}/g, 'TIMESTAMP');
-    ` : ''}
+    `
+        : ''
+    }
     
-    ${tolerance?.normalizePaths ? `
+    ${
+      tolerance?.normalizePaths
+        ? `
     // Normalize file paths
     normalized = normalized.replace(/${session.projectPath.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}/g, 'PROJECT_ROOT');
     normalized = normalized.replace(/\\/[^\\s]+\\/node_modules\\//g, '/PROJECT_ROOT/node_modules/');
-    ` : ''}
+    `
+        : ''
+    }
     
-    ${tolerance?.ignorePatterns ? `
+    ${
+      tolerance?.ignorePatterns
+        ? `
     // Apply ignore patterns
     const ignorePatterns = ${JSON.stringify(tolerance.ignorePatterns)};
     ignorePatterns.forEach(pattern => {
       const regex = new RegExp(pattern, 'g');
       normalized = normalized.replace(regex, 'IGNORED');
     });
-    ` : ''}
+    `
+        : ''
+    }
     
     return normalized.trim();
   }
@@ -517,7 +533,9 @@ describe('${testName}', () => {
     });
   }
 
-${executions.map((execution, index) => `
+${executions
+  .map(
+    (execution, index) => `
   test('${execution.command.command} ${execution.command.args.join(' ')} - execution ${index + 1}', async () => {
     const goldenPath = path.join(__dirname, '${this.sanitizeFileName(`${commandKey}.${index}.golden.json`)}');
     const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
@@ -531,33 +549,45 @@ ${executions.map((execution, index) => `
       }
     );
     
-    ${tolerance?.ignoreExitCode ? 
-      '// Exit code ignored due to tolerance settings' :
-      'expect(result.exitCode).toBe(golden.exitCode);'
+    ${
+      tolerance?.ignoreExitCode
+        ? '// Exit code ignored due to tolerance settings'
+        : 'expect(result.exitCode).toBe(golden.exitCode);'
     }
     
-    ${tolerance?.ignoreStderr ? 
-      '// Stderr ignored due to tolerance settings' :
-      'expect(normalizeOutput(result.stderr)).toBe(normalizeOutput(golden.stderr));'
+    ${
+      tolerance?.ignoreStderr
+        ? '// Stderr ignored due to tolerance settings'
+        : 'expect(normalizeOutput(result.stderr)).toBe(normalizeOutput(golden.stderr));'
     }
     
     expect(normalizeOutput(result.stdout)).toBe(normalizeOutput(golden.stdout));
-  }, 30000);`).join('\n')}
+  }, 30000);`
+  )
+  .join('\n')}
 
   function normalizeOutput(output: string): string {
     if (!output) return '';
     
     let normalized = output;
     
-    ${tolerance?.normalizeTimestamps ? `
+    ${
+      tolerance?.normalizeTimestamps
+        ? `
     normalized = normalized.replace(/\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z/g, 'TIMESTAMP');
     normalized = normalized.replace(/\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}/g, 'TIMESTAMP');
-    ` : ''}
+    `
+        : ''
+    }
     
-    ${tolerance?.normalizePaths ? `
+    ${
+      tolerance?.normalizePaths
+        ? `
     normalized = normalized.replace(/${session.projectPath.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}/g, 'PROJECT_ROOT');
     normalized = normalized.replace(/\\/[^\\s]+\\/node_modules\\//g, '/PROJECT_ROOT/node_modules/');
-    ` : ''}
+    `
+        : ''
+    }
     
     return normalized.trim();
   }
