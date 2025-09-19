@@ -1,0 +1,46 @@
+{
+  "name": "refactogent",
+  "version": "0.1.0",
+  "description": "Safe, incremental code refactoring tools and platform",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "npm run clean --workspaces && rm -rf node_modules",
+    "check": "npm run check --workspaces",
+    "dev:cli": "npm run dev --workspace=packages/cli",
+    "publish:cli": "npm publish --workspace=packages/cli",
+    "publish:core": "npm publish --workspace=packages/core",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "refactoring",
+    "cli",
+    "code-quality",
+    "ast",
+    "developer-tools",
+    "monorepo"
+  ],
+  "author": "Refactogent Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/khaliqgant/refactogent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/khaliqgant/refactogent/issues"
+  },
+  "homepage": "https://github.com/khaliqgant/refactogent#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "typescript": "^5.4.0"
+  }
+}

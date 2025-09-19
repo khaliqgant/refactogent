@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Navigate to CLI directory and run full quality check
+cd packages/cli
+
+# Run full quality check before push
+npm run check
+
+# Ensure build works
+npm run build
+
+# Test CLI functionality
+node dist/index.js --help > /dev/null
+
+echo "✅ Pre-push checks passed!"

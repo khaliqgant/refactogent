@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Navigate to CLI directory and run basic checks
+cd packages/cli
+
+# Format code
+npm run format
+
+# Check TypeScript compilation
+npm run build:check
+
+echo "✅ Pre-commit checks passed!"
