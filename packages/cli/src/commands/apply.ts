@@ -1,6 +1,7 @@
 import { BaseCommand } from './base.js';
 import { CommandResult } from '../types/index.js';
 import { SimpleTransformer, TransformationResult } from '../transformers/simple-transformer.js';
+import { ASTTransformer, ASTTransformationResult } from '../transformers/ast-transformer.js';
 import { FileManager } from '../utils/file-manager.js';
 import fs from 'fs';
 import path from 'path';
@@ -14,11 +15,13 @@ interface ApplyOptions {
 
 export class ApplyCommand extends BaseCommand {
   private codeTransformer: SimpleTransformer;
+  private astTransformer: ASTTransformer;
   private fileManager: FileManager;
 
   constructor(logger: any) {
     super(logger);
     this.codeTransformer = new SimpleTransformer(logger);
+    this.astTransformer = new ASTTransformer(logger);
     this.fileManager = new FileManager(logger);
   }
 
@@ -177,7 +180,8 @@ export class ApplyCommand extends BaseCommand {
       }
 
       try {
-        const result = await this.codeTransformer.transformJavaScript(file, ['extract-constants']);
+        // Use AST transformer for TypeScript/JavaScript files
+        const result = await this.astTransformer.transformCode(file, ['extract-constants']);
 
         if (result.success && result.transformedCode && result.changes.length > 0) {
           changes.push(`${path.basename(file)}: ${result.changes.length} constants extracted`);
@@ -190,9 +194,16 @@ export class ApplyCommand extends BaseCommand {
             }
           } else {
             result.changes.forEach(change => {
-              changes.push(`  - ${change.description}`);
+              changes.push(`  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`);
             });
           }
+        }
+
+        // Log diagnostics if any
+        if (result.diagnostics && result.diagnostics.length > 0) {
+          result.diagnostics.forEach(diagnostic => {
+            this.logger.debug('Transformation diagnostic', { file, diagnostic });
+          });
         }
       } catch (error) {
         this.logger.warn('Failed to process file for constant extraction', { file });
@@ -224,7 +235,8 @@ export class ApplyCommand extends BaseCommand {
       }
 
       try {
-        const result = await this.codeTransformer.transformJavaScript(file, ['improve-naming']);
+        // Use AST transformer for TypeScript/JavaScript files
+        const result = await this.astTransformer.transformCode(file, ['improve-naming']);
 
         if (result.success && result.transformedCode && result.changes.length > 0) {
           changes.push(`${path.basename(file)}: ${result.changes.length} naming improvements`);
@@ -237,9 +249,16 @@ export class ApplyCommand extends BaseCommand {
             }
           } else {
             result.changes.forEach(change => {
-              changes.push(`  - ${change.description}`);
+              changes.push(`  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`);
             });
           }
+        }
+
+        // Log diagnostics if any
+        if (result.diagnostics && result.diagnostics.length > 0) {
+          result.diagnostics.forEach(diagnostic => {
+            this.logger.debug('Transformation diagnostic', { file, diagnostic });
+          });
         }
       } catch (error) {
         this.logger.warn('Failed to process file for naming improvements', { file });
@@ -272,9 +291,8 @@ export class ApplyCommand extends BaseCommand {
         }
 
         try {
-          const result = await this.codeTransformer.transformJavaScript(file, [
-            'remove-unused-imports',
-          ]);
+          // Use AST transformer for TypeScript/JavaScript files
+          const result = await this.astTransformer.transformCode(file, ['remove-unused-imports']);
 
           if (result.success && result.transformedCode && result.changes.length > 0) {
             changes.push(`${path.basename(file)}: ${result.changes.length} import improvements`);
@@ -287,9 +305,16 @@ export class ApplyCommand extends BaseCommand {
               }
             } else {
               result.changes.forEach(change => {
-                changes.push(`  - ${change.description}`);
+                changes.push(`  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`);
               });
             }
+          }
+
+          // Log diagnostics if any
+          if (result.diagnostics && result.diagnostics.length > 0) {
+            result.diagnostics.forEach(diagnostic => {
+              this.logger.debug('Transformation diagnostic', { file, diagnostic });
+            });
           }
         } catch (error) {
           this.logger.warn('Failed to process file for import cleanup', { file });
@@ -322,9 +347,8 @@ export class ApplyCommand extends BaseCommand {
       }
 
       try {
-        const result = await this.codeTransformer.transformJavaScript(file, [
-          'simplify-conditionals',
-        ]);
+        // Use AST transformer for TypeScript/JavaScript files
+        const result = await this.astTransformer.transformCode(file, ['simplify-conditionals']);
 
         if (result.success && result.transformedCode && result.changes.length > 0) {
           changes.push(`${path.basename(file)}: ${result.changes.length} conditionals simplified`);
@@ -337,9 +361,16 @@ export class ApplyCommand extends BaseCommand {
             }
           } else {
             result.changes.forEach(change => {
-              changes.push(`  - ${change.description}`);
+              changes.push(`  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`);
             });
           }
+        }
+
+        // Log diagnostics if any
+        if (result.diagnostics && result.diagnostics.length > 0) {
+          result.diagnostics.forEach(diagnostic => {
+            this.logger.debug('Transformation diagnostic', { file, diagnostic });
+          });
         }
       } catch (error) {
         this.logger.warn('Failed to process file for conditional simplification', { file });

@@ -1,12 +1,9 @@
 import { Command } from 'commander';
-import {
-  Logger,
-  SuggestionEngine,
-  SuggestionEngineOptions,
-  ASTService,
-  CoverageService,
-  ProjectAnalyzer,
-} from '@refactogent/core';
+import { Logger } from '../utils/logger.js';
+import { SuggestionEngine, SuggestionEngineOptions } from '../refactoring/suggestion-engine.js';
+import { ASTService } from '../analysis/ast-service.js';
+import { CoverageService } from '../analysis/coverage-service.js';
+import { ProjectAnalyzer } from '../utils/project.js';
 import chalk from 'chalk';
 
 // Constants

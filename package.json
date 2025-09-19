@@ -1,46 +1,40 @@
 {
   "name": "refactogent",
   "version": "0.1.0",
-  "description": "Safe, incremental code refactoring tools and platform",
-  "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "type": "module",
+  "description": "AI-powered refactoring agent for JavaScript and TypeScript projects",
+  "main": "packages/cli/dist/index.js",
+  "bin": {
+    "refactogent": "packages/cli/dist/index.js"
+  },
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces",
+    "dev": "npm run dev --workspaces",
     "lint": "npm run lint --workspaces",
-    "clean": "npm run clean --workspaces && rm -rf node_modules",
-    "check": "npm run check --workspaces",
-    "dev:cli": "npm run dev --workspace=packages/cli",
-    "publish:cli": "npm publish --workspace=packages/cli",
-    "publish:core": "npm publish --workspace=packages/core",
-    "prepare": "husky"
+    "format": "npm run format --workspaces",
+    "clean": "npm run clean --workspaces",
+    "prepare": "husky install"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "keywords": [
     "refactoring",
-    "cli",
-    "code-quality",
-    "ast",
-    "developer-tools",
-    "monorepo"
+    "javascript",
+    "typescript",
+    "ai",
+    "automation",
+    "code-quality"
   ],
-  "author": "Refactogent Contributors",
+  "author": "Refactogent Team",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/khaliqgant/refactogent.git"
-  },
-  "bugs": {
-    "url": "https://github.com/khaliqgant/refactogent/issues"
-  },
-  "homepage": "https://github.com/khaliqgant/refactogent#readme",
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
-  },
   "devDependencies": {
-    "husky": "^9.1.7",
-    "typescript": "^5.4.0"
+    "@types/node": "^20.0.0",
+    "husky": "^8.0.3",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

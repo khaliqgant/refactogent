@@ -93,19 +93,34 @@ export class SimpleTransformer {
     const changes: CodeChange[] = [];
     let transformedCode = code;
 
-    // Find magic numbers (simple regex approach)
-    const magicNumbers = code.match(/\b(100|50|200|404|500)\b/g);
-    if (magicNumbers && magicNumbers.length > 0) {
+    // Find magic numbers that are NOT inside string literals
+    const magicNumbers: string[] = [];
+    const numberPattern = /\b(100|50|200|404|500)\b/g;
+    let match;
+    
+    while ((match = numberPattern.exec(code)) !== null) {
+      const matchIndex = match.index;
+      const beforeMatch = code.substring(0, matchIndex);
+      
+      // Count quotes before this match to determine if we're inside a string
+      const singleQuotes = (beforeMatch.match(/'/g) || []).length;
+      const doubleQuotes = (beforeMatch.match(/"/g) || []).length;
+      const backticks = (beforeMatch.match(/`/g) || []).length;
+      
+      // If we have an odd number of quotes, we're inside a string literal
+      const insideString = (singleQuotes % 2 === 1) || (doubleQuotes % 2 === 1) || (backticks % 2 === 1);
+      
+      if (!insideString) {
+        magicNumbers.push(match[1]);
+      }
+    }
+
+    if (magicNumbers.length > 0) {
       const uniqueNumbers = [...new Set(magicNumbers)];
 
-      // Add constants at the top
-      const constants = uniqueNumbers.map(num => `const CONSTANT_${num} = ${num};`).join('\n');
-      transformedCode = constants + '\n\n' + transformedCode;
-
-      // Replace occurrences
+      // Replace occurrences only outside of string literals first
       uniqueNumbers.forEach(num => {
-        const regex = new RegExp(`\\b${num}\\b`, 'g');
-        transformedCode = transformedCode.replace(regex, `CONSTANT_${num}`);
+        transformedCode = this.replaceNumberOutsideStrings(transformedCode, num, `CONSTANT_${num}`);
 
         changes.push({
           type: 'extract-constant',
@@ -114,9 +129,59 @@ export class SimpleTransformer {
           after: `CONSTANT_${num}`,
         });
       });
+
+      // Add constants at the top after replacements
+      const constants = uniqueNumbers.map(num => `const CONSTANT_${num} = ${num};`).join('\n');
+      transformedCode = constants + '\n\n' + transformedCode;
     }
 
     return { code: transformedCode, changes };
+  }
+
+  /**
+   * Replace a number with a constant name, but only outside of string literals
+   */
+  private replaceNumberOutsideStrings(code: string, number: string, replacement: string): string {
+    let result = '';
+    let i = 0;
+    let insideString = false;
+    let stringChar = '';
+    
+    while (i < code.length) {
+      const char = code[i];
+      
+      // Track string boundaries
+      if (!insideString && (char === '"' || char === "'" || char === '`')) {
+        insideString = true;
+        stringChar = char;
+        result += char;
+        i++;
+        continue;
+      } else if (insideString && char === stringChar && code[i - 1] !== '\\') {
+        insideString = false;
+        stringChar = '';
+        result += char;
+        i++;
+        continue;
+      }
+      
+      // If we're not inside a string, check for the number pattern
+      if (!insideString) {
+        const remaining = code.substring(i);
+        const numberRegex = new RegExp(`^\\b${number}\\b`);
+        
+        if (numberRegex.test(remaining)) {
+          result += replacement;
+          i += number.length;
+          continue;
+        }
+      }
+      
+      result += char;
+      i++;
+    }
+    
+    return result;
   }
 
   /**
@@ -127,27 +192,76 @@ export class SimpleTransformer {
     let transformedCode = code;
 
     const namingImprovements = [
-      { from: /\btemp\b/g, to: 'temporary' },
-      { from: /\btmp\b/g, to: 'temporary' },
-      { from: /\bdata\b/g, to: 'responseData' },
-      { from: /\binfo\b/g, to: 'information' },
-      { from: /\bobj\b/g, to: 'object' },
-      { from: /\barr\b/g, to: 'array' },
+      { from: 'temp', to: 'temporary' },
+      { from: 'tmp', to: 'temporary' },
+      { from: 'data', to: 'responseData' },
+      { from: 'info', to: 'information' },
+      { from: 'obj', to: 'object' },
+      { from: 'arr', to: 'array' },
     ];
 
     namingImprovements.forEach(({ from, to }) => {
-      if (from.test(code)) {
-        transformedCode = transformedCode.replace(from, to);
+      // Only replace if the word appears as a standalone identifier (not in strings)
+      const wordRegex = new RegExp(`\\b${from}\\b`, 'g');
+      if (wordRegex.test(code)) {
+        // Use the same string-aware replacement logic
+        transformedCode = this.replaceWordOutsideStrings(transformedCode, from, to);
         changes.push({
           type: 'improve-naming',
-          description: `Improved variable naming: ${from.source} → ${to}`,
-          before: from.source,
+          description: `Improved variable naming: ${from} → ${to}`,
+          before: from,
           after: to,
         });
       }
     });
 
     return { code: transformedCode, changes };
+  }
+
+  /**
+   * Replace a word with another word, but only outside of string literals
+   */
+  private replaceWordOutsideStrings(code: string, word: string, replacement: string): string {
+    let result = '';
+    let i = 0;
+    let insideString = false;
+    let stringChar = '';
+    
+    while (i < code.length) {
+      const char = code[i];
+      
+      // Track string boundaries
+      if (!insideString && (char === '"' || char === "'" || char === '`')) {
+        insideString = true;
+        stringChar = char;
+        result += char;
+        i++;
+        continue;
+      } else if (insideString && char === stringChar && code[i - 1] !== '\\') {
+        insideString = false;
+        stringChar = '';
+        result += char;
+        i++;
+        continue;
+      }
+      
+      // If we're not inside a string, check for the word pattern
+      if (!insideString) {
+        const remaining = code.substring(i);
+        const wordRegex = new RegExp(`^\\b${word}\\b`);
+        
+        if (wordRegex.test(remaining)) {
+          result += replacement;
+          i += word.length;
+          continue;
+        }
+      }
+      
+      result += char;
+      i++;
+    }
+    
+    return result;
   }
 
   /**

@@ -6,7 +6,7 @@ Safe, incremental code refactoring tools and platform.
 
 ```bash
 # Install the CLI
-npm install -g @refactogent/cli
+npm install -g refactogent
 
 # Analyze your project
 refactogent refactor-suggest
@@ -19,11 +19,11 @@ refactogent analyze
 
 This is a monorepo containing multiple packages:
 
-### [@refactogent/cli](./packages/cli)
+### [refactogent](./packages/cli)
 Command-line interface for refactoring analysis and suggestions.
 
 ```bash
-npm install -g @refactogent/cli
+npm install -g refactogent
 ```
 
 ### [@refactogent/core](./packages/core) *(Coming Soon)*

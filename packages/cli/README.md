@@ -1,11 +1,11 @@
-# @refactogent/cli
+# refactogent
 
 Safe, incremental code refactoring assistant CLI tool.
 
 ## Installation
 
 ```bash
-npm install -g @refactogent/cli
+npm install -g refactogent
 ```
 
 ## Usage
