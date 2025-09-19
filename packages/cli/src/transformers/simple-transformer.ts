@@ -97,19 +97,19 @@ export class SimpleTransformer {
     const magicNumbers: string[] = [];
     const numberPattern = /\b(100|50|200|404|500)\b/g;
     let match;
-    
+
     while ((match = numberPattern.exec(code)) !== null) {
       const matchIndex = match.index;
       const beforeMatch = code.substring(0, matchIndex);
-      
+
       // Count quotes before this match to determine if we're inside a string
       const singleQuotes = (beforeMatch.match(/'/g) || []).length;
       const doubleQuotes = (beforeMatch.match(/"/g) || []).length;
       const backticks = (beforeMatch.match(/`/g) || []).length;
-      
+
       // If we have an odd number of quotes, we're inside a string literal
-      const insideString = (singleQuotes % 2 === 1) || (doubleQuotes % 2 === 1) || (backticks % 2 === 1);
-      
+      const insideString = singleQuotes % 2 === 1 || doubleQuotes % 2 === 1 || backticks % 2 === 1;
+
       if (!insideString) {
         magicNumbers.push(match[1]);
       }
@@ -146,10 +146,10 @@ export class SimpleTransformer {
     let i = 0;
     let insideString = false;
     let stringChar = '';
-    
+
     while (i < code.length) {
       const char = code[i];
-      
+
       // Track string boundaries
       if (!insideString && (char === '"' || char === "'" || char === '`')) {
         insideString = true;
@@ -164,23 +164,23 @@ export class SimpleTransformer {
         i++;
         continue;
       }
-      
+
       // If we're not inside a string, check for the number pattern
       if (!insideString) {
         const remaining = code.substring(i);
         const numberRegex = new RegExp(`^\\b${number}\\b`);
-        
+
         if (numberRegex.test(remaining)) {
           result += replacement;
           i += number.length;
           continue;
         }
       }
-      
+
       result += char;
       i++;
     }
-    
+
     return result;
   }
 
@@ -226,10 +226,10 @@ export class SimpleTransformer {
     let i = 0;
     let insideString = false;
     let stringChar = '';
-    
+
     while (i < code.length) {
       const char = code[i];
-      
+
       // Track string boundaries
       if (!insideString && (char === '"' || char === "'" || char === '`')) {
         insideString = true;
@@ -244,23 +244,23 @@ export class SimpleTransformer {
         i++;
         continue;
       }
-      
+
       // If we're not inside a string, check for the word pattern
       if (!insideString) {
         const remaining = code.substring(i);
         const wordRegex = new RegExp(`^\\b${word}\\b`);
-        
+
         if (wordRegex.test(remaining)) {
           result += replacement;
           i += word.length;
           continue;
         }
       }
-      
+
       result += char;
       i++;
     }
-    
+
     return result;
   }
 

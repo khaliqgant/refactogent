@@ -128,7 +128,9 @@ export class ASTTransformer {
           const ruleChanges = rule.apply(context);
           changes.push(...ruleChanges);
         } catch (error) {
-          diagnostics.push(`Failed to apply rule ${transformation}: ${error instanceof Error ? error.message : String(error)}`);
+          diagnostics.push(
+            `Failed to apply rule ${transformation}: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       } else {
         diagnostics.push(`Unknown transformation: ${transformation}`);
@@ -204,7 +206,9 @@ export class ASTTransformer {
             const ruleChanges = this.applyBabelRule(ast, originalCode, rule);
             changes.push(...ruleChanges);
           } catch (error) {
-            diagnostics.push(`Failed to apply rule ${transformation}: ${error instanceof Error ? error.message : String(error)}`);
+            diagnostics.push(
+              `Failed to apply rule ${transformation}: ${error instanceof Error ? error.message : String(error)}`
+            );
           }
         } else {
           diagnostics.push(`Unknown transformation: ${transformation}`);
@@ -244,13 +248,17 @@ export class ASTTransformer {
   /**
    * Apply a refactoring rule using Babel AST
    */
-  private applyBabelRule(ast: t.File, originalCode: string, rule: RefactoringRule): ASTCodeChange[] {
+  private applyBabelRule(
+    ast: t.File,
+    originalCode: string,
+    rule: RefactoringRule
+  ): ASTCodeChange[] {
     const changes: ASTCodeChange[] = [];
     const lines = originalCode.split('\n');
 
     // Handle both default and named exports from Babel traverse
     const traverseFunction = typeof traverse === 'function' ? traverse : (traverse as any).default;
-    
+
     traverseFunction(ast, {
       // Extract constants from numeric literals
       NumericLiteral(path: any) {
@@ -322,7 +330,7 @@ export class ASTTransformer {
       BinaryExpression(path: any) {
         if (rule.name === 'simplify-conditionals') {
           const { left, operator, right } = path.node;
-          
+
           // Simplify === true
           if (operator === '===' && t.isBooleanLiteral(right) && right.value === true) {
             const loc = path.node.loc;
@@ -337,7 +345,9 @@ export class ASTTransformer {
                   endColumn: loc.end.column,
                 },
                 before: `${(generate as any).default ? (generate as any).default(left).code : (generate as any)(left).code} === true`,
-                after: (generate as any).default ? (generate as any).default(left).code : (generate as any)(left).code,
+                after: (generate as any).default
+                  ? (generate as any).default(left).code
+                  : (generate as any)(left).code,
                 confidence: 95,
                 riskLevel: 'low',
               });
@@ -383,12 +393,12 @@ export class ASTTransformer {
     // In a real implementation, you'd use ts-morph's transformation APIs
     const text = sourceFile.getFullText();
     const lines = text.split('\n');
-    
+
     if (change.location.line <= lines.length) {
       const line = lines[change.location.line - 1];
       const newLine = line.replace(change.before, change.after);
       lines[change.location.line - 1] = newLine;
-      
+
       sourceFile.replaceWithText(lines.join('\n'));
     }
   }
@@ -403,7 +413,7 @@ export class ASTTransformer {
       description: 'Extract magic numbers and strings to named constants',
       category: 'maintainability',
       riskLevel: 'low',
-      apply: (context) => this.extractConstants(context),
+      apply: context => this.extractConstants(context),
     });
 
     // Improve naming rule
@@ -412,7 +422,7 @@ export class ASTTransformer {
       description: 'Improve variable and function naming consistency',
       category: 'naming',
       riskLevel: 'medium',
-      apply: (context) => this.improveNaming(context),
+      apply: context => this.improveNaming(context),
     });
 
     // Simplify conditionals rule
@@ -421,7 +431,7 @@ export class ASTTransformer {
       description: 'Simplify complex conditional expressions',
       category: 'maintainability',
       riskLevel: 'low',
-      apply: (context) => this.simplifyConditionals(context),
+      apply: context => this.simplifyConditionals(context),
     });
 
     // Remove unused imports rule
@@ -430,7 +440,7 @@ export class ASTTransformer {
       description: 'Remove unused import statements',
       category: 'maintainability',
       riskLevel: 'low',
-      apply: (context) => this.removeUnusedImports(context),
+      apply: context => this.removeUnusedImports(context),
     });
   }
 
@@ -442,7 +452,7 @@ export class ASTTransformer {
     const { sourceFile } = context;
 
     // Find numeric literals that should be extracted
-    sourceFile.forEachDescendant((node) => {
+    sourceFile.forEachDescendant(node => {
       if (Node.isNumericLiteral(node)) {
         const value = node.getLiteralValue();
         if ([50, 100, 200, 404, 500].includes(value)) {
@@ -485,7 +495,7 @@ export class ASTTransformer {
       arr: 'array',
     };
 
-    sourceFile.forEachDescendant((node) => {
+    sourceFile.forEachDescendant(node => {
       if (Node.isIdentifier(node)) {
         const name = node.getText();
         if (improvements[name]) {
@@ -518,14 +528,16 @@ export class ASTTransformer {
     const changes: ASTCodeChange[] = [];
     const { sourceFile } = context;
 
-    sourceFile.forEachDescendant((node) => {
+    sourceFile.forEachDescendant(node => {
       if (Node.isBinaryExpression(node)) {
         const operator = node.getOperatorToken();
         const right = node.getRight();
 
         // Simplify === true
-        if (operator.getKind() === SyntaxKind.EqualsEqualsEqualsToken && 
-            right.getKind() === SyntaxKind.TrueKeyword) {
+        if (
+          operator.getKind() === SyntaxKind.EqualsEqualsEqualsToken &&
+          right.getKind() === SyntaxKind.TrueKeyword
+        ) {
           const start = node.getStart();
           const pos = sourceFile.getLineAndColumnAtPos(start);
           const left = node.getLeft();
@@ -545,8 +557,10 @@ export class ASTTransformer {
         }
 
         // Simplify === false
-        if (operator.getKind() === SyntaxKind.EqualsEqualsEqualsToken && 
-            right.getKind() === SyntaxKind.FalseKeyword) {
+        if (
+          operator.getKind() === SyntaxKind.EqualsEqualsEqualsToken &&
+          right.getKind() === SyntaxKind.FalseKeyword
+        ) {
           const start = node.getStart();
           const pos = sourceFile.getLineAndColumnAtPos(start);
           const left = node.getLeft();
@@ -578,14 +592,15 @@ export class ASTTransformer {
     const { sourceFile } = context;
 
     const imports = sourceFile.getImportDeclarations();
-    
+
     for (const importDecl of imports) {
       const namedImports = importDecl.getNamedImports();
       const unusedImports: string[] = [];
 
       for (const namedImport of namedImports) {
         const name = namedImport.getName();
-        const references = sourceFile.getDescendantsOfKind(SyntaxKind.Identifier)
+        const references = sourceFile
+          .getDescendantsOfKind(SyntaxKind.Identifier)
           .filter(id => id.getText() === name && id !== namedImport.getNameNode());
 
         if (references.length === 0) {

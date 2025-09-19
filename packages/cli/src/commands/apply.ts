@@ -2,6 +2,7 @@ import { BaseCommand } from './base.js';
 import { CommandResult } from '../types/index.js';
 import { SimpleTransformer, TransformationResult } from '../transformers/simple-transformer.js';
 import { ASTTransformer, ASTTransformationResult } from '../transformers/ast-transformer.js';
+import { SafetyAnalyzer } from '../analysis/safety-analyzer.js';
 import { FileManager } from '../utils/file-manager.js';
 import fs from 'fs';
 import path from 'path';
@@ -16,12 +17,14 @@ interface ApplyOptions {
 export class ApplyCommand extends BaseCommand {
   private codeTransformer: SimpleTransformer;
   private astTransformer: ASTTransformer;
+  private safetyAnalyzer: SafetyAnalyzer;
   private fileManager: FileManager;
 
   constructor(logger: any) {
     super(logger);
     this.codeTransformer = new SimpleTransformer(logger);
     this.astTransformer = new ASTTransformer(logger);
+    this.safetyAnalyzer = new SafetyAnalyzer(logger);
     this.fileManager = new FileManager(logger);
   }
 
@@ -179,6 +182,35 @@ export class ApplyCommand extends BaseCommand {
         continue;
       }
 
+      // Check safety score before applying changes
+      if (!isDryRun) {
+        try {
+          const safetyScore = await this.safetyAnalyzer.calculateSafetyScore(file, {
+            includeTestCoverage: true,
+            projectRoot: projectInfo.path,
+          });
+
+          if (safetyScore.overall < 60) {
+            this.logger.warn('Skipping file with low safety score', { 
+              file: path.basename(file), 
+              score: safetyScore.overall,
+              recommendations: safetyScore.recommendations.length 
+            });
+            changes.push(`⚠️ Skipped ${path.basename(file)} (safety score: ${safetyScore.overall}/100)`);
+            continue;
+          }
+
+          if (safetyScore.overall < 80) {
+            this.logger.info('Processing file with medium safety score', { 
+              file: path.basename(file), 
+              score: safetyScore.overall 
+            });
+          }
+        } catch (error) {
+          this.logger.debug('Safety analysis failed, proceeding with caution', { file, error });
+        }
+      }
+
       try {
         // Use AST transformer for TypeScript/JavaScript files
         const result = await this.astTransformer.transformCode(file, ['extract-constants']);
@@ -194,7 +226,9 @@ export class ApplyCommand extends BaseCommand {
             }
           } else {
             result.changes.forEach(change => {
-              changes.push(`  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`);
+              changes.push(
+                `  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`
+              );
             });
           }
         }
@@ -234,6 +268,27 @@ export class ApplyCommand extends BaseCommand {
         continue;
       }
 
+      // Check safety score before applying changes
+      if (!isDryRun) {
+        try {
+          const safetyScore = await this.safetyAnalyzer.calculateSafetyScore(file, {
+            includeTestCoverage: true,
+            projectRoot: projectInfo.path,
+          });
+
+          if (safetyScore.overall < 60) {
+            this.logger.warn('Skipping file with low safety score', { 
+              file: path.basename(file), 
+              score: safetyScore.overall 
+            });
+            changes.push(`⚠️ Skipped ${path.basename(file)} (safety score: ${safetyScore.overall}/100)`);
+            continue;
+          }
+        } catch (error) {
+          this.logger.debug('Safety analysis failed, proceeding with caution', { file, error });
+        }
+      }
+
       try {
         // Use AST transformer for TypeScript/JavaScript files
         const result = await this.astTransformer.transformCode(file, ['improve-naming']);
@@ -249,7 +304,9 @@ export class ApplyCommand extends BaseCommand {
             }
           } else {
             result.changes.forEach(change => {
-              changes.push(`  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`);
+              changes.push(
+                `  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`
+              );
             });
           }
         }
@@ -305,7 +362,9 @@ export class ApplyCommand extends BaseCommand {
               }
             } else {
               result.changes.forEach(change => {
-                changes.push(`  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`);
+                changes.push(
+                  `  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`
+                );
               });
             }
           }
@@ -361,7 +420,9 @@ export class ApplyCommand extends BaseCommand {
             }
           } else {
             result.changes.forEach(change => {
-              changes.push(`  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`);
+              changes.push(
+                `  - ${change.description} (confidence: ${change.confidence}%, risk: ${change.riskLevel})`
+              );
             });
           }
         }

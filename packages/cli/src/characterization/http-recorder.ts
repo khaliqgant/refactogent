@@ -1,795 +1,709 @@
+import { chromium, Browser, Page, BrowserContext, Route } from 'playwright';
+import fs from 'fs';
+import path from 'path';
 import { Logger } from '../utils/logger.js';
-import { APIEndpoint } from '../analysis/api-surface-detector.js';
-import * as fs from 'fs';
-import * as path from 'path';
-
-export interface HTTPRecording {
-  endpoint: APIEndpoint;
-  testCases: HTTPTestCase[];
-  metadata: RecordingMetadata;
-}
-
-export interface HTTPTestCase {
-  id: string;
-  name: string;
-  request: HTTPRequest;
-  response: HTTPResponse;
-  timestamp: Date;
-  duration: number;
-  environment: TestEnvironment;
-}
 
 export interface HTTPRequest {
   method: string;
   url: string;
-  path: string;
   headers: Record<string, string>;
-  query: Record<string, string>;
-  body?: any;
-  cookies?: Record<string, string>;
-  auth?: AuthInfo;
+  body?: string;
+  timestamp: number;
 }
 
 export interface HTTPResponse {
   status: number;
   statusText: string;
   headers: Record<string, string>;
-  body: any;
-  cookies?: Record<string, string>;
+  body: string;
+  timestamp: number;
   duration: number;
 }
 
-export interface AuthInfo {
-  type: 'bearer' | 'basic' | 'cookie' | 'custom';
-  token?: string;
-  username?: string;
-  password?: string;
-  customHeaders?: Record<string, string>;
-}
-
-export interface TestEnvironment {
-  baseUrl: string;
-  environment: 'development' | 'staging' | 'production' | 'test';
-  variables: Record<string, string>;
-  setup?: string[];
-  teardown?: string[];
-}
-
-export interface RecordingMetadata {
-  projectPath: string;
-  recordingDate: Date;
-  framework: string;
-  version: string;
-  totalRequests: number;
-  uniqueEndpoints: number;
-  recordingDuration: number;
-  configuration: RecordingConfig;
-}
-
-export interface RecordingConfig {
-  maxRequestsPerEndpoint: number;
-  timeout: number;
-  followRedirects: boolean;
-  ignoreDynamicFields: string[];
-  toleranceConfig: ToleranceConfig;
-  authConfig?: AuthConfig;
-}
-
-export interface ToleranceConfig {
-  timestamps: boolean;
-  uuids: boolean;
-  randomValues: boolean;
-  customPatterns: RegExp[];
-  numericTolerance: number;
-}
-
-export interface AuthConfig {
-  type: 'bearer' | 'basic' | 'cookie' | 'custom';
-  credentials: Record<string, string>;
-  loginEndpoint?: string;
-  refreshEndpoint?: string;
-}
-
-export interface GoldenTest {
+export interface HTTPInteraction {
   id: string;
-  name: string;
-  description: string;
-  endpoint: string;
-  method: string;
   request: HTTPRequest;
-  expectedResponse: HTTPResponse;
-  tolerance: ToleranceConfig;
-  tags: string[];
+  response: HTTPResponse;
+  route: string;
+  endpoint: string;
+}
+
+export interface RecordingSession {
+  id: string;
+  baseUrl: string;
+  startTime: number;
+  endTime?: number;
+  interactions: HTTPInteraction[];
   metadata: {
-    createdAt: Date;
-    lastUpdated: Date;
-    recordedFrom: string;
-    framework: string;
+    userAgent: string;
+    viewport: { width: number; height: number };
+    authentication?: {
+      type: 'bearer' | 'basic' | 'cookie' | 'custom';
+      credentials?: Record<string, string>;
+    };
+  };
+}
+
+export interface RecordingOptions {
+  baseUrl: string;
+  routes?: string[];
+  authentication?: {
+    type: 'bearer' | 'basic' | 'cookie' | 'custom';
+    credentials?: Record<string, string>;
+    loginUrl?: string;
+    loginSelector?: string;
+    usernameSelector?: string;
+    passwordSelector?: string;
+  };
+  headers?: Record<string, string>;
+  timeout?: number;
+  maxInteractions?: number;
+  ignorePatterns?: string[];
+  tolerance?: {
+    ignoreHeaders?: string[];
+    ignoreFields?: string[];
+    timestampFields?: string[];
+    dynamicFields?: string[];
   };
 }
 
 export class HTTPRecorder {
   private logger: Logger;
-  private config: RecordingConfig;
+  private browser?: Browser;
+  private context?: BrowserContext;
+  private page?: Page;
+  private session?: RecordingSession;
+  private interactionCount = 0;
 
-  constructor(logger: Logger, config?: Partial<RecordingConfig>) {
+  constructor(logger: Logger) {
     this.logger = logger;
-    this.config = {
-      maxRequestsPerEndpoint: 5,
-      timeout: 30000,
-      followRedirects: true,
-      ignoreDynamicFields: ['timestamp', 'id', 'createdAt', 'updatedAt'],
-      toleranceConfig: {
-        timestamps: true,
-        uuids: true,
-        randomValues: true,
-        customPatterns: [],
-        numericTolerance: 0.01,
-      },
-      ...config,
-    };
   }
 
   /**
-   * Record HTTP interactions for discovered API endpoints
+   * Start recording HTTP interactions
    */
-  async recordEndpoints(
-    endpoints: APIEndpoint[],
-    environment: TestEnvironment
-  ): Promise<HTTPRecording[]> {
-    this.logger.info('Starting HTTP endpoint recording', {
-      endpointCount: endpoints.length,
-      environment: environment.environment,
+  async startRecording(options: RecordingOptions): Promise<string> {
+    this.logger.info('Starting HTTP recording session', { baseUrl: options.baseUrl });
+
+    // Launch browser
+    this.browser = await chromium.launch({ headless: true });
+    this.context = await this.browser.newContext({
+      userAgent: 'Refactogent-Recorder/1.0',
+      viewport: { width: 1280, height: 720 },
+      extraHTTPHeaders: options.headers || {},
     });
 
-    const recordings: HTTPRecording[] = [];
+    this.page = await this.context.newPage();
 
-    for (const endpoint of endpoints) {
-      if (endpoint.type === 'http') {
-        try {
-          const recording = await this.recordEndpoint(endpoint, environment);
-          recordings.push(recording);
+    // Initialize session
+    const sessionId = `session-${Date.now()}`;
+    this.session = {
+      id: sessionId,
+      baseUrl: options.baseUrl,
+      startTime: Date.now(),
+      interactions: [],
+      metadata: {
+        userAgent: 'Refactogent-Recorder/1.0',
+        viewport: { width: 1280, height: 720 },
+        authentication: options.authentication,
+      },
+    };
 
-          this.logger.info('Recorded endpoint', {
-            endpoint: `${endpoint.method} ${endpoint.path}`,
-            testCases: recording.testCases.length,
-          });
-        } catch (error) {
-          this.logger.warn('Failed to record endpoint', {
-            endpoint: `${endpoint.method} ${endpoint.path}`,
-            error: error instanceof Error ? error.message : String(error),
+    // Set up request/response interception
+    await this.setupInterception(options);
+
+    // Handle authentication if needed
+    if (options.authentication) {
+      await this.handleAuthentication(options.authentication);
+    }
+
+    this.logger.info('HTTP recording session started', { sessionId });
+    return sessionId;
+  }
+
+  /**
+   * Record interactions for specific routes
+   */
+  async recordRoutes(routes: string[], options: { timeout?: number } = {}): Promise<HTTPInteraction[]> {
+    if (!this.page || !this.session) {
+      throw new Error('Recording session not started');
+    }
+
+    const timeout = options.timeout || 30000;
+    const interactions: HTTPInteraction[] = [];
+
+    for (const route of routes) {
+      try {
+        this.logger.info('Recording route', { route });
+
+        const url = new URL(route, this.session.baseUrl).toString();
+        
+        // Navigate to route and wait for network idle
+        await this.page.goto(url, { 
+          waitUntil: 'networkidle',
+          timeout 
+        });
+
+        // Wait a bit for any async operations
+        await this.page.waitForTimeout(1000);
+
+        // Trigger common interactions
+        await this.triggerInteractions();
+
+        this.logger.info('Route recorded successfully', { 
+          route, 
+          interactions: this.session.interactions.length 
+        });
+
+      } catch (error) {
+        this.logger.warn('Failed to record route', { 
+          route, 
+          error: error instanceof Error ? error.message : String(error) 
+        });
+      }
+    }
+
+    return this.session.interactions;
+  }
+
+  /**
+   * Stop recording and return session data
+   */
+  async stopRecording(): Promise<RecordingSession> {
+    if (!this.session) {
+      throw new Error('No recording session active');
+    }
+
+    this.session.endTime = Date.now();
+
+    if (this.browser) {
+      await this.browser.close();
+    }
+
+    this.logger.info('HTTP recording session completed', {
+      sessionId: this.session.id,
+      interactions: this.session.interactions.length,
+      duration: this.session.endTime - this.session.startTime,
+    });
+
+    const completedSession = this.session;
+    this.session = undefined;
+    this.browser = undefined;
+    this.context = undefined;
+    this.page = undefined;
+
+    return completedSession;
+  }
+
+  /**
+   * Generate golden tests from recorded session
+   */
+  generateGoldenTests(
+    session: RecordingSession,
+    options: {
+      outputDir: string;
+      testFramework?: 'jest' | 'mocha' | 'playwright';
+      tolerance?: {
+        ignoreHeaders?: string[];
+        ignoreFields?: string[];
+        timestampFields?: string[];
+        dynamicFields?: string[];
+      };
+    }
+  ): string[] {
+    const { outputDir, testFramework = 'jest', tolerance } = options;
+    const generatedFiles: string[] = [];
+
+    // Ensure output directory exists
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Group interactions by route
+    const routeGroups = this.groupInteractionsByRoute(session.interactions);
+
+    for (const [route, interactions] of Object.entries(routeGroups)) {
+      const testFileName = this.sanitizeFileName(`${route}.characterization.test.js`);
+      const testFilePath = path.join(outputDir, testFileName);
+
+      const testContent = this.generateTestFile(
+        route,
+        interactions,
+        session,
+        testFramework,
+        tolerance
+      );
+
+      fs.writeFileSync(testFilePath, testContent);
+      generatedFiles.push(testFilePath);
+
+      // Generate golden response files
+      interactions.forEach((interaction, index) => {
+        const goldenFileName = this.sanitizeFileName(
+          `${route}.${index}.golden.json`
+        );
+        const goldenFilePath = path.join(outputDir, goldenFileName);
+
+        const goldenData = this.createGoldenResponse(interaction, tolerance);
+        fs.writeFileSync(goldenFilePath, JSON.stringify(goldenData, null, 2));
+        generatedFiles.push(goldenFilePath);
+      });
+    }
+
+    this.logger.info('Generated golden tests', {
+      routes: Object.keys(routeGroups).length,
+      files: generatedFiles.length,
+      outputDir,
+    });
+
+    return generatedFiles;
+  }
+
+  /**
+   * Set up request/response interception
+   */
+  private async setupInterception(options: RecordingOptions): Promise<void> {
+    if (!this.page || !this.session) return;
+
+    await this.page.route('**/*', async (route: Route) => {
+      const request = route.request();
+      const startTime = Date.now();
+
+      // Skip ignored patterns
+      if (options.ignorePatterns?.some(pattern => 
+        new RegExp(pattern).test(request.url())
+      )) {
+        await route.continue();
+        return;
+      }
+
+      // Continue the request and capture response
+      const response = await route.fetch();
+      const endTime = Date.now();
+
+      // Skip non-API requests (images, CSS, etc.)
+      const contentType = response.headers()['content-type'] || '';
+      if (!contentType.includes('application/json') && 
+          !contentType.includes('text/html') &&
+          !contentType.includes('application/xml')) {
+        await route.fulfill({ response });
+        return;
+      }
+
+      try {
+        const body = await response.text();
+        
+        const interaction: HTTPInteraction = {
+          id: `interaction-${this.interactionCount++}`,
+          request: {
+            method: request.method(),
+            url: request.url(),
+            headers: request.headers(),
+            body: request.postData() || undefined,
+            timestamp: startTime,
+          },
+          response: {
+            status: response.status(),
+            statusText: response.statusText(),
+            headers: response.headers(),
+            body,
+            timestamp: endTime,
+            duration: endTime - startTime,
+          },
+          route: this.extractRoute(request.url(), this.session!.baseUrl),
+          endpoint: new URL(request.url()).pathname,
+        };
+
+        this.session!.interactions.push(interaction);
+
+        this.logger.debug('Recorded HTTP interaction', {
+          method: interaction.request.method,
+          url: interaction.request.url,
+          status: interaction.response.status,
+          duration: interaction.response.duration,
+        });
+
+      } catch (error) {
+        this.logger.warn('Failed to record interaction', { 
+          url: request.url(), 
+          error 
+        });
+      }
+
+      await route.fulfill({ response });
+    });
+  }
+
+  /**
+   * Handle authentication
+   */
+  private async handleAuthentication(auth: RecordingOptions['authentication']): Promise<void> {
+    if (!this.page || !auth) return;
+
+    switch (auth.type) {
+      case 'bearer':
+        if (auth.credentials?.token) {
+          await this.context?.setExtraHTTPHeaders({
+            'Authorization': `Bearer ${auth.credentials.token}`,
           });
         }
-      }
+        break;
+
+      case 'basic':
+        if (auth.credentials?.username && auth.credentials?.password) {
+          const credentials = Buffer.from(
+            `${auth.credentials.username}:${auth.credentials.password}`
+          ).toString('base64');
+          await this.context?.setExtraHTTPHeaders({
+            'Authorization': `Basic ${credentials}`,
+          });
+        }
+        break;
+
+      case 'cookie':
+        if (auth.loginUrl && auth.usernameSelector && auth.passwordSelector) {
+          await this.page.goto(auth.loginUrl);
+          await this.page.fill(auth.usernameSelector, auth.credentials?.username || '');
+          await this.page.fill(auth.passwordSelector, auth.credentials?.password || '');
+          
+          if (auth.loginSelector) {
+            await this.page.click(auth.loginSelector);
+            await this.page.waitForNavigation();
+          }
+        }
+        break;
+
+      case 'custom':
+        // Custom authentication logic would be implemented here
+        this.logger.info('Custom authentication not implemented');
+        break;
     }
-
-    this.logger.info('HTTP recording completed', {
-      totalRecordings: recordings.length,
-      totalTestCases: recordings.reduce((sum, r) => sum + r.testCases.length, 0),
-    });
-
-    return recordings;
   }
 
   /**
-   * Record a single HTTP endpoint
+   * Trigger common interactions on the page
    */
-  private async recordEndpoint(
-    endpoint: APIEndpoint,
-    environment: TestEnvironment
-  ): Promise<HTTPRecording> {
-    const testCases: HTTPTestCase[] = [];
-    const startTime = Date.now();
-
-    // Generate test scenarios for the endpoint
-    const scenarios = this.generateTestScenarios(endpoint);
-
-    for (const scenario of scenarios) {
-      try {
-        const testCase = await this.executeRequest(scenario, environment);
-        testCases.push(testCase);
-      } catch (error) {
-        this.logger.warn('Failed to execute test scenario', {
-          scenario: scenario.name,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    const metadata: RecordingMetadata = {
-      projectPath: environment.baseUrl,
-      recordingDate: new Date(),
-      framework: endpoint.framework || 'unknown',
-      version: '1.0.0',
-      totalRequests: testCases.length,
-      uniqueEndpoints: 1,
-      recordingDuration: Date.now() - startTime,
-      configuration: this.config,
-    };
-
-    return {
-      endpoint,
-      testCases,
-      metadata,
-    };
-  }
-
-  /**
-   * Generate test scenarios for an endpoint
-   */
-  private generateTestScenarios(endpoint: APIEndpoint): TestScenario[] {
-    const scenarios: TestScenario[] = [];
-
-    // Basic happy path scenario
-    scenarios.push({
-      name: `${endpoint.method} ${endpoint.path} - Happy Path`,
-      description: 'Basic successful request',
-      request: this.createBasicRequest(endpoint),
-      expectedStatus: 200,
-    });
-
-    // Error scenarios based on method
-    if (endpoint.method === 'GET') {
-      scenarios.push({
-        name: `${endpoint.method} ${endpoint.path} - Not Found`,
-        description: 'Request for non-existent resource',
-        request: this.createNotFoundRequest(endpoint),
-        expectedStatus: 404,
-      });
-    }
-
-    if (['POST', 'PUT', 'PATCH'].includes(endpoint.method || '')) {
-      scenarios.push({
-        name: `${endpoint.method} ${endpoint.path} - Invalid Data`,
-        description: 'Request with invalid payload',
-        request: this.createInvalidDataRequest(endpoint),
-        expectedStatus: 400,
-      });
-    }
-
-    // Authentication scenarios if auth is detected
-    if (this.requiresAuth(endpoint)) {
-      scenarios.push({
-        name: `${endpoint.method} ${endpoint.path} - Unauthorized`,
-        description: 'Request without authentication',
-        request: this.createUnauthenticatedRequest(endpoint),
-        expectedStatus: 401,
-      });
-    }
-
-    return scenarios.slice(0, this.config.maxRequestsPerEndpoint);
-  }
-
-  /**
-   * Execute a test scenario
-   */
-  private async executeRequest(
-    scenario: TestScenario,
-    environment: TestEnvironment
-  ): Promise<HTTPTestCase> {
-    const startTime = Date.now();
-
-    // Build full URL
-    const url = new URL(scenario.request.path, environment.baseUrl);
-
-    // Add query parameters
-    if (scenario.request.query) {
-      Object.entries(scenario.request.query).forEach(([key, value]) => {
-        url.searchParams.set(key, value);
-      });
-    }
-
-    // Prepare fetch options
-    const fetchOptions: RequestInit = {
-      method: scenario.request.method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...scenario.request.headers,
-      },
-    };
-
-    if (scenario.request.body) {
-      fetchOptions.body = JSON.stringify(scenario.request.body);
-    }
+  private async triggerInteractions(): Promise<void> {
+    if (!this.page) return;
 
     try {
-      // Execute request
-      const response = await fetch(url.toString(), fetchOptions);
-      const responseBody = await this.parseResponseBody(response);
-      const duration = Date.now() - startTime;
+      // Click common interactive elements
+      const clickableSelectors = [
+        'button:not([disabled])',
+        'a[href]:not([href="#"])',
+        '[role="button"]',
+        'input[type="submit"]',
+      ];
 
-      // Create test case
-      const testCase: HTTPTestCase = {
-        id: this.generateTestId(scenario),
-        name: scenario.name,
-        request: {
-          method: scenario.request.method,
-          url: url.toString(),
-          path: scenario.request.path,
-          headers: scenario.request.headers || {},
-          query: scenario.request.query || {},
-          body: scenario.request.body,
-        },
-        response: {
-          status: response.status,
-          statusText: response.statusText,
-          headers: this.extractHeaders(response),
-          body: responseBody,
-          duration,
-        },
-        timestamp: new Date(),
-        duration,
-        environment,
-      };
+      for (const selector of clickableSelectors) {
+        const elements = await this.page.$$(selector);
+        for (const element of elements.slice(0, 3)) { // Limit to first 3
+          try {
+            await element.click({ timeout: 1000 });
+            await this.page.waitForTimeout(500);
+          } catch {
+            // Ignore click failures
+          }
+        }
+      }
 
-      return testCase;
+      // Fill common form fields
+      const formSelectors = [
+        'input[type="text"]',
+        'input[type="email"]',
+        'textarea',
+        'select',
+      ];
+
+      for (const selector of formSelectors) {
+        const elements = await this.page.$$(selector);
+        for (const element of elements.slice(0, 2)) { // Limit to first 2
+          try {
+            await element.fill('test-data');
+            await this.page.waitForTimeout(300);
+          } catch {
+            // Ignore fill failures
+          }
+        }
+      }
+
     } catch (error) {
-      // Create test case for failed requests
-      const duration = Date.now() - startTime;
-
-      return {
-        id: this.generateTestId(scenario),
-        name: scenario.name,
-        request: {
-          method: scenario.request.method,
-          url: url.toString(),
-          path: scenario.request.path,
-          headers: scenario.request.headers || {},
-          query: scenario.request.query || {},
-          body: scenario.request.body,
-        },
-        response: {
-          status: 0,
-          statusText: 'Network Error',
-          headers: {},
-          body: { error: error instanceof Error ? error.message : String(error) },
-          duration,
-        },
-        timestamp: new Date(),
-        duration,
-        environment,
-      };
+      this.logger.debug('Error during interaction triggering', { error });
     }
   }
 
   /**
-   * Generate golden tests from recordings
+   * Extract route pattern from URL
    */
-  async generateGoldenTests(recordings: HTTPRecording[]): Promise<GoldenTest[]> {
-    this.logger.info('Generating golden tests from recordings', {
-      recordingCount: recordings.length,
-    });
-
-    const goldenTests: GoldenTest[] = [];
-
-    for (const recording of recordings) {
-      for (const testCase of recording.testCases) {
-        // Skip failed requests for golden tests
-        if (testCase.response.status === 0) continue;
-
-        const goldenTest: GoldenTest = {
-          id: testCase.id,
-          name: testCase.name,
-          description: `Golden test for ${recording.endpoint.method} ${recording.endpoint.path}`,
-          endpoint: recording.endpoint.path || '',
-          method: recording.endpoint.method || 'GET',
-          request: testCase.request,
-          expectedResponse: this.normalizeResponse(testCase.response),
-          tolerance: this.config.toleranceConfig,
-          tags: this.generateTags(recording.endpoint, testCase),
-          metadata: {
-            createdAt: testCase.timestamp,
-            lastUpdated: testCase.timestamp,
-            recordedFrom: recording.metadata.framework,
-            framework: recording.metadata.framework,
-          },
-        };
-
-        goldenTests.push(goldenTest);
-      }
-    }
-
-    this.logger.info('Generated golden tests', { count: goldenTests.length });
-    return goldenTests;
-  }
-
-  /**
-   * Save recordings to files
-   */
-  async saveRecordings(recordings: HTTPRecording[], outputDir: string): Promise<string[]> {
-    const savedFiles: string[] = [];
-
-    // Ensure output directory exists
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    for (const recording of recordings) {
-      const filename = this.generateRecordingFilename(recording.endpoint);
-      const filepath = path.join(outputDir, filename);
-
-      try {
-        fs.writeFileSync(filepath, JSON.stringify(recording, null, 2));
-        savedFiles.push(filepath);
-
-        this.logger.debug('Saved recording', { filepath });
-      } catch (error) {
-        this.logger.warn('Failed to save recording', {
-          filepath,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    return savedFiles;
-  }
-
-  /**
-   * Save golden tests to files
-   */
-  async saveGoldenTests(goldenTests: GoldenTest[], outputDir: string): Promise<string[]> {
-    const savedFiles: string[] = [];
-
-    // Ensure output directory exists
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    // Group tests by endpoint
-    const testsByEndpoint = new Map<string, GoldenTest[]>();
-    goldenTests.forEach(test => {
-      const key = `${test.method}_${test.endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
-      if (!testsByEndpoint.has(key)) {
-        testsByEndpoint.set(key, []);
-      }
-      testsByEndpoint.get(key)!.push(test);
-    });
-
-    // Save each endpoint's tests to a separate file
-    for (const [endpointKey, tests] of testsByEndpoint) {
-      const filename = `${endpointKey}_golden_tests.json`;
-      const filepath = path.join(outputDir, filename);
-
-      try {
-        fs.writeFileSync(filepath, JSON.stringify(tests, null, 2));
-        savedFiles.push(filepath);
-
-        this.logger.debug('Saved golden tests', { filepath, testCount: tests.length });
-      } catch (error) {
-        this.logger.warn('Failed to save golden tests', {
-          filepath,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    return savedFiles;
-  }
-
-  // Helper methods
-  private createBasicRequest(endpoint: APIEndpoint): TestRequest {
-    const request: TestRequest = {
-      method: endpoint.method || 'GET',
-      path: endpoint.path || '/',
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'Refactogent-Recorder/1.0',
-      },
-      query: {},
-    };
-
-    // Add sample data for POST/PUT requests
-    if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
-      request.body = this.generateSamplePayload(endpoint);
-    }
-
-    return request;
-  }
-
-  private createNotFoundRequest(endpoint: APIEndpoint): TestRequest {
-    const request = this.createBasicRequest(endpoint);
-
-    // Modify path to request non-existent resource
-    if (endpoint.path?.includes(':id')) {
-      request.path = endpoint.path.replace(':id', '99999');
-    } else {
-      request.path = (endpoint.path || '/') + '/nonexistent';
-    }
-
-    return request;
-  }
-
-  private createInvalidDataRequest(endpoint: APIEndpoint): TestRequest {
-    const request = this.createBasicRequest(endpoint);
-
-    // Add invalid payload
-    request.body = {
-      invalid: 'data',
-      missingRequired: null,
-      wrongType: 'should_be_number',
-    };
-
-    return request;
-  }
-
-  private createUnauthenticatedRequest(endpoint: APIEndpoint): TestRequest {
-    const request = this.createBasicRequest(endpoint);
-
-    // Remove any auth headers
-    delete request.headers?.['Authorization'];
-    delete request.headers?.['Cookie'];
-
-    return request;
-  }
-
-  private requiresAuth(endpoint: APIEndpoint): boolean {
-    // Simple heuristics to detect if endpoint requires auth
-    const path = endpoint.path || '';
-    const authPaths = ['/api/', '/admin/', '/user/', '/profile/', '/dashboard/'];
-
-    return (
-      authPaths.some(authPath => path.includes(authPath)) ||
-      endpoint.name.toLowerCase().includes('auth') ||
-      endpoint.name.toLowerCase().includes('login') ||
-      endpoint.name.toLowerCase().includes('protected')
-    );
-  }
-
-  private generateSamplePayload(endpoint: APIEndpoint): any {
-    // Generate sample payload based on endpoint
-    const method = endpoint.method || 'GET';
-    const path = endpoint.path || '/';
-
-    if (path.includes('user')) {
-      return {
-        name: 'Test User',
-        email: 'test@example.com',
-        age: 25,
-      };
-    }
-
-    if (path.includes('product')) {
-      return {
-        name: 'Test Product',
-        price: 99.99,
-        category: 'test',
-      };
-    }
-
-    // Generic payload
-    return {
-      data: 'test data',
-      timestamp: new Date().toISOString(),
-      value: 42,
-    };
-  }
-
-  private async parseResponseBody(response: Response): Promise<any> {
-    const contentType = response.headers.get('content-type') || '';
-
+  private extractRoute(url: string, baseUrl: string): string {
     try {
-      if (contentType.includes('application/json')) {
-        return await response.json();
-      } else if (contentType.includes('text/')) {
-        return await response.text();
+      const urlObj = new URL(url);
+      const baseUrlObj = new URL(baseUrl);
+      
+      if (urlObj.origin !== baseUrlObj.origin) {
+        return url; // External URL
+      }
+
+      let pathname = urlObj.pathname;
+      
+      // Replace common dynamic segments with placeholders
+      pathname = pathname.replace(/\/\d+/g, '/:id');
+      pathname = pathname.replace(/\/[a-f0-9-]{36}/g, '/:uuid');
+      pathname = pathname.replace(/\/[a-f0-9]{24}/g, '/:objectId');
+      
+      return pathname;
+    } catch {
+      return url;
+    }
+  }
+
+  /**
+   * Group interactions by route
+   */
+  private groupInteractionsByRoute(interactions: HTTPInteraction[]): Record<string, HTTPInteraction[]> {
+    const groups: Record<string, HTTPInteraction[]> = {};
+    
+    for (const interaction of interactions) {
+      const route = interaction.route;
+      if (!groups[route]) {
+        groups[route] = [];
+      }
+      groups[route].push(interaction);
+    }
+    
+    return groups;
+  }
+
+  /**
+   * Generate test file content
+   */
+  private generateTestFile(
+    route: string,
+    interactions: HTTPInteraction[],
+    session: RecordingSession,
+    framework: string,
+    tolerance?: any
+  ): string {
+    const testName = `Characterization test for ${route}`;
+    
+    if (framework === 'jest') {
+      return this.generateJestTest(testName, route, interactions, session, tolerance);
+    } else if (framework === 'playwright') {
+      return this.generatePlaywrightTest(testName, route, interactions, session, tolerance);
+    }
+    
+    return this.generateJestTest(testName, route, interactions, session, tolerance);
+  }
+
+  /**
+   * Generate Jest test
+   */
+  private generateJestTest(
+    testName: string,
+    route: string,
+    interactions: HTTPInteraction[],
+    session: RecordingSession,
+    tolerance?: any
+  ): string {
+    return `// Generated characterization test for ${route}
+// Generated at: ${new Date().toISOString()}
+
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+
+describe('${testName}', () => {
+  const baseURL = '${session.baseUrl}';
+  
+  beforeAll(() => {
+    // Set up authentication if needed
+    ${session.metadata.authentication ? this.generateAuthSetup(session.metadata.authentication) : '// No authentication required'}
+  });
+
+${interactions.map((interaction, index) => `
+  test('${interaction.request.method} ${interaction.endpoint} - interaction ${index + 1}', async () => {
+    const goldenPath = path.join(__dirname, '${this.sanitizeFileName(`${route}.${index}.golden.json`)}');
+    const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
+    
+    const response = await axios({
+      method: '${interaction.request.method}',
+      url: \`\${baseURL}${interaction.endpoint}\`,
+      ${interaction.request.body ? `data: ${JSON.stringify(JSON.parse(interaction.request.body))},` : ''}
+      headers: ${JSON.stringify(this.filterHeaders(interaction.request.headers))},
+      validateStatus: () => true, // Accept any status code
+    });
+    
+    // Validate response structure
+    expect(response.status).toBe(golden.status);
+    
+    ${tolerance?.ignoreFields ? 
+      `// Compare response body with tolerance for dynamic fields
+    const responseBody = this.normalizeResponse(response.data, ${JSON.stringify(tolerance.ignoreFields)});
+    const goldenBody = this.normalizeResponse(golden.body, ${JSON.stringify(tolerance.ignoreFields)});
+    expect(responseBody).toEqual(goldenBody);` :
+      `// Compare response body exactly
+    expect(response.data).toEqual(golden.body);`
+    }
+  });`).join('\n')}
+
+  // Helper function to normalize responses for comparison
+  function normalizeResponse(data, ignoreFields = []) {
+    if (typeof data !== 'object' || data === null) return data;
+    
+    const normalized = Array.isArray(data) ? [] : {};
+    
+    for (const [key, value] of Object.entries(data)) {
+      if (ignoreFields.includes(key)) {
+        continue; // Skip ignored fields
+      }
+      
+      if (typeof value === 'object' && value !== null) {
+        normalized[key] = normalizeResponse(value, ignoreFields);
       } else {
-        // For binary content, just store metadata
-        return {
-          type: 'binary',
-          contentType,
-          size: response.headers.get('content-length') || 'unknown',
-        };
+        normalized[key] = value;
       }
-    } catch (error) {
-      return {
-        error: 'Failed to parse response body',
-        contentType,
-        rawText: await response.text().catch(() => 'Could not read response'),
-      };
     }
-  }
-
-  private extractHeaders(response: Response): Record<string, string> {
-    const headers: Record<string, string> = {};
-
-    response.headers.forEach((value, key) => {
-      // Skip dynamic headers
-      if (!this.isDynamicHeader(key)) {
-        headers[key] = value;
-      }
-    });
-
-    return headers;
-  }
-
-  private isDynamicHeader(headerName: string): boolean {
-    const dynamicHeaders = [
-      'date',
-      'x-request-id',
-      'x-trace-id',
-      'x-correlation-id',
-      'etag',
-      'last-modified',
-    ];
-
-    return dynamicHeaders.includes(headerName.toLowerCase());
-  }
-
-  private normalizeResponse(response: HTTPResponse): HTTPResponse {
-    const normalized = { ...response };
-
-    // Apply tolerance configuration
-    if (this.config.toleranceConfig.timestamps) {
-      normalized.body = this.normalizeTimestamps(normalized.body);
-    }
-
-    if (this.config.toleranceConfig.uuids) {
-      normalized.body = this.normalizeUUIDs(normalized.body);
-    }
-
-    if (this.config.toleranceConfig.randomValues) {
-      normalized.body = this.normalizeRandomValues(normalized.body);
-    }
-
-    // Apply custom patterns
-    for (const pattern of this.config.toleranceConfig.customPatterns) {
-      normalized.body = this.applyCustomPattern(normalized.body, pattern);
-    }
-
+    
     return normalized;
   }
-
-  private normalizeTimestamps(obj: any): any {
-    if (typeof obj === 'string') {
-      // Replace ISO timestamps with placeholder
-      return obj.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?/g, '{{TIMESTAMP}}');
-    }
-
-    if (Array.isArray(obj)) {
-      return obj.map(item => this.normalizeTimestamps(item));
-    }
-
-    if (obj && typeof obj === 'object') {
-      const normalized: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        if (['createdAt', 'updatedAt', 'timestamp', 'date'].includes(key)) {
-          normalized[key] = '{{TIMESTAMP}}';
-        } else {
-          normalized[key] = this.normalizeTimestamps(value);
-        }
-      }
-      return normalized;
-    }
-
-    return obj;
+});
+`;
   }
 
-  private normalizeUUIDs(obj: any): any {
-    if (typeof obj === 'string') {
-      // Replace UUIDs with placeholder
-      return obj.replace(
-        /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
-        '{{UUID}}'
-      );
-    }
+  /**
+   * Generate Playwright test
+   */
+  private generatePlaywrightTest(
+    testName: string,
+    route: string,
+    interactions: HTTPInteraction[],
+    session: RecordingSession,
+    tolerance?: any
+  ): string {
+    return `// Generated Playwright characterization test for ${route}
+// Generated at: ${new Date().toISOString()}
 
-    if (Array.isArray(obj)) {
-      return obj.map(item => this.normalizeUUIDs(item));
-    }
+import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
-    if (obj && typeof obj === 'object') {
-      const normalized: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        if (['id', 'uuid', 'guid'].includes(key.toLowerCase())) {
-          normalized[key] = '{{UUID}}';
-        } else {
-          normalized[key] = this.normalizeUUIDs(value);
-        }
-      }
-      return normalized;
-    }
+test.describe('${testName}', () => {
+  const baseURL = '${session.baseUrl}';
 
-    return obj;
+${interactions.map((interaction, index) => `
+  test('${interaction.request.method} ${interaction.endpoint} - interaction ${index + 1}', async ({ request }) => {
+    const goldenPath = path.join(__dirname, '${this.sanitizeFileName(`${route}.${index}.golden.json`)}');
+    const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
+    
+    const response = await request.${interaction.request.method.toLowerCase()}(\`\${baseURL}${interaction.endpoint}\`, {
+      ${interaction.request.body ? `data: ${JSON.stringify(JSON.parse(interaction.request.body))},` : ''}
+      headers: ${JSON.stringify(this.filterHeaders(interaction.request.headers))},
+    });
+    
+    expect(response.status()).toBe(golden.status);
+    
+    const responseBody = await response.json();
+    ${tolerance?.ignoreFields ? 
+      `// Compare with tolerance
+    const normalizedResponse = normalizeResponse(responseBody, ${JSON.stringify(tolerance.ignoreFields)});
+    const normalizedGolden = normalizeResponse(golden.body, ${JSON.stringify(tolerance.ignoreFields)});
+    expect(normalizedResponse).toEqual(normalizedGolden);` :
+      `expect(responseBody).toEqual(golden.body);`
+    }
+  });`).join('\n')}
+});
+
+function normalizeResponse(data, ignoreFields = []) {
+  if (typeof data !== 'object' || data === null) return data;
+  
+  const normalized = Array.isArray(data) ? [] : {};
+  
+  for (const [key, value] of Object.entries(data)) {
+    if (ignoreFields.includes(key)) {
+      continue;
+    }
+    
+    if (typeof value === 'object' && value !== null) {
+      normalized[key] = normalizeResponse(value, ignoreFields);
+    } else {
+      normalized[key] = value;
+    }
   }
-
-  private normalizeRandomValues(obj: any): any {
-    if (typeof obj === 'number') {
-      // Normalize random-looking numbers
-      if (obj > 1000000 && obj < 9999999999) {
-        return '{{RANDOM_NUMBER}}';
-      }
-    }
-
-    if (Array.isArray(obj)) {
-      return obj.map(item => this.normalizeRandomValues(item));
-    }
-
-    if (obj && typeof obj === 'object') {
-      const normalized: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        normalized[key] = this.normalizeRandomValues(value);
-      }
-      return normalized;
-    }
-
-    return obj;
-  }
-
-  private applyCustomPattern(obj: any, pattern: RegExp): any {
-    if (typeof obj === 'string') {
-      return obj.replace(pattern, '{{CUSTOM}}');
-    }
-
-    if (Array.isArray(obj)) {
-      return obj.map(item => this.applyCustomPattern(item, pattern));
-    }
-
-    if (obj && typeof obj === 'object') {
-      const normalized: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        normalized[key] = this.applyCustomPattern(value, pattern);
-      }
-      return normalized;
-    }
-
-    return obj;
-  }
-
-  private generateTestId(scenario: TestScenario): string {
-    const timestamp = Date.now();
-    const hash = this.simpleHash(scenario.name);
-    return `test_${hash}_${timestamp}`;
-  }
-
-  private generateRecordingFilename(endpoint: APIEndpoint): string {
-    const method = endpoint.method || 'GET';
-    const path = (endpoint.path || '/').replace(/[^a-zA-Z0-9]/g, '_');
-    return `${method}_${path}_recording.json`;
-  }
-
-  private generateTags(endpoint: APIEndpoint, testCase: HTTPTestCase): string[] {
-    const tags: string[] = [];
-
-    tags.push(endpoint.method?.toLowerCase() || 'get');
-    tags.push(endpoint.framework || 'unknown');
-
-    if (testCase.response.status >= 200 && testCase.response.status < 300) {
-      tags.push('success');
-    } else if (testCase.response.status >= 400) {
-      tags.push('error');
-    }
-
-    if (testCase.request.auth) {
-      tags.push('authenticated');
-    }
-
-    return tags;
-  }
-
-  private simpleHash(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(16);
-  }
+  
+  return normalized;
 }
+`;
+  }
 
-// Supporting interfaces
-interface TestScenario {
-  name: string;
-  description: string;
-  request: TestRequest;
-  expectedStatus: number;
-}
+  /**
+   * Create golden response data
+   */
+  private createGoldenResponse(interaction: HTTPInteraction, tolerance?: any): any {
+    let body = interaction.response.body;
+    
+    try {
+      body = JSON.parse(body);
+    } catch {
+      // Keep as string if not JSON
+    }
 
-interface TestRequest {
-  method: string;
-  path: string;
-  headers?: Record<string, string>;
-  query?: Record<string, string>;
-  body?: any;
-  auth?: AuthInfo;
+    return {
+      status: interaction.response.status,
+      headers: this.filterHeaders(interaction.response.headers),
+      body,
+      metadata: {
+        route: interaction.route,
+        endpoint: interaction.endpoint,
+        method: interaction.request.method,
+        timestamp: interaction.response.timestamp,
+        duration: interaction.response.duration,
+      },
+    };
+  }
+
+  /**
+   * Filter sensitive headers
+   */
+  private filterHeaders(headers: Record<string, string>): Record<string, string> {
+    const filtered: Record<string, string> = {};
+    const sensitiveHeaders = [
+      'authorization',
+      'cookie',
+      'set-cookie',
+      'x-api-key',
+      'x-auth-token',
+    ];
+
+    for (const [key, value] of Object.entries(headers)) {
+      if (!sensitiveHeaders.includes(key.toLowerCase())) {
+        filtered[key] = value;
+      }
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Generate authentication setup code
+   */
+  private generateAuthSetup(auth: any): string {
+    switch (auth.type) {
+      case 'bearer':
+        return `axios.defaults.headers.common['Authorization'] = 'Bearer YOUR_TOKEN_HERE';`;
+      case 'basic':
+        return `axios.defaults.auth = { username: 'YOUR_USERNAME', password: 'YOUR_PASSWORD' };`;
+      default:
+        return '// Custom authentication setup required';
+    }
+  }
+
+  /**
+   * Sanitize filename for filesystem
+   */
+  private sanitizeFileName(filename: string): string {
+    return filename
+      .replace(/[^a-zA-Z0-9.-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+  }
 }

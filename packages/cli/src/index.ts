@@ -15,6 +15,10 @@ import { ASTAnalyzeCommand } from './commands/ast-analyze.js';
 import { createSafetyAnalyzeCommand } from './commands/safety-analyze.js';
 import { createCoverageAnalyzeCommand } from './commands/coverage-analyze.js';
 import { createRefactorSuggestCommand } from './commands/refactor-suggest.js';
+import { createRecordHTTPCommand } from './commands/record-http.js';
+import { createRecordCLICommand } from './commands/record-cli.js';
+import { createRecordLibraryCommand } from './commands/record-library.js';
+import { createValidateTestsCommand } from './commands/validate-tests.js';
 import { CommandContext, RefactoringMode } from './types/index.js';
 
 const program = new Command();
@@ -372,6 +376,18 @@ program.addCommand(createCoverageAnalyzeCommand());
 
 // Refactor Suggest command
 program.addCommand(createRefactorSuggestCommand());
+
+// Record HTTP command
+program.addCommand(createRecordHTTPCommand());
+
+// Record CLI command
+program.addCommand(createRecordCLICommand());
+
+// Record Library command
+program.addCommand(createRecordLibraryCommand());
+
+// Validate Tests command
+program.addCommand(createValidateTestsCommand());
 
 // LSP command (stub for now)
 program

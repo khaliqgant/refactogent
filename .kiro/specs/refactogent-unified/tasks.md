@@ -45,7 +45,7 @@
   - Add dynamic analysis capabilities for runtime API discovery
   - _Requirements: 2.4, 9.3, 1.2_
 
-- [ ] 2.3 Build safety score calculation engine
+- [x] 2.3 Build safety score calculation engine
   - Implement risk assessment based on code complexity, test coverage, and change frequency
   - Create scoring algorithm that considers public API exposure and dependency fan-out
   - Build recommendation system for safe refactoring operations
@@ -61,28 +61,28 @@
 
 ## Phase 3: Characterization Test System
 
-- [ ] 3.1 Build HTTP route characterization test generator
+- [x] 3.1 Build HTTP route characterization test generator
   - Implement request/response recording using Playwright for web applications
   - Create golden test generation with configurable tolerance for dynamic fields
   - Build test execution framework with proper setup/teardown
   - Add support for authentication and session management in tests
   - _Requirements: 1.3, 9.4, 3.1_
 
-- [ ] 3.2 Create CLI command characterization system
+- [x] 3.2 Create CLI command characterization system
   - Implement command execution capture with stdout/stderr recording
   - Build golden test generation for CLI outputs with structural matching
   - Create test framework for CLI applications with proper environment isolation
   - Add support for interactive CLI testing scenarios
   - _Requirements: 1.3, 9.4, 3.1_
 
-- [ ] 3.3 Implement library function characterization testing
+- [x] 3.3 Implement library function characterization testing
   - Build automatic test case generation based on function signatures and usage patterns
   - Create property-based test generation using appropriate libraries (fast-check, Hypothesis, gopter)
   - Implement test execution with comprehensive input/output capture
   - Add test result validation and golden test maintenance
   - _Requirements: 1.3, 3.1, 1.4_
 
-- [ ] 3.4 Create characterization test validation and maintenance system
+- [x] 3.4 Create characterization test validation and maintenance system
   - Build test result comparison with tolerance for non-semantic differences
   - Implement test update workflows for legitimate changes
   - Create test quality assessment and improvement suggestions

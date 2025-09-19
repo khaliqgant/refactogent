@@ -59,8 +59,10 @@
     "@babel/generator": "^7.28.3",
     "@babel/parser": "^7.28.4",
     "@babel/traverse": "^7.28.4",
+    "@playwright/test": "^1.55.0",
     "commander": "^12.1.0",
     "js-yaml": "^4.1.0",
+    "playwright": "^1.55.0",
     "ts-morph": "^20.0.0"
   },
   "devDependencies": {
