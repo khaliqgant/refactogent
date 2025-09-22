@@ -1,5 +1,18 @@
 # Refactogent Unified Implementation - Implementation Plan
 
+## Competitive Advantage: Why RefactoGent > Cursor/Claude
+
+**The key differentiator**: RefactoGent provides **markedly better refactoring quality** than Cursor or Claude by leveraging:
+
+1. **Deterministic Pre-Analysis**: Unlike Cursor/Claude that work with raw code, RefactoGent pre-processes code through AST analysis, dependency mapping, and safety scoring
+2. **Structured Context**: RCP (Refactor Context Package) provides curated, relevant context vs. Cursor's raw file dumps
+3. **Multi-Pass Validation**: LLM output goes through deterministic validators, test execution, and self-critique
+4. **Project-Specific Guardrails**: Enforces project rules, naming conventions, and architectural patterns
+5. **Behavior Preservation**: Characterization tests ensure refactoring doesn't break existing functionality
+6. **Safety-First Approach**: Every change validated through build, test, and semantic equivalence checks
+
+**Result**: RefactoGent delivers production-ready, safe refactors that Cursor/Claude cannot match.
+
 ## Phase 1: Local Test Infrastructure Foundation
 
 - [x] 1.1 Set up enhanced CLI structure with comprehensive command framework
@@ -105,19 +118,79 @@
   - Add validation to prevent naming conflicts and scope issues
   - _Requirements: 2.2, 2.4, 4.1_
 
-- [ ] 4.3 Create function extraction and inlining capabilities
+- [x] 4.3 Create function extraction and inlining capabilities
   - Implement function extraction with proper parameter and return type inference
   - Build function inlining with scope and variable conflict resolution
   - Create call site analysis and update system
   - Add validation to ensure behavior preservation
   - _Requirements: 2.2, 2.3, 2.4_
 
-- [ ] 4.4 Build unified diff generation and application system
+- [x] 4.4 Build unified diff generation and application system
   - Create high-quality diff generation with context and metadata
   - Implement diff application with conflict detection and resolution
   - Build diff validation and preview capabilities
   - Add diff reversal and rollback functionality
   - _Requirements: 2.5, 8.2, 6.1_
+
+## Phase 4.5: LLM Integration Foundation
+
+- [x] 4.5.1 Build Refactor Context Package (RCP) system
+  - Implement RCP compilation with code selection and AST analysis
+  - Create project guardrails extraction from .refactor-agent.yaml
+  - Build testing signals integration with coverage data
+  - Add repo context extraction for naming conventions and patterns
+  - _Requirements: LLM-1, LLM-2, LLM-3_
+
+- [x] 4.5.2 Create LLM task type framework
+  - Implement refactor proposal task with RCP input and patch output
+  - Build test creation/augmentation task with coverage integration
+  - Create validation and self-critique task framework
+  - Add task result normalization and metadata extraction
+  - _Requirements: LLM-4, LLM-5, LLM-6_
+
+- [x] 4.5.3 Build LLM execution flow system
+  - Implement RCP preparation and validation pipeline
+  - Create system prompt generation with guardrails encoding
+  - Build LLM output normalization into patch format
+  - Add multi-pass LLM workflow support (refactor → test → critique)
+  - _Requirements: LLM-7, LLM-8, LLM-9_
+
+- [x] 4.5.4 Create LLM safety and validation gates
+  - Implement deterministic pre-work validation before LLM calls
+  - Build LLM output validation against project guardrails
+  - Create self-critique integration for quality assurance
+  - Add extensible task type framework for future capabilities
+  - _Requirements: LLM-10, LLM-11, LLM-12_
+
+## Phase 4.6: Competitive Advantage Validation
+
+- [ ] 4.6.1 Build head-to-head comparison framework
+  - Create standardized test suite comparing RefactoGent vs Cursor vs Claude
+  - Implement quality metrics: correctness, safety, style consistency, test coverage
+  - Build side-by-side refactoring comparison with before/after analysis
+  - Add automated scoring system for refactoring quality assessment
+  - _Requirements: COMP-1, COMP-2, COMP-3_
+
+- [ ] 4.6.2 Create deterministic pre-analysis showcase
+  - Build AST analysis visualization showing RefactoGent's deep code understanding
+  - Create dependency graph analysis demonstrating impact assessment capabilities
+  - Implement safety scoring visualization showing risk-aware refactoring
+  - Add project pattern recognition showcasing architectural understanding
+  - _Requirements: COMP-4, COMP-5, COMP-6_
+
+- [ ] 4.6.3 Build behavior preservation demonstration
+  - Create characterization test generation showing behavior capture
+  - Implement semantic equivalence checking demonstrating safety validation
+  - Build test coverage analysis showing comprehensive validation
+  - Add regression prevention showcasing deterministic validation
+  - _Requirements: COMP-7, COMP-8, COMP-9_
+
+- [ ] 4.6.4 Create production-readiness validation
+  - Build PR-ready patch generation with proper formatting and metadata
+  - Implement guardrail compliance checking showing project rule enforcement
+  - Create multi-pass validation demonstrating quality assurance
+  - Add self-critique integration showing continuous improvement
+  - _Requirements: COMP-10, COMP-11, COMP-12_
 
 ## Phase 5: Safety Validation System
 
@@ -149,6 +222,13 @@
   - Add validation performance optimization and caching
   - _Requirements: 3.4, 5.4, 8.1_
 
+- [ ] 5.5 Integrate LLM output validation with safety gates
+  - Build LLM output validation against deterministic pre-work
+  - Implement guardrail compliance checking for LLM-generated code
+  - Create LLM self-critique integration with validation pipeline
+  - Add LLM output quality scoring and improvement suggestions
+  - _Requirements: LLM-10, LLM-11, LLM-12, 3.4_
+
 ## Phase 6: Policy and Configuration Engine
 
 - [ ] 6.1 Implement YAML policy configuration system
@@ -178,6 +258,13 @@
   - Create policy compliance monitoring and reporting
   - Add policy optimization and tuning recommendations
   - _Requirements: 5.4, 5.5, 8.2_
+
+- [ ] 6.5 Implement LLM-specific configuration and guardrails
+  - Build .refactor-agent.yaml schema for LLM guardrails
+  - Create LLM model selection and configuration system
+  - Implement LLM prompt template management and versioning
+  - Add LLM output format validation and compliance checking
+  - _Requirements: LLM-1, LLM-2, LLM-3, 5.4_
 
 ## Phase 7: Multi-Language Support Enhancement
 
@@ -239,62 +326,136 @@
   - Add transformation performance monitoring and optimization
   - _Requirements: 2.1, 2.4, 10.3_
 
-## Phase 9: GitHub Integration
+## Phase 9: LLM Integration and Orchestration
 
-- [ ] 9.1 Implement GitHub App authentication and permissions
+- [ ] 9.1 Build LLM provider integration system
+  - Implement OpenAI API integration with proper error handling
+  - Create Anthropic Claude integration with rate limiting
+  - Build local LLM support (Ollama, vLLM) for on-premises deployment
+  - Add LLM provider fallback and load balancing
+  - _Requirements: LLM-7, LLM-8, LLM-9_
+
+- [ ] 9.2 Create LLM prompt engineering framework
+  - Build system prompt template system with guardrail injection
+  - Implement context-aware prompt generation based on RCP
+  - Create prompt versioning and A/B testing capabilities
+  - Add prompt optimization based on success metrics
+  - _Requirements: LLM-4, LLM-5, LLM-6_
+
+- [ ] 9.3 Build LLM output processing and normalization
+  - Implement patch diff extraction from LLM responses
+  - Create metadata extraction and validation system
+  - Build output format standardization across LLM providers
+  - Add LLM response quality scoring and filtering
+  - _Requirements: LLM-10, LLM-11, LLM-12_
+
+- [ ] 9.4 Create LLM workflow orchestration system
+  - Implement multi-pass LLM workflow (refactor → test → critique)
+  - Build LLM task queuing and priority management
+  - Create LLM result aggregation and conflict resolution
+  - Add LLM workflow monitoring and performance optimization
+  - _Requirements: LLM-7, LLM-8, LLM-9_
+
+## Phase 10: GitHub Integration
+
+- [ ] 10.1 Implement GitHub App authentication and permissions
   - Build GitHub App registration and installation workflow
   - Create secure token management and refresh system
   - Implement minimal permission enforcement and validation
   - Add GitHub API rate limiting and error handling
   - _Requirements: 7.1, 7.2, 8.1_
 
-- [ ] 9.2 Create webhook handling and event processing
+- [ ] 10.2 Create webhook handling and event processing
   - Build webhook signature verification and payload validation
   - Implement event routing and processing pipeline
   - Create event-driven refactoring trigger system
   - Add webhook debugging and monitoring capabilities
   - _Requirements: 7.3, 7.4, 8.1_
 
-- [ ] 9.3 Build PR creation and management system
+- [ ] 10.3 Build PR creation and management system
   - Implement automated PR creation with comprehensive descriptions
   - Create PR status check integration and reporting
   - Build PR comment system for progress updates and artifacts
   - Add PR merge automation with safety gate validation
   - _Requirements: 7.2, 7.4, 8.3_
 
-- [ ] 9.4 Create GitHub-specific safety and compliance features
+- [ ] 10.4 Create GitHub-specific safety and compliance features
   - Build CODEOWNERS integration for approval requirements
   - Implement branch protection rule compliance
   - Create GitHub-specific artifact storage and linking
   - Add GitHub security scanning integration
   - _Requirements: 7.4, 8.1, 8.3_
 
-## Phase 10: Production Features and Polish
+- [ ] 10.5 Integrate LLM capabilities with GitHub workflow
+  - Build LLM-triggered PR creation from GitHub events
+  - Create LLM-generated PR descriptions and commit messages
+  - Implement LLM-powered code review and suggestion system
+  - Add LLM integration with GitHub Actions and CI/CD
+  - _Requirements: LLM-7, LLM-8, LLM-9, 7.2, 7.4_
 
-- [ ] 10.1 Build comprehensive IDE extension system
+## Phase 11: Production Features and Polish
+
+- [ ] 11.1 Build comprehensive IDE extension system
   - Create VS Code extension with full feature integration
   - Build JetBrains plugin with IDE-native UI components
   - Implement LSP server for universal IDE support
   - Add IDE-specific debugging and development tools
   - _Requirements: 6.2, 6.3, 6.4_
 
-- [ ] 10.2 Create web-based management interface
+- [ ] 11.2 Create web-based management interface
   - Build web dashboard for repository management and monitoring
   - Create refactoring history and analytics visualization
   - Implement user management and permission system
   - Add configuration management and policy editing interface
   - _Requirements: 8.2, 8.3, 8.4_
 
-- [ ] 10.3 Implement comprehensive monitoring and observability
+- [ ] 11.3 Implement comprehensive monitoring and observability
   - Build structured logging with trace correlation across components
   - Create performance monitoring and alerting system
   - Implement usage analytics and optimization recommendations
   - Add health checks and system status monitoring
   - _Requirements: 8.1, 8.2, 8.4_
 
-- [ ] 10.4 Create production deployment and scaling infrastructure
+- [ ] 11.4 Create production deployment and scaling infrastructure
   - Build containerized deployment with proper resource management
   - Implement horizontal scaling and load balancing
   - Create backup and disaster recovery procedures
   - Add production security hardening and compliance features
   - _Requirements: 8.1, 8.3, 8.4_
+
+- [ ] 11.5 Build LLM-specific production features
+  - Create LLM usage analytics and cost optimization
+  - Implement LLM response caching and performance optimization
+  - Build LLM quality monitoring and drift detection
+  - Add LLM-specific security and compliance features
+  - _Requirements: LLM-7, LLM-8, LLM-9, LLM-10, LLM-11, LLM-12_
+
+## Phase 12: Competitive Advantage Proof Points
+
+- [ ] 12.1 Build comprehensive benchmarking suite
+  - Create standardized refactoring test cases across multiple languages
+  - Implement automated quality scoring: correctness, safety, style, performance
+  - Build side-by-side comparison tool: RefactoGent vs Cursor vs Claude
+  - Add regression testing to ensure RefactoGent maintains quality edge
+  - _Requirements: COMP-1, COMP-2, COMP-3, COMP-4_
+
+- [ ] 12.2 Create competitive advantage demonstrations
+  - Build live demo showing RefactoGent's deterministic pre-analysis
+  - Create visualization of RCP vs raw file context comparison
+  - Implement real-time safety scoring and guardrail enforcement
+  - Add behavior preservation validation with characterization tests
+  - _Requirements: COMP-5, COMP-6, COMP-7, COMP-8_
+
+- [ ] 12.3 Build production-readiness proof points
+  - Create PR-ready patch generation with proper metadata and formatting
+  - Implement multi-pass validation showing quality assurance
+  - Build self-critique integration demonstrating continuous improvement
+  - Add guardrail compliance checking showing project rule enforcement
+  - _Requirements: COMP-9, COMP-10, COMP-11, COMP-12_
+
+- [ ] 12.4 Create market differentiation content
+  - Build case studies showing RefactoGent's superior refactoring quality
+  - Create technical whitepapers explaining deterministic advantages
+  - Implement video demonstrations showing head-to-head comparisons
+  - Add performance metrics proving RefactoGent's competitive edge
+  - _Requirements: COMP-13, COMP-14, COMP-15, COMP-16_

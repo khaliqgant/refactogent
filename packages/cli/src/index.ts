@@ -21,6 +21,10 @@ import { createRecordLibraryCommand } from './commands/record-library.js';
 import { createValidateTestsCommand } from './commands/validate-tests.js';
 import { createTransformCommand } from './commands/transform.js';
 import { createRenameSymbolCommand } from './commands/rename-symbol.js';
+import { createCompareCommand } from './commands/compare.js';
+import { createFunctionRefactorCommand } from './commands/function-refactor.js';
+import { createDiffCommand } from './commands/diff.js';
+import { createLLMRefactorCommand } from './commands/llm-refactor.js';
 import { CommandContext, RefactoringMode } from './types/index.js';
 
 const program = new Command();
@@ -396,6 +400,18 @@ program.addCommand(createTransformCommand());
 
 // Rename Symbol command
 program.addCommand(createRenameSymbolCommand());
+
+// Compare command
+program.addCommand(createCompareCommand());
+
+// Function refactor command
+program.addCommand(createFunctionRefactorCommand());
+
+// Diff command
+program.addCommand(createDiffCommand());
+
+// LLM Refactor command
+program.addCommand(createLLMRefactorCommand());
 
 // LSP command (stub for now)
 program
