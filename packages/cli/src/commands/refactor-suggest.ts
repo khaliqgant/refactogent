@@ -91,7 +91,9 @@ export function createRefactorSuggestCommand(): Command {
       } catch (error) {
         if (options.format === 'json') {
           // For JSON output, write error to stderr and exit with proper JSON
-          console.error(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+          console.error(
+            JSON.stringify({ error: error instanceof Error ? error.message : String(error) })
+          );
           process.exit(1);
         } else {
           logger.error('Failed to generate refactoring suggestions', { error });
@@ -135,7 +137,9 @@ async function executeRefactorSuggest(
   }
 
   // Analyze project
-  const projectAnalyzer = new ProjectAnalyzer(options.format === 'json' ? new Logger(false) : logger);
+  const projectAnalyzer = new ProjectAnalyzer(
+    options.format === 'json' ? new Logger(false) : logger
+  );
   const projectInfo = await projectAnalyzer.analyzeProject(resolvedPath);
 
   // Initialize services with silent logger for JSON output

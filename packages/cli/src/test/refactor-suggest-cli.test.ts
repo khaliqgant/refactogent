@@ -91,7 +91,7 @@ export class TestClass {
   it('should output JSON format when requested', () => {
     let result: string;
     let errorOutput: string = '';
-    
+
     try {
       result = execSync(`node ${cliPath} refactor-suggest ${testProjectDir} --format json`, {
         encoding: 'utf8',
