@@ -89,11 +89,27 @@ export class TestClass {
   });
 
   it('should output JSON format when requested', () => {
-    const result = execSync(`node ${cliPath} refactor-suggest ${testProjectDir} --format json`, {
-      encoding: 'utf8',
-      cwd: path.dirname(cliPath),
-      timeout: 30000,
-    });
+    let result: string;
+    let errorOutput: string = '';
+    
+    try {
+      result = execSync(`node ${cliPath} refactor-suggest ${testProjectDir} --format json`, {
+        encoding: 'utf8',
+        cwd: path.dirname(cliPath),
+        timeout: 30000,
+      });
+    } catch (error: any) {
+      // Capture stderr if command fails
+      errorOutput = error.stderr || error.stdout || error.message || '';
+      result = error.stdout || '';
+    }
+
+    // Debug output
+    console.log('=== DEBUG OUTPUT ===');
+    console.log('Result length:', result.length);
+    console.log('First 200 chars:', result.substring(0, 200));
+    console.log('Error output:', errorOutput);
+    console.log('=== END DEBUG ===');
 
     // Should be valid JSON
     expect(() => JSON.parse(result)).not.toThrow();

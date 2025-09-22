@@ -83,13 +83,20 @@ export function createRefactorSuggestCommand(): Command {
       'Comma-separated list of file patterns or directories to focus on'
     )
     .action(async (path: string, options: RefactorSuggestOptions) => {
-      const logger = new Logger(true);
+      // Suppress logging for JSON output to avoid mixing with JSON
+      const logger = new Logger(options.format !== 'json');
 
       try {
         await executeRefactorSuggest(path, options, logger);
       } catch (error) {
-        logger.error('Failed to generate refactoring suggestions', { error });
-        process.exit(1);
+        if (options.format === 'json') {
+          // For JSON output, write error to stderr and exit with proper JSON
+          console.error(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+          process.exit(1);
+        } else {
+          logger.error('Failed to generate refactoring suggestions', { error });
+          process.exit(1);
+        }
       }
     });
 
@@ -120,23 +127,28 @@ async function executeRefactorSuggest(
     throw new Error(`Cannot access project path: ${resolvedPath}`);
   }
 
-  logger.info('Starting refactoring suggestion analysis', {
-    projectPath: resolvedPath,
-    options,
-  });
+  if (options.format !== 'json') {
+    logger.info('Starting refactoring suggestion analysis', {
+      projectPath: resolvedPath,
+      options,
+    });
+  }
 
   // Analyze project
-  const projectAnalyzer = new ProjectAnalyzer(logger);
+  const projectAnalyzer = new ProjectAnalyzer(options.format === 'json' ? new Logger(false) : logger);
   const projectInfo = await projectAnalyzer.analyzeProject(resolvedPath);
 
-  // Initialize services
-  const astService = new ASTService(logger);
-  // const safetyService = new SafetyService(logger);
-  const coverageService = new CoverageService(logger);
-  const suggestionEngine = new SuggestionEngine(logger);
+  // Initialize services with silent logger for JSON output
+  const serviceLogger = options.format === 'json' ? new Logger(false) : logger;
+  const astService = new ASTService(serviceLogger);
+  // const safetyService = new SafetyService(serviceLogger);
+  const coverageService = new CoverageService(serviceLogger);
+  const suggestionEngine = new SuggestionEngine(serviceLogger);
 
   // Analyze project AST
-  logger.info('Analyzing project structure...');
+  if (options.format !== 'json') {
+    logger.info('Analyzing project structure...');
+  }
   const projectType = projectInfo.type;
   let projectAST;
 
@@ -150,7 +162,9 @@ async function executeRefactorSuggest(
   }
 
   // Calculate safety score (mock for now)
-  logger.info('Calculating safety scores...');
+  if (options.format !== 'json') {
+    logger.info('Calculating safety scores...');
+  }
   const safetyScore = {
     overall: MOCK_SAFETY_SCORES.OVERALL,
     complexity: MOCK_SAFETY_SCORES.COMPLEXITY,
@@ -164,17 +178,21 @@ async function executeRefactorSuggest(
   // Get coverage report (optional)
   let coverageReport;
   try {
-    logger.info('Analyzing test coverage...');
+    if (options.format !== 'json') {
+      logger.info('Analyzing test coverage...');
+    }
     const coverageResult = await coverageService.analyzeCoverageWithIntegration(
       resolvedPath,
       projectType
     );
     coverageReport = coverageResult.report;
   } catch (error) {
-    logger.warn('Could not analyze test coverage', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      projectType,
-    });
+    if (options.format !== 'json') {
+      logger.warn('Could not analyze test coverage', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        projectType,
+      });
+    }
   }
 
   // Validate and configure suggestion engine options
@@ -226,7 +244,9 @@ async function executeRefactorSuggest(
   }
 
   // Generate suggestions
-  logger.info('Generating refactoring suggestions...');
+  if (options.format !== 'json') {
+    logger.info('Generating refactoring suggestions...');
+  }
   const suggestionResult = await suggestionEngine.generateSuggestions(
     firstProjectAST,
     safetyScore,
@@ -237,11 +257,13 @@ async function executeRefactorSuggest(
   // Output results
   await outputResults(suggestionResult, options, logger);
 
-  logger.info('Refactoring suggestion analysis completed', {
-    totalSuggestions: suggestionResult.summary.totalSuggestions,
-    readySuggestions: suggestionResult.summary.readySuggestions,
-    quickWins: suggestionResult.summary.quickWins,
-  });
+  if (options.format !== 'json') {
+    logger.info('Refactoring suggestion analysis completed', {
+      totalSuggestions: suggestionResult.summary.totalSuggestions,
+      readySuggestions: suggestionResult.summary.readySuggestions,
+      quickWins: suggestionResult.summary.quickWins,
+    });
+  }
 }
 
 async function outputResults(
@@ -257,7 +279,7 @@ async function outputResults(
     if (options.output) {
       const fs = await import('fs/promises');
       await fs.writeFile(options.output, output);
-      logger.info(`Results written to ${options.output}`);
+      // Don't log to console when outputting JSON
     } else {
       console.log(output);
     }
