@@ -9,7 +9,7 @@ import { StabilizeCommand } from './commands/stabilize.js';
 import { PlanCommand } from './commands/plan.js';
 import { ApplyCommand } from './commands/apply.js';
 import { GenerateCommand } from './commands/generate.js';
-import { TestCommand } from './commands/test.js';
+import { TestCommand } from './commands/test-command.js';
 import { AnalyzeCommand } from './commands/analyze.js';
 import { ASTAnalyzeCommand } from './commands/ast-analyze.js';
 import { createSafetyAnalyzeCommand } from './commands/safety-analyze.js';
@@ -25,6 +25,7 @@ import { createCompareCommand } from './commands/compare.js';
 import { createFunctionRefactorCommand } from './commands/function-refactor.js';
 import { createDiffCommand } from './commands/diff.js';
 import { createLLMRefactorCommand } from './commands/llm-refactor.js';
+import { createLLMConfigCommand } from './commands/llm-config.js';
 import { CommandContext, RefactoringMode } from './types/index.js';
 
 const program = new Command();
@@ -412,6 +413,9 @@ program.addCommand(createDiffCommand());
 
 // LLM Refactor command
 program.addCommand(createLLMRefactorCommand());
+
+// LLM Config command
+program.addCommand(createLLMConfigCommand());
 
 // LSP command (stub for now)
 program

@@ -11,58 +11,109 @@ describe('PatternDetector', () => {
   let mockSafetyScore: SafetyScore;
 
   beforeEach(() => {
-    logger = new Logger('test');
+    logger = new Logger(true); // Fixed: use boolean instead of string
     patternDetector = new PatternDetector(logger);
 
     // Create mock project AST
     const mockModule: ModuleAST = {
       filePath: 'src/example.ts',
-      language: 'typescript',
-      loc: 100,
-      complexity: 20,
+      relativePath: 'src/example.ts',
+      ast: {
+        id: 'module-1',
+        type: 'module',
+        name: 'example',
+        location: {
+          file: 'src/example.ts',
+          startLine: 1,
+          startColumn: 1,
+          endLine: 100,
+          endColumn: 1,
+        },
+        children: [],
+        metadata: {
+          language: 'typescript',
+          visibility: 'public',
+          isExported: true,
+          isAsync: false,
+          complexity: 20,
+          dependencies: ['lodash', './utils'],
+          annotations: [],
+        },
+      },
+      exports: ['ExampleClass', 'helperFunction'],
       imports: [
-        { source: 'lodash', specifiers: ['map', 'filter'] },
-        { source: './utils', specifiers: ['helper'] },
-        { source: 'unused-lib', specifiers: ['unusedFunction'] },
-      ],
-      exports: [
-        { name: 'ExampleClass', type: 'class' },
-        { name: 'helperFunction', type: 'function' },
-      ],
-      functions: [
         {
-          name: 'complexFunction',
-          complexity: 15,
-          loc: 50,
-          parameters: 8,
-          returnType: 'Promise<Result>',
-          isAsync: true,
-          isExported: true,
+          source: 'lodash',
+          imports: ['map', 'filter'],
+          isDefault: false,
+          isNamespace: false,
+          location: {
+            file: 'src/example.ts',
+            startLine: 1,
+            startColumn: 1,
+            endLine: 1,
+            endColumn: 20,
+          },
+        },
+        {
+          source: './utils',
+          imports: ['helper'],
+          isDefault: false,
+          isNamespace: false,
+          location: {
+            file: 'src/example.ts',
+            startLine: 2,
+            startColumn: 1,
+            endLine: 2,
+            endColumn: 20,
+          },
+        },
+        {
+          source: 'unused-lib',
+          imports: ['unusedFunction'],
+          isDefault: false,
+          isNamespace: false,
+          location: {
+            file: 'src/example.ts',
+            startLine: 3,
+            startColumn: 1,
+            endLine: 3,
+            endColumn: 20,
+          },
         },
       ],
-      classes: [
-        {
-          name: 'ExampleClass',
-          methods: 12,
-          complexity: 25,
-          loc: 80,
-          isExported: true,
-        },
-      ],
-      symbols: [],
-      dependencies: ['lodash', './utils', 'unused-lib'],
+      complexity: 20,
+      loc: 100,
     };
 
     mockProjectAST = {
       projectPath: '/test/project',
+      language: 'typescript',
       modules: [mockModule],
-      languages: ['typescript'],
-      totalFiles: 1,
-      totalLoc: 100,
       dependencies: {
-        production: ['lodash'],
-        development: ['vitest'],
-        peer: [],
+        nodes: [
+          { id: 'node-1', name: 'lodash', type: 'module', filePath: 'node_modules/lodash' },
+          { id: 'node-2', name: 'utils', type: 'module', filePath: 'src/utils' },
+        ],
+        edges: [
+          { from: 'src/example.ts', to: 'lodash', type: 'imports', weight: 1 },
+          { from: 'src/example.ts', to: 'utils', type: 'imports', weight: 1 },
+        ],
+      },
+      exports: {
+        'src/example.ts': ['ExampleClass', 'helperFunction'],
+      },
+      imports: {
+        'src/example.ts': mockModule.imports,
+      },
+      metrics: {
+        totalNodes: 10,
+        totalFiles: 1,
+        averageComplexity: 20,
+        maxComplexity: 25,
+        totalLOC: 100,
+        publicAPICount: 2,
+        circularDependencies: [],
       },
     };
 
@@ -71,46 +122,35 @@ describe('PatternDetector', () => {
       overall: 75,
       complexity: {
         score: 70,
-        details: {
-          averageComplexity: 15,
-          maxComplexity: 25,
-          highComplexityFiles: 1,
-        },
+        weight: 0.25,
+        details: 'Average complexity: 15, Max: 25',
+        riskLevel: 'medium',
       },
       testCoverage: {
         score: 80,
-        details: {
-          linesCovered: 80,
-          totalLines: 100,
-          branchesCovered: 75,
-          totalBranches: 100,
-        },
+        weight: 0.3,
+        details: 'Line coverage: 80% (80/100 lines)',
+        riskLevel: 'low',
       },
       apiExposure: {
         score: 85,
-        details: {
-          publicFunctions: 5,
-          publicClasses: 2,
-          httpRoutes: 0,
-          cliCommands: 0,
-        },
+        weight: 0.2,
+        details: 'API surface: 5 items (0 HTTP endpoints, 2 public APIs)',
+        riskLevel: 'low',
       },
       dependencyRisk: {
         score: 90,
-        details: {
-          totalDependencies: 2,
-          outdatedDependencies: 0,
-          vulnerableDependencies: 0,
-        },
+        weight: 0.15,
+        details: 'Avg fan-out: 2.0, Circular deps: 0, Total nodes: 2',
+        riskLevel: 'low',
       },
       changeFrequency: {
         score: 95,
-        details: {
-          recentChanges: 2,
-          averageChangesPerWeek: 1,
-          hotspotFiles: [],
-        },
+        weight: 0.1,
+        details: 'Avg changes/month: 1.0, High-change files: 0',
+        riskLevel: 'low',
       },
+      recommendations: [],
     };
   });
 
@@ -238,19 +278,28 @@ describe('PatternDetector', () => {
     it('should provide actionable recommendations', async () => {
       const result = await patternDetector.detectOpportunities(mockProjectAST, mockSafetyScore);
 
-      expect(result.recommendations).toHaveLength.greaterThan(0);
-      expect(result.nextSteps).toHaveLength.greaterThan(0);
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      expect(result.nextSteps.length).toBeGreaterThan(0);
       expect(result.nextSteps[0]).toContain('Review the top opportunity');
     });
 
     it('should handle empty project gracefully', async () => {
       const emptyProject: ProjectAST = {
         projectPath: '/empty/project',
+        language: 'typescript',
         modules: [],
-        languages: [],
-        totalFiles: 0,
-        totalLoc: 0,
-        dependencies: { production: [], development: [], peer: [] },
+        dependencies: { nodes: [], edges: [] },
+        exports: {},
+        imports: {},
+        metrics: {
+          totalNodes: 0,
+          totalFiles: 0,
+          averageComplexity: 0,
+          maxComplexity: 0,
+          totalLOC: 0,
+          publicAPICount: 0,
+          circularDependencies: [],
+        },
       };
 
       const result = await patternDetector.detectOpportunities(emptyProject, mockSafetyScore);

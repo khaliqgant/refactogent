@@ -287,10 +287,15 @@ export class SafetyScorer {
 
     // Lower API surface = higher safety (easier to maintain)
     let score = 100;
+    if (apiSurfaceSize > 15) score -= 25; // Penalize for moderate API surface
     if (apiSurfaceSize > 50) score -= 20;
     if (apiSurfaceSize > 100) score -= 20;
     if (apiSurfaceSize > 200) score -= 30;
-    if (apiEndpoints.length > 20) score -= 15; // HTTP endpoints are particularly risky
+    if (apiEndpoints.length > 5) score -= 15; // HTTP endpoints are particularly risky
+    if (apiEndpoints.length > 10) score -= 15;
+    if (apiEndpoints.length > 20) score -= 15;
+    if (publicAPICount > 10) score -= 15;
+    if (publicAPICount > 20) score -= 15;
     if (publicAPICount > 50) score -= 15;
 
     const riskLevel = this.getRiskLevel(score);

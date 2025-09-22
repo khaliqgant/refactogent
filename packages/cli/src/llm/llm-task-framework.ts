@@ -1,5 +1,6 @@
 import { Logger } from '../utils/logger.js';
 import { RefactorContextPackage } from './refactor-context-package.js';
+import { LLMProviderManager } from './llm-provider-manager.js';
 
 export interface LLMTask {
   id: string;
@@ -119,9 +120,11 @@ export interface ValidationCritiqueTask extends LLMTask {
  */
 export class LLMTaskFramework {
   private logger: Logger;
+  private providerManager: LLMProviderManager;
 
   constructor(logger: Logger) {
     this.logger = logger;
+    this.providerManager = new LLMProviderManager(logger);
   }
 
   /**
@@ -355,19 +358,80 @@ export class LLMTaskFramework {
 
   /**
    * Call LLM with prepared input
-   * This would integrate with actual LLM providers (OpenAI, Anthropic, etc.)
+   * This integrates with actual LLM providers (OpenAI, Anthropic, etc.)
    */
   private async callLLM(preparedInput: any, task: LLMTask): Promise<any> {
     this.logger.info('Calling LLM', { taskId: task.id, type: task.type });
 
-    // This is a mock implementation - would integrate with real LLM providers
-    const mockResponse = {
-      content: this.generateMockResponse(task.type),
-      tokensUsed: Math.floor(Math.random() * 1000) + 500,
-      processingTime: Math.floor(Math.random() * 2000) + 1000,
-    };
+    // Get available providers
+    const providers = this.providerManager.listProviders();
+    if (providers.length === 0) {
+      this.logger.warn('No LLM providers configured, using mock response');
+      return this.generateMockResponse(task.type);
+    }
 
-    return mockResponse;
+    // Use the first available provider (could be made configurable)
+    const provider = providers[0];
+    const prompt = this.buildPrompt(preparedInput, task);
+
+    try {
+      const response = await this.providerManager.callLLM(provider, prompt, {
+        maxTokens: 4000,
+        temperature: 0.1,
+      });
+
+      return {
+        content: response.content,
+        tokensUsed: response.tokensUsed,
+        processingTime: response.processingTime,
+        model: response.model,
+        provider: response.provider,
+      };
+    } catch (error) {
+      this.logger.warn('LLM call failed, using mock response', { error });
+      return this.generateMockResponse(task.type);
+    }
+  }
+
+  /**
+   * Build prompt for LLM based on task type and input
+   */
+  private buildPrompt(preparedInput: any, task: LLMTask): string {
+    const basePrompt = `You are RefactoGent, an advanced refactoring assistant.`;
+
+    switch (task.type) {
+      case 'refactor-proposal':
+        return `${basePrompt}
+        
+Task: Generate a refactoring proposal
+Input: ${JSON.stringify(preparedInput, null, 2)}
+
+Generate a production-ready refactoring patch that follows project guardrails and preserves behavior.`;
+
+      case 'test-creation':
+        return `${basePrompt}
+        
+Task: Generate test code
+Input: ${JSON.stringify(preparedInput, null, 2)}
+
+Generate test code that matches the project style and covers identified gaps.`;
+
+      case 'validation-critique':
+        return `${basePrompt}
+        
+Task: Validate and critique proposed changes
+Input: ${JSON.stringify(preparedInput, null, 2)}
+
+Provide a comprehensive critique of the proposed changes, identifying any violations or issues.`;
+
+      default:
+        return `${basePrompt}
+        
+Task: ${task.type}
+Input: ${JSON.stringify(preparedInput, null, 2)}
+
+Process this request according to RefactoGent's standards.`;
+    }
   }
 
   /**
