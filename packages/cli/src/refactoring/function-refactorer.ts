@@ -642,10 +642,7 @@ export class FunctionRefactorer {
 
     while (current) {
       // Don't inline in certain contexts
-      if (
-        Node.isConditionalExpression(current) ||
-        Node.isBinaryExpression(current)
-      ) {
+      if (Node.isConditionalExpression(current) || Node.isBinaryExpression(current)) {
         return false;
       }
       current = current.getParent();
