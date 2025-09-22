@@ -650,14 +650,14 @@ export class RefactorContextPackageBuilder {
   private calculateDepth(node: Node): number {
     let maxDepth = 0;
     let currentDepth = 0;
-    
+
     const traverse = (currentNode: Node, depth: number) => {
       maxDepth = Math.max(maxDepth, depth);
       currentNode.forEachChild(child => {
         traverse(child, depth + 1);
       });
     };
-    
+
     traverse(node, 0);
     return maxDepth;
   }
