@@ -91,14 +91,14 @@
 
 ## Phase 4: Core Refactoring Engine
 
-- [ ] 4.1 Build AST-based transformation engine
+- [x] 4.1 Build AST-based transformation engine
   - Implement unified AST transformation interface across languages
   - Create transformation validation system to ensure syntactic correctness
   - Build transformation composition and conflict detection
   - Add transformation rollback and undo capabilities
   - _Requirements: 2.1, 2.2, 2.4, 10.3_
 
-- [ ] 4.2 Implement symbol renaming with cross-reference updates
+- [x] 4.2 Implement symbol renaming with cross-reference updates
   - Build symbol resolution and reference tracking across files
   - Create safe renaming algorithm that updates all references
   - Implement import/export statement updates

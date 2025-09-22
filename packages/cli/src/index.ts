@@ -19,6 +19,8 @@ import { createRecordHTTPCommand } from './commands/record-http.js';
 import { createRecordCLICommand } from './commands/record-cli.js';
 import { createRecordLibraryCommand } from './commands/record-library.js';
 import { createValidateTestsCommand } from './commands/validate-tests.js';
+import { createTransformCommand } from './commands/transform.js';
+import { createRenameSymbolCommand } from './commands/rename-symbol.js';
 import { CommandContext, RefactoringMode } from './types/index.js';
 
 const program = new Command();
@@ -388,6 +390,12 @@ program.addCommand(createRecordLibraryCommand());
 
 // Validate Tests command
 program.addCommand(createValidateTestsCommand());
+
+// Transform command
+program.addCommand(createTransformCommand());
+
+// Rename Symbol command
+program.addCommand(createRenameSymbolCommand());
 
 // LSP command (stub for now)
 program
