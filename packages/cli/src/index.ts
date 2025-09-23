@@ -779,7 +779,7 @@ program
         includeTests: options.includeTests,
         includeConfigs: options.includeConfigs,
         maxDepth: parseInt(options.maxDepth || '5'),
-        verbose
+        verbose,
       });
 
       await codeGraphCommand.close();
@@ -793,7 +793,11 @@ program
   .command('code-graph-query')
   .description('Query code graph for dependencies and relationships')
   .option('-p, --path <path>', 'Project path', '.')
-  .option('--query <type>', 'Query type (neighborhood|impact|test-mapping|dependencies|dependents)', 'neighborhood')
+  .option(
+    '--query <type>',
+    'Query type (neighborhood|impact|test-mapping|dependencies|dependents)',
+    'neighborhood'
+  )
   .option('--symbol <id>', 'Symbol ID to query')
   .option('--storage <type>', 'Storage type (sqlite|memory|json)', 'sqlite')
   .option('--db-path <path>', 'Database path for SQLite storage')
@@ -819,19 +823,15 @@ program
         process.exit(1);
       }
 
-      await codeGraphCommand.queryGraph(
-        options.query as any,
-        options.symbol,
-        {
-          projectPath: options.path,
-          storageType: options.storage,
-          dbPath: options.dbPath,
-          maxDepth: parseInt(options.maxDepth || '3'),
-          includeTests: options.includeTests,
-          includeConfigs: options.includeConfigs,
-          verbose
-        }
-      );
+      await codeGraphCommand.queryGraph(options.query as any, options.symbol, {
+        projectPath: options.path,
+        storageType: options.storage,
+        dbPath: options.dbPath,
+        maxDepth: parseInt(options.maxDepth || '3'),
+        includeTests: options.includeTests,
+        includeConfigs: options.includeConfigs,
+        verbose,
+      });
 
       await codeGraphCommand.close();
     } catch (error) {
@@ -864,7 +864,7 @@ program
         projectPath: options.path,
         storageType: options.storage,
         dbPath: options.dbPath,
-        verbose
+        verbose,
       });
 
       await codeGraphCommand.close();

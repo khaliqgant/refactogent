@@ -43,7 +43,7 @@ export interface TestMapping {
 
 /**
  * Graph APIs for Code Graph Traversal and Querying
- * 
+ *
  * Provides high-level APIs for graph traversal, impact analysis,
  * and test mapping capabilities.
  */
@@ -76,28 +76,28 @@ export class GraphAPIs {
     options: GraphTraversalOptions = {}
   ): Promise<NeighborhoodAnalysis> {
     const span = this.tracer.startAnalysisTrace('.', 'get-neighborhood');
-    
+
     try {
       this.logger.info('Getting neighborhood', { symbolId, options });
-      
+
       const query: GraphQuery = {
         type: 'neighborhood',
         source: symbolId,
         maxDepth: options.maxDepth || 2,
         includeTests: options.includeTests,
-        includeConfigs: options.includeConfigs
+        includeConfigs: options.includeConfigs,
       };
-      
+
       const result = await this.graphStorage.queryGraph(query);
-      
+
       const analysis: NeighborhoodAnalysis = {
         directNeighbors: result.nodes.filter(n => this.isDirectNeighbor(n, symbolId)),
         indirectNeighbors: result.nodes.filter(n => !this.isDirectNeighbor(n, symbolId)),
         connectionPaths: result.paths,
         centralityScore: this.calculateCentralityScore(result.nodes, result.edges),
-        importanceScore: this.calculateImportanceScore(result.nodes, result.edges)
+        importanceScore: this.calculateImportanceScore(result.nodes, result.edges),
       };
-      
+
       this.tracer.recordSuccess(span, `Found ${result.nodes.length} neighbors for ${symbolId}`);
       return analysis;
     } catch (error) {
@@ -114,29 +114,38 @@ export class GraphAPIs {
     options: GraphTraversalOptions = {}
   ): Promise<ImpactAnalysis> {
     const span = this.tracer.startAnalysisTrace('.', 'impact-analysis');
-    
+
     try {
       this.logger.info('Performing impact analysis', { symbolId, options });
-      
+
       const query: GraphQuery = {
         type: 'impact',
         source: symbolId,
         maxDepth: options.maxDepth || 3,
         includeTests: options.includeTests,
-        includeConfigs: options.includeConfigs
+        includeConfigs: options.includeConfigs,
       };
-      
+
       const result = await this.graphStorage.queryGraph(query);
-      
+
       const affectedFiles = [...new Set(result.nodes.map(n => n.filePath))];
       const affectedSymbols = result.nodes.map(n => n.id);
       const testFiles = result.testFiles;
       const configFiles = result.configFiles;
       const impactScore = result.impactScore;
-      
-      const riskLevel = this.calculateRiskLevel(impactScore, affectedFiles.length, affectedSymbols.length);
-      const recommendations = this.generateRecommendations(impactScore, riskLevel, affectedFiles, testFiles);
-      
+
+      const riskLevel = this.calculateRiskLevel(
+        impactScore,
+        affectedFiles.length,
+        affectedSymbols.length
+      );
+      const recommendations = this.generateRecommendations(
+        impactScore,
+        riskLevel,
+        affectedFiles,
+        testFiles
+      );
+
       const analysis: ImpactAnalysis = {
         affectedFiles,
         affectedSymbols,
@@ -144,10 +153,13 @@ export class GraphAPIs {
         configFiles,
         impactScore,
         riskLevel,
-        recommendations
+        recommendations,
       };
-      
-      this.tracer.recordSuccess(span, `Impact analysis complete: ${affectedFiles.length} files, ${affectedSymbols.length} symbols`);
+
+      this.tracer.recordSuccess(
+        span,
+        `Impact analysis complete: ${affectedFiles.length} files, ${affectedSymbols.length} symbols`
+      );
       return analysis;
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Impact analysis failed');
@@ -163,34 +175,37 @@ export class GraphAPIs {
     options: GraphTraversalOptions = {}
   ): Promise<TestMapping> {
     const span = this.tracer.startAnalysisTrace('.', 'test-mapping');
-    
+
     try {
       this.logger.info('Getting test mapping', { symbolId, options });
-      
+
       const query: GraphQuery = {
         type: 'test-mapping',
         source: symbolId,
         maxDepth: options.maxDepth || 2,
-        includeTests: true
+        includeTests: true,
       };
-      
+
       const result = await this.graphStorage.queryGraph(query);
-      
+
       const sourceFile = result.nodes.find(n => n.id === symbolId)?.filePath || '';
       const testFiles = result.testFiles;
       const testCoverage = this.calculateTestCoverage(result.nodes, testFiles);
       const missingTests = this.identifyMissingTests(result.nodes, testFiles);
       const testQuality = this.assessTestQuality(result.nodes, testFiles);
-      
+
       const mapping: TestMapping = {
         sourceFile,
         testFiles,
         testCoverage,
         missingTests,
-        testQuality
+        testQuality,
       };
-      
-      this.tracer.recordSuccess(span, `Test mapping complete: ${testFiles.length} test files, ${testCoverage}% coverage`);
+
+      this.tracer.recordSuccess(
+        span,
+        `Test mapping complete: ${testFiles.length} test files, ${testCoverage}% coverage`
+      );
       return mapping;
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Test mapping failed');
@@ -206,20 +221,20 @@ export class GraphAPIs {
     options: GraphTraversalOptions = {}
   ): Promise<SymbolNode[]> {
     const span = this.tracer.startAnalysisTrace('.', 'get-dependencies');
-    
+
     try {
       this.logger.info('Getting dependencies', { symbolId, options });
-      
+
       const query: GraphQuery = {
         type: 'dependencies',
         source: symbolId,
         maxDepth: options.maxDepth || 5,
         includeTests: options.includeTests,
-        includeConfigs: options.includeConfigs
+        includeConfigs: options.includeConfigs,
       };
-      
+
       const result = await this.graphStorage.queryGraph(query);
-      
+
       this.tracer.recordSuccess(span, `Found ${result.nodes.length} dependencies for ${symbolId}`);
       return result.nodes;
     } catch (error) {
@@ -236,20 +251,20 @@ export class GraphAPIs {
     options: GraphTraversalOptions = {}
   ): Promise<SymbolNode[]> {
     const span = this.tracer.startAnalysisTrace('.', 'get-dependents');
-    
+
     try {
       this.logger.info('Getting dependents', { symbolId, options });
-      
+
       const query: GraphQuery = {
         type: 'dependents',
         source: symbolId,
         maxDepth: options.maxDepth || 5,
         includeTests: options.includeTests,
-        includeConfigs: options.includeConfigs
+        includeConfigs: options.includeConfigs,
       };
-      
+
       const result = await this.graphStorage.queryGraph(query);
-      
+
       this.tracer.recordSuccess(span, `Found ${result.nodes.length} dependents for ${symbolId}`);
       return result.nodes;
     } catch (error) {
@@ -267,13 +282,13 @@ export class GraphAPIs {
     options: GraphTraversalOptions = {}
   ): Promise<string[]> {
     const span = this.tracer.startAnalysisTrace('.', 'find-shortest-path');
-    
+
     try {
       this.logger.info('Finding shortest path', { sourceId, targetId, options });
-      
+
       // Implementation would use Dijkstra's algorithm or BFS
       const path = await this.dijkstraShortestPath(sourceId, targetId, options);
-      
+
       this.tracer.recordSuccess(span, `Found path with ${path.length} nodes`);
       return path;
     } catch (error) {
@@ -295,13 +310,16 @@ export class GraphAPIs {
     processingTime: number;
   }> {
     const span = this.tracer.startAnalysisTrace('.', 'graph-statistics');
-    
+
     try {
       this.logger.info('Getting graph statistics');
-      
+
       const stats = await this.graphStorage.getGraphStats();
-      
-      this.tracer.recordSuccess(span, `Graph stats: ${stats.totalNodes} nodes, ${stats.totalEdges} edges`);
+
+      this.tracer.recordSuccess(
+        span,
+        `Graph stats: ${stats.totalNodes} nodes, ${stats.totalEdges} edges`
+      );
       return stats;
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Get graph statistics failed');
@@ -322,13 +340,13 @@ export class GraphAPIs {
     } = {}
   ): Promise<SymbolNode[]> {
     const span = this.tracer.startAnalysisTrace('.', 'search-symbols');
-    
+
     try {
       this.logger.info('Searching symbols', { pattern, options });
-      
+
       // Implementation would search the graph for matching symbols
       const results = await this.performSymbolSearch(pattern, options);
-      
+
       this.tracer.recordSuccess(span, `Found ${results.length} matching symbols`);
       return results;
     } catch (error) {
@@ -364,24 +382,27 @@ export class GraphAPIs {
     }>;
   }> {
     const span = this.tracer.startAnalysisTrace('.', 'graph-visualization');
-    
+
     try {
       this.logger.info('Getting graph visualization', { centerNodeId, options });
-      
+
       const neighborhood = await this.getNeighborhood(centerNodeId, options);
-      
+
       const nodes = neighborhood.directNeighbors.map(node => ({
         id: node.id,
         name: node.name,
         type: node.type,
         filePath: node.filePath,
         size: this.calculateNodeSize(node),
-        color: this.getNodeColor(node.type)
+        color: this.getNodeColor(node.type),
       }));
-      
+
       const edges: any[] = []; // Implementation would get edges
-      
-      this.tracer.recordSuccess(span, `Visualization data: ${nodes.length} nodes, ${edges.length} edges`);
+
+      this.tracer.recordSuccess(
+        span,
+        `Visualization data: ${nodes.length} nodes, ${edges.length} edges`
+      );
       return { nodes, edges };
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Get graph visualization failed');
@@ -436,24 +457,26 @@ export class GraphAPIs {
     testFiles: string[]
   ): string[] {
     const recommendations: string[] = [];
-    
+
     if (riskLevel === 'critical' || riskLevel === 'high') {
       recommendations.push('Consider breaking down this change into smaller, safer increments');
       recommendations.push('Ensure comprehensive test coverage before making changes');
     }
-    
+
     if (affectedFiles.length > 5) {
-      recommendations.push('This change affects many files - consider refactoring to reduce coupling');
+      recommendations.push(
+        'This change affects many files - consider refactoring to reduce coupling'
+      );
     }
-    
+
     if (testFiles.length === 0) {
       recommendations.push('No test files found - consider adding tests for this functionality');
     }
-    
+
     if (impactScore > 0.7) {
       recommendations.push('High impact change - consider impact analysis and stakeholder review');
     }
-    
+
     return recommendations;
   }
 
@@ -466,14 +489,15 @@ export class GraphAPIs {
 
   private identifyMissingTests(nodes: SymbolNode[], testFiles: string[]): string[] {
     // Identify symbols that need tests
-    return nodes
-      .filter(n => !this.isTested(n, testFiles))
-      .map(n => n.name);
+    return nodes.filter(n => !this.isTested(n, testFiles)).map(n => n.name);
   }
 
-  private assessTestQuality(nodes: SymbolNode[], testFiles: string[]): 'poor' | 'fair' | 'good' | 'excellent' {
+  private assessTestQuality(
+    nodes: SymbolNode[],
+    testFiles: string[]
+  ): 'poor' | 'fair' | 'good' | 'excellent' {
     const coverage = this.calculateTestCoverage(nodes, testFiles);
-    
+
     if (coverage >= 90) return 'excellent';
     if (coverage >= 75) return 'good';
     if (coverage >= 50) return 'fair';
@@ -482,9 +506,10 @@ export class GraphAPIs {
 
   private isTested(node: SymbolNode, testFiles: string[]): boolean {
     // Check if node has corresponding tests
-    return testFiles.some(testFile => 
-      testFile.includes(node.name) || 
-      testFile.includes(path.basename(node.filePath, path.extname(node.filePath)))
+    return testFiles.some(
+      testFile =>
+        testFile.includes(node.name) ||
+        testFile.includes(path.basename(node.filePath, path.extname(node.filePath)))
     );
   }
 
@@ -497,10 +522,7 @@ export class GraphAPIs {
     return [];
   }
 
-  private async performSymbolSearch(
-    pattern: string,
-    options: any
-  ): Promise<SymbolNode[]> {
+  private async performSymbolSearch(pattern: string, options: any): Promise<SymbolNode[]> {
     // Implementation would search the graph for matching symbols
     return [];
   }
@@ -512,12 +534,12 @@ export class GraphAPIs {
 
   private getNodeColor(nodeType: string): string {
     const colors: Record<string, string> = {
-      'function': '#4CAF50',
-      'class': '#2196F3',
-      'interface': '#FF9800',
-      'variable': '#9C27B0',
-      'import': '#607D8B',
-      'export': '#795548'
+      function: '#4CAF50',
+      class: '#2196F3',
+      interface: '#FF9800',
+      variable: '#9C27B0',
+      import: '#607D8B',
+      export: '#795548',
     };
     return colors[nodeType] || '#757575';
   }

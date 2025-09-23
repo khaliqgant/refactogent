@@ -34,7 +34,7 @@ export interface GraphStorageOptions {
 
 /**
  * Graph Storage for Code Graph
- * 
+ *
  * Provides persistent storage and querying capabilities for the code graph.
  * Supports SQLite for production and in-memory for development.
  */
@@ -66,13 +66,13 @@ export class GraphStorage {
    */
   async initialize(projectPath: string): Promise<void> {
     const span = this.tracer.startAnalysisTrace(projectPath, 'graph-storage-init');
-    
+
     try {
-      this.logger.info('Initializing graph storage', { 
+      this.logger.info('Initializing graph storage', {
         storageType: this.options.storageType,
-        projectPath 
+        projectPath,
       });
-      
+
       if (this.options.storageType === 'sqlite') {
         await this.initializeSQLite(projectPath);
       } else if (this.options.storageType === 'memory') {
@@ -80,7 +80,7 @@ export class GraphStorage {
       } else if (this.options.storageType === 'json') {
         await this.initializeJSON(projectPath);
       }
-      
+
       this.tracer.recordSuccess(span, 'Graph storage initialized');
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Graph storage initialization failed');
@@ -93,14 +93,14 @@ export class GraphStorage {
    */
   async storeGraph(graph: CodeGraph, projectPath: string): Promise<void> {
     const span = this.tracer.startAnalysisTrace(projectPath, 'store-graph');
-    
+
     try {
-      this.logger.info('Storing code graph', { 
+      this.logger.info('Storing code graph', {
         nodes: graph.nodes.size,
         edges: graph.edges.size,
-        files: graph.fileIndex.size
+        files: graph.fileIndex.size,
       });
-      
+
       if (this.options.storageType === 'sqlite') {
         await this.storeGraphSQLite(graph);
       } else if (this.options.storageType === 'memory') {
@@ -108,8 +108,11 @@ export class GraphStorage {
       } else if (this.options.storageType === 'json') {
         await this.storeGraphJSON(graph, projectPath);
       }
-      
-      this.tracer.recordSuccess(span, `Stored graph with ${graph.nodes.size} nodes and ${graph.edges.size} edges`);
+
+      this.tracer.recordSuccess(
+        span,
+        `Stored graph with ${graph.nodes.size} nodes and ${graph.edges.size} edges`
+      );
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Graph storage failed');
       throw error;
@@ -121,12 +124,12 @@ export class GraphStorage {
    */
   async queryGraph(query: GraphQuery): Promise<GraphQueryResult> {
     const span = this.tracer.startAnalysisTrace('.', 'graph-query');
-    
+
     try {
       this.logger.info('Querying graph', { query });
-      
+
       let result: GraphQueryResult;
-      
+
       if (this.options.storageType === 'sqlite') {
         result = await this.queryGraphSQLite(query);
       } else if (this.options.storageType === 'memory') {
@@ -136,8 +139,11 @@ export class GraphStorage {
       } else {
         throw new Error(`Unsupported storage type: ${this.options.storageType}`);
       }
-      
-      this.tracer.recordSuccess(span, `Query returned ${result.nodes.length} nodes and ${result.edges.length} edges`);
+
+      this.tracer.recordSuccess(
+        span,
+        `Query returned ${result.nodes.length} nodes and ${result.edges.length} edges`
+      );
       return result;
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Graph query failed');
@@ -150,10 +156,10 @@ export class GraphStorage {
    */
   async getGraphStats(): Promise<GraphAnalysis> {
     const span = this.tracer.startAnalysisTrace('.', 'graph-stats');
-    
+
     try {
       let analysis: GraphAnalysis;
-      
+
       if (this.options.storageType === 'sqlite') {
         analysis = await this.getGraphStatsSQLite();
       } else if (this.options.storageType === 'memory') {
@@ -163,8 +169,11 @@ export class GraphStorage {
       } else {
         throw new Error(`Unsupported storage type: ${this.options.storageType}`);
       }
-      
-      this.tracer.recordSuccess(span, `Graph stats: ${analysis.totalNodes} nodes, ${analysis.totalEdges} edges`);
+
+      this.tracer.recordSuccess(
+        span,
+        `Graph stats: ${analysis.totalNodes} nodes, ${analysis.totalEdges} edges`
+      );
       return analysis;
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Graph stats failed');
@@ -191,18 +200,20 @@ export class GraphStorage {
   private async initializeSQLite(projectPath: string): Promise<void> {
     const dbPath = this.options.dbPath || path.join(projectPath, '.refactogent', 'graph.db');
     await fs.mkdir(path.dirname(dbPath), { recursive: true });
-    
+
     try {
       // Use eval to avoid TypeScript compilation issues with optional dependencies
       const sqlite3 = eval('require')('sqlite3');
       this.db = new sqlite3.Database(dbPath);
-      
+
       // Create tables
       await this.createTables();
-      
+
       this.logger.info('SQLite graph storage initialized', { dbPath });
     } catch (error) {
-      this.logger.warn('SQLite not available, falling back to JSON storage', { error: (error as Error).message });
+      this.logger.warn('SQLite not available, falling back to JSON storage', {
+        error: (error as Error).message,
+      });
       this.options.storageType = 'json';
       await this.initializeJSON(projectPath);
     }
@@ -210,7 +221,7 @@ export class GraphStorage {
 
   private async createTables(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     const createNodesTable = `
       CREATE TABLE IF NOT EXISTS nodes (
         id TEXT PRIMARY KEY,
@@ -226,7 +237,7 @@ export class GraphStorage {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `;
-    
+
     const createEdgesTable = `
       CREATE TABLE IF NOT EXISTS edges (
         id TEXT PRIMARY KEY,
@@ -240,7 +251,7 @@ export class GraphStorage {
         FOREIGN KEY (target) REFERENCES nodes(id)
       )
     `;
-    
+
     const createFileIndexTable = `
       CREATE TABLE IF NOT EXISTS file_index (
         file_path TEXT PRIMARY KEY,
@@ -248,7 +259,7 @@ export class GraphStorage {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `;
-    
+
     const createSymbolIndexTable = `
       CREATE TABLE IF NOT EXISTS symbol_index (
         symbol_name TEXT PRIMARY KEY,
@@ -256,12 +267,12 @@ export class GraphStorage {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `;
-    
+
     await this.runQuery(createNodesTable);
     await this.runQuery(createEdgesTable);
     await this.runQuery(createFileIndexTable);
     await this.runQuery(createSymbolIndexTable);
-    
+
     // Create indexes
     if (this.options.enableIndexing) {
       await this.createIndexes();
@@ -270,7 +281,7 @@ export class GraphStorage {
 
   private async createIndexes(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     const indexes = [
       'CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type)',
       'CREATE INDEX IF NOT EXISTS idx_nodes_file_path ON nodes(file_path)',
@@ -279,9 +290,9 @@ export class GraphStorage {
       'CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target)',
       'CREATE INDEX IF NOT EXISTS idx_edges_type ON edges(type)',
       'CREATE INDEX IF NOT EXISTS idx_file_index_file_path ON file_index(file_path)',
-      'CREATE INDEX IF NOT EXISTS idx_symbol_index_symbol_name ON symbol_index(symbol_name)'
+      'CREATE INDEX IF NOT EXISTS idx_symbol_index_symbol_name ON symbol_index(symbol_name)',
     ];
-    
+
     for (const index of indexes) {
       await this.runQuery(index);
     }
@@ -289,71 +300,76 @@ export class GraphStorage {
 
   private async storeGraphSQLite(graph: CodeGraph): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     // Clear existing data
     await this.runQuery('DELETE FROM edges');
     await this.runQuery('DELETE FROM nodes');
     await this.runQuery('DELETE FROM file_index');
     await this.runQuery('DELETE FROM symbol_index');
-    
+
     // Store nodes
     for (const node of graph.nodes.values()) {
-      await this.runQuery(`
+      await this.runQuery(
+        `
         INSERT INTO nodes (id, name, type, file_path, line, column, is_exported, signature, complexity, dependencies)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        node.id,
-        node.name,
-        node.type,
-        node.filePath,
-        node.line,
-        node.column,
-        node.isExported ? 1 : 0,
-        node.signature || '',
-        node.complexity,
-        JSON.stringify(node.dependencies)
-      ]);
+      `,
+        [
+          node.id,
+          node.name,
+          node.type,
+          node.filePath,
+          node.line,
+          node.column,
+          node.isExported ? 1 : 0,
+          node.signature || '',
+          node.complexity,
+          JSON.stringify(node.dependencies),
+        ]
+      );
     }
-    
+
     // Store edges
     for (const edge of graph.edges.values()) {
-      await this.runQuery(`
+      await this.runQuery(
+        `
         INSERT INTO edges (id, source, target, type, weight, metadata)
         VALUES (?, ?, ?, ?, ?, ?)
-      `, [
-        edge.id,
-        edge.source,
-        edge.target,
-        edge.type,
-        edge.weight,
-        JSON.stringify(edge.metadata)
-      ]);
+      `,
+        [edge.id, edge.source, edge.target, edge.type, edge.weight, JSON.stringify(edge.metadata)]
+      );
     }
-    
+
     // Store file index
     for (const [filePath, symbolIds] of graph.fileIndex) {
-      await this.runQuery(`
+      await this.runQuery(
+        `
         INSERT INTO file_index (file_path, symbol_ids)
         VALUES (?, ?)
-      `, [filePath, JSON.stringify(symbolIds)]);
+      `,
+        [filePath, JSON.stringify(symbolIds)]
+      );
     }
-    
+
     // Store symbol index
     for (const [symbolName, symbolIds] of graph.symbolIndex) {
-      await this.runQuery(`
+      await this.runQuery(
+        `
         INSERT INTO symbol_index (symbol_name, symbol_ids)
         VALUES (?, ?)
-      `, [symbolName, JSON.stringify(symbolIds)]);
+      `,
+        [symbolName, JSON.stringify(symbolIds)]
+      );
     }
   }
 
   private async queryGraphSQLite(query: GraphQuery): Promise<GraphQueryResult> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     const nodes: SymbolNode[] = [];
     const edges: GraphEdge[] = [];
     const paths: string[][] = [];
-    
+
     switch (query.type) {
       case 'neighborhood':
         return await this.queryNeighborhoodSQLite(query);
@@ -372,94 +388,94 @@ export class GraphStorage {
 
   private async queryNeighborhoodSQLite(query: GraphQuery): Promise<GraphQueryResult> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     // Get the source node
     const sourceNode = await this.getNodeById(query.source);
     if (!sourceNode) {
       return { nodes: [], edges: [], paths: [], impactScore: 0, testFiles: [], configFiles: [] };
     }
-    
+
     // Get connected nodes within maxDepth
     const maxDepth = query.maxDepth || 2;
     const connectedNodes = await this.getConnectedNodes(query.source, maxDepth);
     const connectedEdges = await this.getConnectedEdges(query.source, maxDepth);
-    
+
     return {
       nodes: connectedNodes,
       edges: connectedEdges,
       paths: [],
       impactScore: this.calculateImpactScore(connectedNodes, connectedEdges),
       testFiles: [],
-      configFiles: []
+      configFiles: [],
     };
   }
 
   private async queryImpactSQLite(query: GraphQuery): Promise<GraphQueryResult> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     // Get all nodes that would be affected by changes to the source
     const affectedNodes = await this.getAffectedNodes(query.source, query.maxDepth || 3);
     const affectedEdges = await this.getAffectedEdges(query.source, query.maxDepth || 3);
-    
+
     return {
       nodes: affectedNodes,
       edges: affectedEdges,
       paths: [],
       impactScore: this.calculateImpactScore(affectedNodes, affectedEdges),
       testFiles: [],
-      configFiles: []
+      configFiles: [],
     };
   }
 
   private async queryTestMappingSQLite(query: GraphQuery): Promise<GraphQueryResult> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     // Find test files related to the source
     const testFiles = await this.getTestFiles(query.source);
     const testNodes = await this.getTestNodes(testFiles);
     const testEdges = await this.getTestEdges(query.source, testFiles);
-    
+
     return {
       nodes: testNodes,
       edges: testEdges,
       paths: [],
       impactScore: 0,
       testFiles,
-      configFiles: []
+      configFiles: [],
     };
   }
 
   private async queryDependenciesSQLite(query: GraphQuery): Promise<GraphQueryResult> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     // Get all dependencies of the source
     const dependencies = await this.getDependencies(query.source, query.maxDepth || 5);
     const dependencyEdges = await this.getDependencyEdges(query.source, query.maxDepth || 5);
-    
+
     return {
       nodes: dependencies,
       edges: dependencyEdges,
       paths: [],
       impactScore: 0,
       testFiles: [],
-      configFiles: []
+      configFiles: [],
     };
   }
 
   private async queryDependentsSQLite(query: GraphQuery): Promise<GraphQueryResult> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     // Get all dependents of the source
     const dependents = await this.getDependents(query.source, query.maxDepth || 5);
     const dependentEdges = await this.getDependentEdges(query.source, query.maxDepth || 5);
-    
+
     return {
       nodes: dependents,
       edges: dependentEdges,
       paths: [],
       impactScore: 0,
       testFiles: [],
-      configFiles: []
+      configFiles: [],
     };
   }
 
@@ -469,17 +485,17 @@ export class GraphStorage {
       nodes: new Map(),
       edges: new Map(),
       fileIndex: new Map(),
-      symbolIndex: new Map()
+      symbolIndex: new Map(),
     };
-    
+
     this.logger.info('In-memory graph storage initialized');
   }
 
   private async storeGraphMemory(graph: CodeGraph): Promise<void> {
     this.inMemoryGraph = graph;
-    this.logger.info('Graph stored in memory', { 
+    this.logger.info('Graph stored in memory', {
       nodes: graph.nodes.size,
-      edges: graph.edges.size
+      edges: graph.edges.size,
     });
   }
 
@@ -487,7 +503,7 @@ export class GraphStorage {
     if (!this.inMemoryGraph) {
       throw new Error('No graph in memory');
     }
-    
+
     // Implementation would query the in-memory graph
     return {
       nodes: [],
@@ -495,7 +511,7 @@ export class GraphStorage {
       paths: [],
       impactScore: 0,
       testFiles: [],
-      configFiles: []
+      configFiles: [],
     };
   }
 
@@ -503,7 +519,7 @@ export class GraphStorage {
     if (!this.inMemoryGraph) {
       throw new Error('No graph in memory');
     }
-    
+
     return {
       totalNodes: this.inMemoryGraph.nodes.size,
       totalEdges: this.inMemoryGraph.edges.size,
@@ -511,7 +527,7 @@ export class GraphStorage {
       languageDistribution: {},
       edgeTypeDistribution: {},
       complexityDistribution: {},
-      processingTime: 0
+      processingTime: 0,
     };
   }
 
@@ -519,20 +535,20 @@ export class GraphStorage {
   private async initializeJSON(projectPath: string): Promise<void> {
     const jsonPath = path.join(projectPath, '.refactogent', 'graph.json');
     await fs.mkdir(path.dirname(jsonPath), { recursive: true });
-    
+
     this.logger.info('JSON graph storage initialized', { jsonPath });
   }
 
   private async storeGraphJSON(graph: CodeGraph, projectPath: string): Promise<void> {
     const jsonPath = path.join(projectPath, '.refactogent', 'graph.json');
-    
+
     const graphData = {
       nodes: Array.from(graph.nodes.entries()),
       edges: Array.from(graph.edges.entries()),
       fileIndex: Array.from(graph.fileIndex.entries()),
-      symbolIndex: Array.from(graph.symbolIndex.entries())
+      symbolIndex: Array.from(graph.symbolIndex.entries()),
     };
-    
+
     await fs.writeFile(jsonPath, JSON.stringify(graphData, null, 2));
     this.logger.info('Graph stored as JSON', { jsonPath });
   }
@@ -545,7 +561,7 @@ export class GraphStorage {
       paths: [],
       impactScore: 0,
       testFiles: [],
-      configFiles: []
+      configFiles: [],
     };
   }
 
@@ -553,24 +569,24 @@ export class GraphStorage {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
-    
+
     return new Promise((resolve, reject) => {
       this.db.get('SELECT COUNT(*) as nodeCount FROM nodes', (err: any, row: any) => {
         if (err) {
           reject(err);
           return;
         }
-        
+
         const totalNodes = row.nodeCount || 0;
-        
+
         this.db.get('SELECT COUNT(*) as edgeCount FROM edges', (err: any, row: any) => {
           if (err) {
             reject(err);
             return;
           }
-          
+
           const totalEdges = row.edgeCount || 0;
-          
+
           resolve({
             totalNodes,
             totalEdges,
@@ -578,7 +594,7 @@ export class GraphStorage {
             languageDistribution: {},
             edgeTypeDistribution: {},
             complexityDistribution: {},
-            processingTime: 0
+            processingTime: 0,
           });
         });
       });
@@ -593,14 +609,14 @@ export class GraphStorage {
       languageDistribution: {},
       edgeTypeDistribution: {},
       complexityDistribution: {},
-      processingTime: 0
+      processingTime: 0,
     };
   }
 
   // Helper methods
   private async runQuery(sql: string, params: any[] = []): Promise<any> {
     if (!this.db) throw new Error('Database not initialized');
-    
+
     return new Promise((resolve, reject) => {
       this.db!.run(sql, params, (err: any, result: any) => {
         if (err) reject(err);
@@ -611,7 +627,7 @@ export class GraphStorage {
 
   private async getNodeById(id: string): Promise<SymbolNode | null> {
     if (!this.db) return null;
-    
+
     return new Promise((resolve, reject) => {
       this.db!.get('SELECT * FROM nodes WHERE id = ?', [id], (err: any, row: any) => {
         if (err) reject(err);
@@ -626,7 +642,7 @@ export class GraphStorage {
             isExported: !!row.is_exported,
             signature: row.signature,
             complexity: row.complexity,
-            dependencies: JSON.parse(row.dependencies || '[]')
+            dependencies: JSON.parse(row.dependencies || '[]'),
           });
         } else {
           resolve(null);
