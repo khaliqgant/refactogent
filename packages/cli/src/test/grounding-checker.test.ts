@@ -51,7 +51,11 @@ describe('GroundingChecker', () => {
     await checker.close();
   });
 
-  const createMockChunk = (id: string, content: string, filePath: string = 'src/test.ts'): CodeChunk => ({
+  const createMockChunk = (
+    id: string,
+    content: string,
+    filePath: string = 'src/test.ts'
+  ): CodeChunk => ({
     id,
     filePath,
     startLine: 1,
@@ -85,10 +89,7 @@ describe('GroundingChecker', () => {
         createMockChunk('chunk2', 'function anotherFunction() { return "world"; }'),
       ];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result).toBeDefined();
       expect(result.isValid).toBeDefined();
@@ -99,14 +100,9 @@ describe('GroundingChecker', () => {
     });
 
     it('should detect missing symbols', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result.issues).toBeDefined();
       expect(Array.isArray(result.issues)).toBe(true);
@@ -118,10 +114,7 @@ describe('GroundingChecker', () => {
         createMockChunk('chunk2', 'class testFunction { }'), // Same name, different type
       ];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result.issues).toBeDefined();
       const conflictingIssues = result.issues.filter(i => i.type === 'conflicting_definition');
@@ -134,11 +127,9 @@ describe('GroundingChecker', () => {
         createMockChunk('chunk2', 'function anotherFunction() { return "world"; }'),
       ];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code',
-        { allowCircularDeps: false }
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code', {
+        allowCircularDeps: false,
+      });
 
       expect(result.issues).toBeDefined();
       const circularIssues = result.issues.filter(i => i.type === 'circular_dependency');
@@ -151,10 +142,7 @@ describe('GroundingChecker', () => {
         createMockChunk('chunk2', 'function oldFunction() { }'), // Old function syntax
       ];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result.issues).toBeDefined();
       const outdatedIssues = result.issues.filter(i => i.type === 'outdated_reference');
@@ -162,37 +150,25 @@ describe('GroundingChecker', () => {
     });
 
     it('should generate improvement suggestions', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result.suggestions).toBeDefined();
       expect(Array.isArray(result.suggestions)).toBe(true);
     });
 
     it('should verify symbols when possible', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result.verifiedSymbols).toBeDefined();
       expect(Array.isArray(result.verifiedSymbols)).toBe(true);
     });
 
     it('should handle different grounding options', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
       const options: GroundingCheckOptions = {
         strictMode: true,
@@ -213,24 +189,16 @@ describe('GroundingChecker', () => {
     });
 
     it('should calculate confidence score', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result.confidence).toBeGreaterThanOrEqual(0);
       expect(result.confidence).toBeLessThanOrEqual(1);
     });
 
     it('should handle empty chunks array', async () => {
-      const result = await checker.checkGrounding(
-        [],
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding([], 'extract function from complex code');
 
       expect(result).toBeDefined();
       expect(result.isValid).toBeDefined();
@@ -238,14 +206,9 @@ describe('GroundingChecker', () => {
     });
 
     it('should handle chunks with no symbols', async () => {
-      const chunks = [
-        createMockChunk('chunk1', '// This is just a comment'),
-      ];
+      const chunks = [createMockChunk('chunk1', '// This is just a comment')];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result).toBeDefined();
       expect(result.isValid).toBeDefined();
@@ -253,14 +216,9 @@ describe('GroundingChecker', () => {
 
     it('should handle large chunks efficiently', async () => {
       const largeContent = 'function testFunction() { ' + 'return "hello"; '.repeat(1000) + ' }';
-      const chunks = [
-        createMockChunk('chunk1', largeContent),
-      ];
+      const chunks = [createMockChunk('chunk1', largeContent)];
 
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result).toBeDefined();
       expect(result.confidence).toBeGreaterThanOrEqual(0);
@@ -269,15 +227,10 @@ describe('GroundingChecker', () => {
 
   describe('error handling', () => {
     it('should handle grounding check errors gracefully', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
       // Should not throw even if there are issues
-      const result = await checker.checkGrounding(
-        chunks,
-        'extract function from complex code'
-      );
+      const result = await checker.checkGrounding(chunks, 'extract function from complex code');
 
       expect(result).toBeDefined();
       expect(result.isValid).toBeDefined();

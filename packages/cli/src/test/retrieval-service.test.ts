@@ -115,7 +115,7 @@ describe('RetrievalService', () => {
 
     it('should handle different intents', async () => {
       const intents = ['refactor', 'extract', 'inline', 'rename', 'optimize', 'test', 'document'];
-      
+
       for (const intent of intents) {
         const query: RetrievalQuery = {
           intent,
@@ -250,7 +250,7 @@ describe('RetrievalService', () => {
       };
 
       const formats: Array<'inline' | 'reference' | 'both'> = ['inline', 'reference', 'both'];
-      
+
       for (const format of formats) {
         const options: RetrievalServiceOptions = {
           citationFormat: format,

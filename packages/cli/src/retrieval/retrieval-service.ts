@@ -2,9 +2,17 @@ import { Logger } from '../utils/logger.js';
 import { RefactoGentMetrics } from '../observability/metrics.js';
 import { RefactoGentTracer } from '../observability/tracing.js';
 import { RefactoGentConfig } from '../config/refactogent-schema.js';
-import { RetrievalOrchestrator, RetrievalQuery, RetrievalResult } from './retrieval-orchestrator.js';
+import {
+  RetrievalOrchestrator,
+  RetrievalQuery,
+  RetrievalResult,
+} from './retrieval-orchestrator.js';
 import { ContextPacker, PackedContext, ContextPackingOptions } from './context-packer.js';
-import { GroundingChecker, GroundingCheckResult, GroundingCheckOptions } from './grounding-checker.js';
+import {
+  GroundingChecker,
+  GroundingCheckResult,
+  GroundingCheckOptions,
+} from './grounding-checker.js';
 
 export interface RetrievalServiceOptions {
   maxTokens?: number;
@@ -168,7 +176,11 @@ export class RetrievalService {
           groundingTime,
           packingTime,
           totalTokens: packedContext?.tokenCount || retrievalResult.tokenCount,
-          confidence: this.calculateOverallConfidence(retrievalResult, groundingResult, packedContext),
+          confidence: this.calculateOverallConfidence(
+            retrievalResult,
+            groundingResult,
+            packedContext
+          ),
           methods: ['hybrid', 'grounding', 'packing'],
           citations: packedContext?.citations.length || retrievalResult.citations.length,
         },
@@ -300,9 +312,6 @@ export class RetrievalService {
    * Close all resources
    */
   async close(): Promise<void> {
-    await Promise.all([
-      this.orchestrator.close(),
-      this.groundingChecker.close(),
-    ]);
+    await Promise.all([this.orchestrator.close(), this.groundingChecker.close()]);
   }
 }

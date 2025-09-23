@@ -121,7 +121,8 @@ export class GroundingChecker {
       const confidence = this.calculateConfidence(issues, verifiedSymbols.length);
 
       const result: GroundingCheckResult = {
-        isValid: issues.filter(i => i.severity === 'critical' || i.severity === 'high').length === 0,
+        isValid:
+          issues.filter(i => i.severity === 'critical' || i.severity === 'high').length === 0,
         confidence,
         issues,
         suggestions,
@@ -187,7 +188,7 @@ export class GroundingChecker {
     }> = [];
 
     const lines = chunk.content.split('\n');
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const lineNumber = chunk.startLine + i;
@@ -256,11 +257,10 @@ export class GroundingChecker {
 
     try {
       // Check if symbol exists in code graph
-      const graphResult = await this.codeGraphService.queryGraph(
-        'neighborhood',
-        symbol.name,
-        { maxDepth: 1, includeTests: options.includeTests }
-      );
+      const graphResult = await this.codeGraphService.queryGraph('neighborhood', symbol.name, {
+        maxDepth: 1,
+        includeTests: options.includeTests,
+      });
 
       if (graphResult.directNeighbors.length === 0) {
         issues.push({
@@ -303,11 +303,20 @@ export class GroundingChecker {
    * Check for conflicting symbol definitions
    */
   private async checkConflictingDefinitions(
-    symbols: Array<{ name: string; filePath: string; lineNumber: number; type: string; content: string }>,
+    symbols: Array<{
+      name: string;
+      filePath: string;
+      lineNumber: number;
+      type: string;
+      content: string;
+    }>,
     options: GroundingCheckOptions
   ): Promise<GroundingIssue[]> {
     const issues: GroundingIssue[] = [];
-    const symbolMap = new Map<string, Array<{ filePath: string; lineNumber: number; type: string }>>();
+    const symbolMap = new Map<
+      string,
+      Array<{ filePath: string; lineNumber: number; type: string }>
+    >();
 
     // Group symbols by name
     for (const symbol of symbols) {
@@ -354,7 +363,13 @@ export class GroundingChecker {
    * Check for circular dependencies
    */
   private async checkCircularDependencies(
-    symbols: Array<{ name: string; filePath: string; lineNumber: number; type: string; content: string }>,
+    symbols: Array<{
+      name: string;
+      filePath: string;
+      lineNumber: number;
+      type: string;
+      content: string;
+    }>,
     options: GroundingCheckOptions
   ): Promise<GroundingIssue[]> {
     const issues: GroundingIssue[] = [];
@@ -413,10 +428,10 @@ export class GroundingChecker {
 
     // This would check for outdated imports, deprecated APIs, etc.
     // For now, we'll do a simple check for common outdated patterns
-    
+
     for (const chunk of chunks) {
       const content = chunk.content;
-      
+
       // Check for deprecated patterns
       if (content.includes('var ') && !content.includes('// legacy')) {
         issues.push({
@@ -445,7 +460,10 @@ export class GroundingChecker {
   /**
    * Generate improvement suggestions
    */
-  private generateSuggestions(issues: GroundingIssue[], verifiedSymbols: VerifiedSymbol[]): string[] {
+  private generateSuggestions(
+    issues: GroundingIssue[],
+    verifiedSymbols: VerifiedSymbol[]
+  ): string[] {
     const suggestions: string[] = [];
 
     if (issues.some(i => i.type === 'missing_symbol')) {
@@ -482,7 +500,8 @@ export class GroundingChecker {
     const mediumIssues = issues.filter(i => i.severity === 'medium').length;
     const lowIssues = issues.filter(i => i.severity === 'low').length;
 
-    const issuePenalty = (criticalIssues * 0.4) + (highIssues * 0.3) + (mediumIssues * 0.2) + (lowIssues * 0.1);
+    const issuePenalty =
+      criticalIssues * 0.4 + highIssues * 0.3 + mediumIssues * 0.2 + lowIssues * 0.1;
     const baseConfidence = Math.min(verifiedCount / 10, 1.0); // Cap at 1.0
 
     return Math.max(0, baseConfidence - issuePenalty);
@@ -491,7 +510,9 @@ export class GroundingChecker {
   /**
    * Map node type to symbol type
    */
-  private mapNodeTypeToSymbolType(nodeType: string): 'function' | 'class' | 'variable' | 'interface' | 'type' {
+  private mapNodeTypeToSymbolType(
+    nodeType: string
+  ): 'function' | 'class' | 'variable' | 'interface' | 'type' {
     switch (nodeType) {
       case 'function':
       case 'method':

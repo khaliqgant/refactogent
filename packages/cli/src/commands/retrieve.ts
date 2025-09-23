@@ -28,7 +28,11 @@ interface RetrieveOptions {
 export function createRetrieveCommand(): Command {
   const command = new Command('retrieve')
     .description('Perform hybrid retrieval with grounding checks and context packing')
-    .option('-i, --intent <intent>', 'Intent of the query (refactor, extract, inline, rename, optimize, test, document)', 'refactor')
+    .option(
+      '-i, --intent <intent>',
+      'Intent of the query (refactor, extract, inline, rename, optimize, test, document)',
+      'refactor'
+    )
     .option('-c, --context <context>', 'Context description for the query')
     .option('-f, --file-path <path>', 'Specific file path to focus on')
     .option('-s, --symbol-id <id>', 'Specific symbol ID to focus on')
@@ -111,11 +115,7 @@ export function createRetrieveCommand(): Command {
   return command;
 }
 
-async function outputResults(
-  result: any,
-  options: RetrieveOptions,
-  logger: Logger
-): Promise<void> {
+async function outputResults(result: any, options: RetrieveOptions, logger: Logger): Promise<void> {
   if (options.format === 'json') {
     const output = JSON.stringify(result, null, 2);
 
@@ -148,19 +148,30 @@ async function outputResults(
   if (result.groundingResult) {
     console.log(chalk.bold('\n🔍 Grounding Results:'));
     console.log(`  Valid: ${result.groundingResult.isValid ? chalk.green('✓') : chalk.red('✗')}`);
-    console.log(`  Confidence: ${chalk.yellow((result.groundingResult.confidence * 100).toFixed(1))}%`);
+    console.log(
+      `  Confidence: ${chalk.yellow((result.groundingResult.confidence * 100).toFixed(1))}%`
+    );
     console.log(`  Issues: ${chalk.red(result.groundingResult.issues.length)}`);
-    console.log(`  Verified Symbols: ${chalk.green(result.groundingResult.verifiedSymbols.length)}`);
+    console.log(
+      `  Verified Symbols: ${chalk.green(result.groundingResult.verifiedSymbols.length)}`
+    );
 
     if (result.groundingResult.issues.length > 0) {
       console.log(chalk.bold('\n⚠️ Issues:'));
       for (const issue of result.groundingResult.issues) {
-        const severityColor = issue.severity === 'critical' ? chalk.red :
-                             issue.severity === 'high' ? chalk.yellow :
-                             issue.severity === 'medium' ? chalk.blue : chalk.gray;
+        const severityColor =
+          issue.severity === 'critical'
+            ? chalk.red
+            : issue.severity === 'high'
+              ? chalk.yellow
+              : issue.severity === 'medium'
+                ? chalk.blue
+                : chalk.gray;
         console.log(`  ${severityColor(issue.severity.toUpperCase())}: ${issue.message}`);
         if (issue.filePath) {
-          console.log(`    File: ${issue.filePath}${issue.lineNumber ? `:${issue.lineNumber}` : ''}`);
+          console.log(
+            `    File: ${issue.filePath}${issue.lineNumber ? `:${issue.lineNumber}` : ''}`
+          );
         }
       }
     }

@@ -72,7 +72,7 @@ describe('RetrievalOrchestrator', () => {
 
     it('should handle different intents', async () => {
       const intents = ['refactor', 'extract', 'inline', 'rename', 'optimize', 'test', 'document'];
-      
+
       for (const intent of intents) {
         const query: RetrievalQuery = {
           intent,

@@ -84,19 +84,10 @@ export class ContextPacker {
       const citations = this.generateCitations(chunks);
 
       // Create role-segmented sections
-      const sections = await this.createRoleSegmentedSections(
-        chunks,
-        query,
-        intent,
-        options
-      );
+      const sections = await this.createRoleSegmentedSections(chunks, query, intent, options);
 
       // Optimize for token budget
-      const optimizedSections = this.optimizeForTokenBudget(
-        sections,
-        maxTokens,
-        options
-      );
+      const optimizedSections = this.optimizeForTokenBudget(sections, maxTokens, options);
 
       // Build final prompt
       const prompt = this.buildPrompt(optimizedSections, options);
@@ -127,7 +118,7 @@ export class ContextPacker {
       this.metrics.recordPerformance(
         processingTime,
         0, // memory usage
-        0  // cpu usage
+        0 // cpu usage
       );
 
       return result;
@@ -180,15 +171,12 @@ export class ContextPacker {
   /**
    * Create system role section with constraints
    */
-  private createSystemSection(
-    intent: string,
-    options: ContextPackingOptions
-  ): ContextSection {
+  private createSystemSection(intent: string, options: ContextPackingOptions): ContextSection {
     const constraints = this.getConstraintsForIntent(intent);
     const styleGuide = options.includeStyleGuide ? this.getStyleGuide() : '';
-    
+
     const content = `You are a code refactoring assistant. ${constraints}${styleGuide}`;
-    
+
     return {
       role: 'system',
       content,
@@ -207,7 +195,7 @@ export class ContextPacker {
   ): ContextSection {
     const contextContent = this.formatChunksAsContext(chunks, options);
     const content = `Query: ${query}\n\nContext:\n${contextContent}`;
-    
+
     return {
       role: 'user',
       content,
@@ -223,10 +211,11 @@ export class ContextPacker {
     chunks: CodeChunk[],
     options: ContextPackingOptions
   ): ContextSection | null {
-    const testChunks = chunks.filter(chunk => 
-      chunk.type === 'test' || 
-      chunk.filePath.includes('.test.') || 
-      chunk.filePath.includes('.spec.')
+    const testChunks = chunks.filter(
+      chunk =>
+        chunk.type === 'test' ||
+        chunk.filePath.includes('.test.') ||
+        chunk.filePath.includes('.spec.')
     );
 
     if (testChunks.length === 0) return null;
@@ -237,7 +226,7 @@ export class ContextPacker {
       .join('\n\n');
 
     const content = `Test Examples:\n${examplesContent}`;
-    
+
     return {
       role: 'examples',
       content,
@@ -253,9 +242,10 @@ export class ContextPacker {
     chunks: CodeChunk[],
     options: ContextPackingOptions
   ): ContextSection | null {
-    const apiChunks = chunks.filter(chunk => 
-      chunk.type === 'function' && 
-      (chunk.content.includes('export ') || chunk.content.includes('public '))
+    const apiChunks = chunks.filter(
+      chunk =>
+        chunk.type === 'function' &&
+        (chunk.content.includes('export ') || chunk.content.includes('public '))
     );
 
     if (apiChunks.length === 0) return null;
@@ -266,7 +256,7 @@ export class ContextPacker {
       .join('\n\n');
 
     const content = `API Documentation:\n${apiContent}`;
-    
+
     return {
       role: 'constraints',
       content,
@@ -278,25 +268,17 @@ export class ContextPacker {
   /**
    * Format chunks as context with citations
    */
-  private formatChunksAsContext(
-    chunks: CodeChunk[],
-    options: ContextPackingOptions
-  ): string {
-    return chunks
-      .map(chunk => this.formatChunkWithCitation(chunk, options))
-      .join('\n\n');
+  private formatChunksAsContext(chunks: CodeChunk[], options: ContextPackingOptions): string {
+    return chunks.map(chunk => this.formatChunkWithCitation(chunk, options)).join('\n\n');
   }
 
   /**
    * Format individual chunk with citation
    */
-  private formatChunkWithCitation(
-    chunk: CodeChunk,
-    options: ContextPackingOptions
-  ): string {
+  private formatChunkWithCitation(chunk: CodeChunk, options: ContextPackingOptions): string {
     const citation = this.formatCitation(chunk, options);
     const content = chunk.content.trim();
-    
+
     if (options.citationFormat === 'inline') {
       return `${citation}\n\`\`\`${chunk.language}\n${content}\n\`\`\``;
     } else if (options.citationFormat === 'reference') {
@@ -310,19 +292,16 @@ export class ContextPacker {
   /**
    * Format citation for chunk
    */
-  private formatCitation(
-    chunk: CodeChunk,
-    options: ContextPackingOptions
-  ): string {
+  private formatCitation(chunk: CodeChunk, options: ContextPackingOptions): string {
     const filePath = chunk.filePath;
     const lineNumber = chunk.startLine;
     const symbolName = this.extractSymbolName(chunk);
-    
+
     let citation = `[${filePath}:${lineNumber}]`;
     if (symbolName) {
       citation += ` (${symbolName})`;
     }
-    
+
     return citation;
   }
 
@@ -345,7 +324,7 @@ export class ContextPacker {
 
     // Add other sections in priority order
     const priorityOrder = ['user', 'examples', 'constraints'];
-    
+
     for (const role of priorityOrder) {
       const section = sections.find(s => s.role === role);
       if (section && currentTokens + section.tokenCount <= maxTokens) {
@@ -360,12 +339,9 @@ export class ContextPacker {
   /**
    * Build final prompt from sections
    */
-  private buildPrompt(
-    sections: ContextSection[],
-    options: ContextPackingOptions
-  ): string {
+  private buildPrompt(sections: ContextSection[], options: ContextPackingOptions): string {
     const roleSegmentation = options.roleSegmentation !== false;
-    
+
     if (!roleSegmentation) {
       return sections.map(s => s.content).join('\n\n');
     }
@@ -392,8 +368,7 @@ export class ContextPacker {
       document: 'Add clear documentation and comments.',
     };
 
-    return constraints[intent as keyof typeof constraints] || 
-           'Provide helpful code improvements.';
+    return constraints[intent as keyof typeof constraints] || 'Provide helpful code improvements.';
   }
 
   /**
@@ -401,7 +376,7 @@ export class ContextPacker {
    */
   private getStyleGuide(): string {
     const styleGuide = (this.config.repository as any)?.style || {};
-    
+
     let guide = '\n\nStyle Guidelines:\n';
     if (styleGuide.naming) {
       guide += `- Naming: ${styleGuide.naming}\n`;
@@ -412,7 +387,7 @@ export class ContextPacker {
     if (styleGuide.comments) {
       guide += `- Comments: ${styleGuide.comments}\n`;
     }
-    
+
     return guide;
   }
 
@@ -425,7 +400,7 @@ export class ContextPacker {
       lineNumber: chunk.startLine,
       symbolName: this.extractSymbolName(chunk),
       context: chunk.content.substring(0, 100) + '...',
-      relevanceScore: (chunk as any).relevanceScore || (1.0 - index * 0.1),
+      relevanceScore: (chunk as any).relevanceScore || 1.0 - index * 0.1,
     }));
   }
 
@@ -435,8 +410,12 @@ export class ContextPacker {
   private extractSymbolName(chunk: CodeChunk): string | undefined {
     const lines = chunk.content.split('\n');
     for (const line of lines) {
-      if (line.includes('function ') || line.includes('class ') || 
-          line.includes('const ') || line.includes('let ')) {
+      if (
+        line.includes('function ') ||
+        line.includes('class ') ||
+        line.includes('const ') ||
+        line.includes('let ')
+      ) {
         const match = line.match(/(?:function|class|const|let)\s+(\w+)/);
         if (match) {
           return match[1];
@@ -452,12 +431,13 @@ export class ContextPacker {
   private calculateConfidence(chunks: CodeChunk[]): number {
     if (chunks.length === 0) return 0;
 
-    const avgRelevance = chunks.reduce((sum, chunk) => {
-      return sum + ((chunk as any).relevanceScore || 0.5);
-    }, 0) / chunks.length;
+    const avgRelevance =
+      chunks.reduce((sum, chunk) => {
+        return sum + ((chunk as any).relevanceScore || 0.5);
+      }, 0) / chunks.length;
 
     const diversityScore = this.calculateDiversityScore(chunks);
-    
+
     return (avgRelevance + diversityScore) / 2;
   }
 
@@ -468,7 +448,7 @@ export class ContextPacker {
     const filePaths = new Set(chunks.map(chunk => chunk.filePath));
     const uniqueFiles = filePaths.size;
     const totalChunks = chunks.length;
-    
+
     return Math.min(uniqueFiles / totalChunks, 1.0);
   }
 

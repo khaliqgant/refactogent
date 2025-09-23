@@ -94,11 +94,7 @@ export class RetrievalOrchestrator {
       });
 
       // Step 2: Semantic embedding reranking
-      const semanticResults = await this.performSemanticRerank(
-        lexicalResults,
-        query,
-        options
-      );
+      const semanticResults = await this.performSemanticRerank(lexicalResults, query, options);
       this.logger.debug('Semantic reranking completed', {
         results: semanticResults.length,
       });
@@ -289,13 +285,14 @@ export class RetrievalOrchestrator {
 
       for (const chunk of sortedChunks) {
         const chunkTokens = this.estimateTokenCount(chunk.content);
-        
+
         if (currentTokenCount + chunkTokens <= tokenBudget) {
           optimizedChunks.push(chunk);
           currentTokenCount += chunkTokens;
         } else {
           // Try to fit partial chunk if it's important
-          if (chunkTokens <= tokenBudget * 0.1) { // Small chunk, might fit
+          if (chunkTokens <= tokenBudget * 0.1) {
+            // Small chunk, might fit
             optimizedChunks.push(chunk);
             currentTokenCount += chunkTokens;
           }
@@ -324,7 +321,7 @@ export class RetrievalOrchestrator {
       lineNumber: chunk.startLine,
       symbolName: this.extractSymbolName(chunk),
       context: chunk.content.substring(0, 100) + '...',
-      relevanceScore: (chunk as any).relevanceScore || (1.0 - index * 0.1),
+      relevanceScore: (chunk as any).relevanceScore || 1.0 - index * 0.1,
     }));
   }
 
@@ -334,12 +331,13 @@ export class RetrievalOrchestrator {
   private calculateConfidence(chunks: CodeChunk[]): number {
     if (chunks.length === 0) return 0;
 
-    const avgRelevance = chunks.reduce((sum, chunk) => {
-      return sum + ((chunk as any).relevanceScore || 0.5);
-    }, 0) / chunks.length;
+    const avgRelevance =
+      chunks.reduce((sum, chunk) => {
+        return sum + ((chunk as any).relevanceScore || 0.5);
+      }, 0) / chunks.length;
 
     const diversityScore = this.calculateDiversityScore(chunks);
-    
+
     return (avgRelevance + diversityScore) / 2;
   }
 
@@ -350,7 +348,7 @@ export class RetrievalOrchestrator {
     const filePaths = new Set(chunks.map(chunk => chunk.filePath));
     const uniqueFiles = filePaths.size;
     const totalChunks = chunks.length;
-    
+
     return Math.min(uniqueFiles / totalChunks, 1.0);
   }
 
@@ -376,7 +374,12 @@ export class RetrievalOrchestrator {
     // Simple heuristic to extract symbol name from content
     const lines = chunk.content.split('\n');
     for (const line of lines) {
-      if (line.includes('function ') || line.includes('class ') || line.includes('const ') || line.includes('let ')) {
+      if (
+        line.includes('function ') ||
+        line.includes('class ') ||
+        line.includes('const ') ||
+        line.includes('let ')
+      ) {
         const match = line.match(/(?:function|class|const|let)\s+(\w+)/);
         if (match) {
           return match[1];

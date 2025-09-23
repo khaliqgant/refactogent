@@ -47,7 +47,11 @@ describe('ContextPacker', () => {
     packer = new ContextPacker(logger, metrics, tracer, config);
   });
 
-  const createMockChunk = (id: string, content: string, filePath: string = 'src/test.ts'): CodeChunk => ({
+  const createMockChunk = (
+    id: string,
+    content: string,
+    filePath: string = 'src/test.ts'
+  ): CodeChunk => ({
     id,
     filePath,
     startLine: 1,
@@ -96,9 +100,7 @@ describe('ContextPacker', () => {
     });
 
     it('should create role-segmented sections', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
       const result = await packer.packContext(
         chunks,
@@ -109,18 +111,16 @@ describe('ContextPacker', () => {
 
       expect(result.sections).toBeDefined();
       expect(result.sections.length).toBeGreaterThan(0);
-      
+
       const systemSection = result.sections.find(s => s.role === 'system');
       const userSection = result.sections.find(s => s.role === 'user');
-      
+
       expect(systemSection).toBeDefined();
       expect(userSection).toBeDefined();
     });
 
     it('should include style guide when requested', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
       const result = await packer.packContext(
         chunks,
@@ -150,7 +150,10 @@ describe('ContextPacker', () => {
     });
 
     it('should include test examples when requested', async () => {
-      const testChunk = createMockChunk('test1', 'describe("testFunction", () => { it("should work", () => {}); });');
+      const testChunk = createMockChunk(
+        'test1',
+        'describe("testFunction", () => { it("should work", () => {}); });'
+      );
       testChunk.type = 'test';
       testChunk.filePath = 'test/test.spec.ts';
 
@@ -188,12 +191,10 @@ describe('ContextPacker', () => {
     });
 
     it('should generate citations with different formats', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
       const formats: Array<'inline' | 'reference' | 'both'> = ['inline', 'reference', 'both'];
-      
+
       for (const format of formats) {
         const result = await packer.packContext(
           chunks,
@@ -209,16 +210,10 @@ describe('ContextPacker', () => {
 
     it('should handle different intents', async () => {
       const intents = ['refactor', 'extract', 'inline', 'rename', 'optimize', 'test', 'document'];
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
       for (const intent of intents) {
-        const result = await packer.packContext(
-          chunks,
-          `perform ${intent} operation`,
-          intent
-        );
+        const result = await packer.packContext(chunks, `perform ${intent} operation`, intent);
 
         expect(result).toBeDefined();
         expect(result.prompt).toBeDefined();
@@ -226,11 +221,7 @@ describe('ContextPacker', () => {
     });
 
     it('should handle empty chunks array', async () => {
-      const result = await packer.packContext(
-        [],
-        'extract function from complex code',
-        'refactor'
-      );
+      const result = await packer.packContext([], 'extract function from complex code', 'refactor');
 
       expect(result).toBeDefined();
       expect(result.prompt).toBeDefined();
@@ -259,9 +250,7 @@ describe('ContextPacker', () => {
 
     it('should handle large content efficiently', async () => {
       const largeContent = 'function testFunction() { ' + 'return "hello"; '.repeat(1000) + ' }';
-      const chunks = [
-        createMockChunk('chunk1', largeContent),
-      ];
+      const chunks = [createMockChunk('chunk1', largeContent)];
 
       const result = await packer.packContext(
         chunks,
@@ -277,9 +266,7 @@ describe('ContextPacker', () => {
 
   describe('error handling', () => {
     it('should handle invalid options gracefully', async () => {
-      const chunks = [
-        createMockChunk('chunk1', 'function testFunction() { return "hello"; }'),
-      ];
+      const chunks = [createMockChunk('chunk1', 'function testFunction() { return "hello"; }')];
 
       const result = await packer.packContext(
         chunks,
