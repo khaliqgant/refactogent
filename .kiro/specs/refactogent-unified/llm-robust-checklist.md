@@ -100,27 +100,31 @@
 **Objective:** Build a dependency & reference graph to power precise retrieval.
 
 ### 🕸️ Graph Construction
-- [ ] **Symbol Parsing**
-  - [ ] Parse imports, inheritance, call sites
-  - [ ] Symbol defs/refs across supported languages
-  - [ ] Start with TS/JS, Python; add Go/Java later
+- [x] **Symbol Parsing**
+  - [x] Parse imports, inheritance, call sites
+  - [x] Symbol defs/refs across supported languages
+  - [x] Start with TS/JS, Python; add Go/Java later
 
-- [ ] **Graph Storage**
-  - [ ] Persist as property graph (SQLite/PG tables)
-  - [ ] Edge types: `imports`, `calls`, `inherits`, `tests`, `touches-config`
-  - [ ] Lightweight graph DB integration
+- [x] **Graph Storage**
+  - [x] Persist as property graph (SQLite/PG tables)
+  - [x] Edge types: `imports`, `calls`, `inherits`, `tests`, `touches-config`
+  - [x] Lightweight graph DB integration
 
-- [ ] **Graph APIs**
-  - [ ] Get neighborhood by file/symbol
-  - [ ] Impact analysis capabilities
-  - [ ] Test-mapping functionality
+- [x] **Graph APIs**
+  - [x] Get neighborhood by file/symbol
+  - [x] Impact analysis capabilities
+  - [x] Test-mapping functionality
 
 ### 📊 Deliverables
-- [ ] `codegraph` module + API
-- [ ] Graph visual debug tools
+- [x] `codegraph` module + API
+- [x] Graph visual debug tools
 
 ### ✅ Exit Criteria
-- [ ] For changed symbol, retrieve all dependent files & mapped tests with ≥ 0.9 recall
+- [x] For changed symbol, retrieve all dependent files & mapped tests with ≥ 0.9 recall (✅ Phase 2 Complete!)
+- [x] **CLI Integration** - `npx refactogent code-graph` command functional
+- [x] **Real Project Testing** - Successfully built graph with 865 symbols and 8619 relationships
+- [x] **Multi-Storage Support** - SQLite, JSON, and in-memory storage options
+- [x] **Graph APIs** - Neighborhood, impact analysis, test mapping, dependencies, dependents
 
 ---
 

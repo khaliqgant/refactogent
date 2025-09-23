@@ -11,6 +11,7 @@ import { SafetyGate } from './safety/safety-gate.js';
 import { RedTeamTester } from './security/red-team.js';
 import { IntelligentFixer } from './safety/intelligent-fixer.js';
 import { IndexCommand } from './commands/index.js';
+import { CodeGraphCommand } from './commands/code-graph.js';
 import { createRefactorSuggestCommand } from './commands/refactor-suggest.js';
 import { createLLMRefactorCommand } from './commands/llm-refactor.js';
 import { createLLMConfigCommand } from './commands/llm-config.js';
@@ -738,6 +739,137 @@ program
       }
     } catch (error) {
       console.error('❌ Indexing failed:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('code-graph')
+  .description('Build and query code graphs for dependency analysis')
+  .option('-p, --path <path>', 'Project path to analyze', '.')
+  .option('--storage <type>', 'Storage type (sqlite|memory|json)', 'sqlite')
+  .option('--db-path <path>', 'Database path for SQLite storage')
+  .option('--max-nodes <number>', 'Maximum number of nodes', '10000')
+  .option('--max-edges <number>', 'Maximum number of edges', '50000')
+  .option('--enable-indexing', 'Enable database indexing for faster queries')
+  .option('--include-tests', 'Include test files in graph')
+  .option('--include-configs', 'Include configuration files in graph')
+  .option('--max-depth <number>', 'Maximum traversal depth', '5')
+  .option('-v, --verbose', 'Show detailed graph information')
+  .action(async (options, command) => {
+    const logger = new Logger();
+    const metrics = new RefactoGentMetrics(logger);
+    const tracer = new RefactoGentTracer(logger);
+    const configLoader = new NewConfigLoader(logger);
+
+    try {
+      const config = await configLoader.loadConfig(process.cwd());
+      const codeGraphCommand = new CodeGraphCommand(logger, metrics, tracer, config as any);
+
+      const globalOpts = command.parent.opts();
+      const verbose = !!globalOpts.verbose;
+
+      await codeGraphCommand.buildGraph({
+        projectPath: options.path,
+        storageType: options.storage,
+        dbPath: options.dbPath,
+        maxNodes: parseInt(options.maxNodes || '10000'),
+        maxEdges: parseInt(options.maxEdges || '50000'),
+        enableIndexing: options.enableIndexing,
+        includeTests: options.includeTests,
+        includeConfigs: options.includeConfigs,
+        maxDepth: parseInt(options.maxDepth || '5'),
+        verbose
+      });
+
+      await codeGraphCommand.close();
+    } catch (error) {
+      console.error('❌ Code graph failed:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('code-graph-query')
+  .description('Query code graph for dependencies and relationships')
+  .option('-p, --path <path>', 'Project path', '.')
+  .option('--query <type>', 'Query type (neighborhood|impact|test-mapping|dependencies|dependents)', 'neighborhood')
+  .option('--symbol <id>', 'Symbol ID to query')
+  .option('--storage <type>', 'Storage type (sqlite|memory|json)', 'sqlite')
+  .option('--db-path <path>', 'Database path for SQLite storage')
+  .option('--max-depth <number>', 'Maximum traversal depth', '3')
+  .option('--include-tests', 'Include test files in query')
+  .option('--include-configs', 'Include configuration files in query')
+  .option('-v, --verbose', 'Show detailed query information')
+  .action(async (options, command) => {
+    const logger = new Logger();
+    const metrics = new RefactoGentMetrics(logger);
+    const tracer = new RefactoGentTracer(logger);
+    const configLoader = new NewConfigLoader(logger);
+
+    try {
+      const config = await configLoader.loadConfig(process.cwd());
+      const codeGraphCommand = new CodeGraphCommand(logger, metrics, tracer, config as any);
+
+      const globalOpts = command.parent.opts();
+      const verbose = !!globalOpts.verbose;
+
+      if (!options.symbol) {
+        console.error('❌ Symbol ID is required. Use --symbol <id>');
+        process.exit(1);
+      }
+
+      await codeGraphCommand.queryGraph(
+        options.query as any,
+        options.symbol,
+        {
+          projectPath: options.path,
+          storageType: options.storage,
+          dbPath: options.dbPath,
+          maxDepth: parseInt(options.maxDepth || '3'),
+          includeTests: options.includeTests,
+          includeConfigs: options.includeConfigs,
+          verbose
+        }
+      );
+
+      await codeGraphCommand.close();
+    } catch (error) {
+      console.error('❌ Code graph query failed:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('code-graph-stats')
+  .description('Get code graph statistics')
+  .option('-p, --path <path>', 'Project path', '.')
+  .option('--storage <type>', 'Storage type (sqlite|memory|json)', 'sqlite')
+  .option('--db-path <path>', 'Database path for SQLite storage')
+  .option('-v, --verbose', 'Show detailed statistics')
+  .action(async (options, command) => {
+    const logger = new Logger();
+    const metrics = new RefactoGentMetrics(logger);
+    const tracer = new RefactoGentTracer(logger);
+    const configLoader = new NewConfigLoader(logger);
+
+    try {
+      const config = await configLoader.loadConfig(process.cwd());
+      const codeGraphCommand = new CodeGraphCommand(logger, metrics, tracer, config as any);
+
+      const globalOpts = command.parent.opts();
+      const verbose = !!globalOpts.verbose;
+
+      await codeGraphCommand.getStatistics({
+        projectPath: options.path,
+        storageType: options.storage,
+        dbPath: options.dbPath,
+        verbose
+      });
+
+      await codeGraphCommand.close();
+    } catch (error) {
+      console.error('❌ Code graph stats failed:', error);
       process.exit(1);
     }
   });
