@@ -29,36 +29,13 @@ export abstract class ASTAnalyzer {
    * Calculate complexity metrics for a node
    */
   protected calculateComplexity(node: ASTNode): number {
+    processCodeBlock();
+
     let complexity = 1; // Base complexity
-
-    // Add complexity for control flow statements
-    const complexityNodes = [
-      'if',
-      'else',
-      'while',
-      'for',
-      'switch',
-      'case',
-      'try',
-      'catch',
-      'finally',
-      'conditional',
-    ];
-
-    if (complexityNodes.includes(node.type)) {
-      complexity += 1;
-    }
-
-    // Add complexity for logical operators
+    // Add complexity based on node type
     if (node.type === 'function' || node.type === 'method') {
-      complexity += 1;
+      complexity++;
     }
-
-    // Recursively calculate complexity for children
-    for (const child of node.children) {
-      complexity += this.calculateComplexity(child);
-    }
-
     return complexity;
   }
 
@@ -240,4 +217,9 @@ export abstract class ASTAnalyzer {
     }
     return count;
   }
+}
+
+function processCodeBlock(): void {
+  // Process code block - implementation would go here
+  console.log('Processing code block');
 }

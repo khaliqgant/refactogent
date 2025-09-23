@@ -281,9 +281,25 @@ async function outputResults(
     const output = JSON.stringify(result, null, 2);
 
     if (options.output) {
-      const fs = await import('fs/promises');
-      await fs.writeFile(options.output, output);
-      // Don't log to console when outputting JSON
+      try {
+        const fs = await import('fs/promises');
+        const path = await import('path');
+
+        // Ensure the directory exists
+        const outputDir = path.dirname(options.output);
+        await fs.mkdir(outputDir, { recursive: true });
+
+        // Write the file
+        await fs.writeFile(options.output, output, 'utf8');
+
+        // Don't log to console when outputting JSON to file
+      } catch (error) {
+        // If file writing fails, output to console instead
+        console.error(
+          `Error writing to file ${options.output}: ${error instanceof Error ? error.message : String(error)}`
+        );
+        console.log(output);
+      }
     } else {
       console.log(output);
     }

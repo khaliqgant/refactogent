@@ -1,0 +1,39 @@
+repository:
+  name: my-project
+  type: application
+  language:
+    - typescript
+    - javascript
+paths:
+  ignore:
+    - node_modules/**
+    - dist/**
+    - build/**
+    - .git/**
+  prioritize:
+    - src/**
+    - lib/**
+style:
+  naming:
+    functions: camelCase
+    variables: camelCase
+    classes: PascalCase
+    constants: UPPER_SNAKE_CASE
+safety:
+  rules:
+    requireTests: true
+    requireTypeCheck: true
+    requireLinting: true
+    blockBreakingChanges: true
+ai:
+  models:
+    primary: gpt-4o-mini
+    fallback: gpt-3.5-turbo
+  behavior:
+    aggressiveness: balanced
+    preferIncremental: true
+features:
+  codeGraph: true
+  crossFileAnalysis: true
+  architecturalPatterns: true
+

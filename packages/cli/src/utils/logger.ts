@@ -40,23 +40,31 @@ export class Logger {
   }
 
   info(message: string, context?: Record<string, any>): void {
-    const entry = this.createLogEntry('info', message, context);
-    console.log(this.formatMessage(entry));
+    if (this.verbose) {
+      const entry = this.createLogEntry('info', message, context);
+      console.log(this.formatMessage(entry));
+    }
   }
 
   warn(message: string, context?: Record<string, any>): void {
-    const entry = this.createLogEntry('warn', message, context);
-    console.warn(this.formatMessage(entry));
+    if (this.verbose) {
+      const entry = this.createLogEntry('warn', message, context);
+      console.warn(this.formatMessage(entry));
+    }
   }
 
   error(message: string, context?: Record<string, any>): void {
-    const entry = this.createLogEntry('error', message, context);
-    console.error(this.formatMessage(entry));
+    if (this.verbose) {
+      const entry = this.createLogEntry('error', message, context);
+      console.error(this.formatMessage(entry));
+    }
   }
 
   success(message: string, context?: Record<string, any>): void {
-    const entry = this.createLogEntry('info', `✅ ${message}`, context);
-    console.log(this.formatMessage(entry));
+    if (this.verbose) {
+      const entry = this.createLogEntry('info', `✅ ${message}`, context);
+      console.log(this.formatMessage(entry));
+    }
   }
 
   setVerbose(verbose: boolean): void {

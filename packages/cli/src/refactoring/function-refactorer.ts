@@ -10,6 +10,8 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { Logger } from '../utils/logger.js';
+import { CodebaseContextAnalyzer, CodebaseContext } from '../analysis/codebase-context-analyzer.js';
+import { ContextAwareLLMService, LLMRefactoringRequest } from '../llm/context-aware-llm-service.js';
 
 export interface FunctionExtractionCandidate {
   id: string;
@@ -121,6 +123,9 @@ export interface InlineChange {
 export class FunctionRefactorer {
   private logger: Logger;
   private project: Project;
+  private codebaseAnalyzer: CodebaseContextAnalyzer;
+  private llmService: ContextAwareLLMService;
+  private codebaseContext: CodebaseContext | null = null;
 
   constructor(logger: Logger) {
     this.logger = logger;
@@ -134,6 +139,8 @@ export class FunctionRefactorer {
         checkJs: false,
       },
     });
+    this.codebaseAnalyzer = new CodebaseContextAnalyzer(logger);
+    this.llmService = new ContextAwareLLMService(logger);
   }
 
   /**
@@ -287,34 +294,59 @@ export class FunctionRefactorer {
       insertionPoint?: 'before' | 'after' | 'top' | 'bottom';
       makeAsync?: boolean;
       addDocumentation?: boolean;
+      projectContext?: string;
+      projectPath?: string;
     } = {}
   ): Promise<ExtractionOperation> {
+    // Initialize codebase context if not already done
+    if (!this.codebaseContext && options.projectPath) {
+      this.codebaseContext = await this.codebaseAnalyzer.analyzeCodebaseContext(
+        options.projectPath
+      );
+    }
+
+    // Use context-aware LLM for intelligent refactoring
+    const llmRequest: LLMRefactoringRequest = {
+      codeBlock: candidate.codeBlock,
+      filePath: candidate.filePath,
+      projectContext:
+        this.codebaseContext ||
+        (await this.codebaseAnalyzer.analyzeCodebaseContext(options.projectPath || '.')),
+      operation: 'extract',
+      options: {
+        suggestedName: newFunctionName,
+        preserveBehavior: true,
+      },
+    };
+
+    const llmResponse = await this.llmService.performRefactoring(llmRequest);
+    const betterName = llmResponse.functionName;
+
     this.logger.info('Planning function extraction', {
       candidateId: candidate.id,
-      newFunctionName,
+      newFunctionName: betterName,
     });
 
     const changes: ExtractionChange[] = [];
     const insertionPoint = this.determineInsertionPoint(candidate, options.insertionPoint);
 
     // Generate new function
-    const newFunction = this.generateExtractedFunction(candidate, newFunctionName, options);
-
-    // Replace original code with function call
-    const functionCall = this.generateFunctionCall(candidate, newFunctionName);
+    // Use LLM-generated function and call
+    const newFunction = llmResponse.extractedFunction;
+    const functionCall = llmResponse.functionCall;
 
     changes.push({
       type: 'replace-with-call',
       filePath: candidate.filePath,
       position: {
-        start: 0, // Would calculate actual positions
-        end: 0,
+        start: candidate.startLine,
+        end: candidate.endLine,
         line: candidate.startLine,
         column: 1,
       },
       originalText: candidate.codeBlock,
       newText: functionCall,
-      description: `Replace code block with call to ${newFunctionName}()`,
+      description: `Replace code block with call to ${betterName}()`,
     });
 
     changes.push({
@@ -328,12 +360,12 @@ export class FunctionRefactorer {
       },
       originalText: '',
       newText: newFunction,
-      description: `Insert extracted function ${newFunctionName}()`,
+      description: `Insert extracted function ${betterName}()`,
     });
 
     return {
       candidate,
-      newFunctionName,
+      newFunctionName: betterName,
       insertionPoint,
       changes,
     };
@@ -754,6 +786,20 @@ export class FunctionRefactorer {
   }
 
   /**
+   * Get LLM usage statistics
+   */
+  getLLMUsage() {
+    return this.llmService.getUsage();
+  }
+
+  /**
+   * Reset LLM usage statistics
+   */
+  resetLLMUsage() {
+    this.llmService.resetUsage();
+  }
+
+  /**
    * Generate extracted function code
    */
   private generateExtractedFunction(
@@ -763,13 +809,29 @@ export class FunctionRefactorer {
   ): string {
     const { parameters, returnValues } = candidate.variables;
 
-    const paramList = parameters.map(p => `${p.name}: ${p.type}`).join(', ');
-    const returnType = returnValues.length === 1 ? returnValues[0].type : 'void';
+    // Detect if this is a TypeScript file
+    const isTypeScript = candidate.filePath.endsWith('.ts') || candidate.filePath.endsWith('.tsx');
 
-    const asyncKeyword = options.makeAsync ? 'async ' : '';
+    const paramList = isTypeScript
+      ? parameters.map(p => `${p.name}: ${p.type}`).join(', ')
+      : parameters.map(p => p.name).join(', ');
+
+    const returnType = isTypeScript
+      ? returnValues.length === 1
+        ? returnValues[0].type
+        : 'void'
+      : '';
+
+    // Check if the original code block contains await
+    const hasAwait = candidate.codeBlock.includes('await');
+    const shouldBeAsync = options.makeAsync || hasAwait;
+
+    const asyncKeyword = shouldBeAsync ? 'async ' : '';
     const returnStatement = returnValues.length > 0 ? `\n  return ${returnValues[0].name};` : '';
 
-    let functionCode = `${asyncKeyword}function ${functionName}(${paramList}): ${returnType} {\n`;
+    let functionCode = isTypeScript
+      ? `${asyncKeyword}function ${functionName}(${paramList}): ${returnType} {\n`
+      : `${asyncKeyword}function ${functionName}(${paramList}) {\n`;
 
     if (options.addDocumentation) {
       functionCode = `/**\n * Extracted function\n * Generated by Refactogent\n */\n${functionCode}`;
@@ -796,7 +858,10 @@ export class FunctionRefactorer {
     const { parameters, returnValues } = candidate.variables;
 
     const argList = parameters.map(p => p.name).join(', ');
-    const call = `${functionName}(${argList})`;
+
+    // Check if the original code block contains await
+    const hasAwait = candidate.codeBlock.includes('await');
+    const call = hasAwait ? `await ${functionName}(${argList})` : `${functionName}(${argList})`;
 
     if (returnValues.length === 1) {
       return `const ${returnValues[0].name} = ${call};`;

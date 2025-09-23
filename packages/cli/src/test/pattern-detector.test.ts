@@ -83,7 +83,7 @@ describe('PatternDetector', () => {
         },
       ],
       complexity: 20,
-      loc: 100,
+      loc: 30, // Reduced to avoid triggering extract_variable (needs > 50)
     };
 
     mockProjectAST = {
@@ -175,13 +175,25 @@ describe('PatternDetector', () => {
     });
 
     it('should detect extract variable opportunities for large modules', async () => {
+      // Create mock data that triggers extract_variable (loc > 50) but not extract_function (complexity <= 15)
+      const largeModuleAST: ProjectAST = {
+        ...mockProjectAST,
+        modules: [
+          {
+            ...mockProjectAST.modules[0],
+            complexity: 10, // Low complexity to avoid extract_function
+            loc: 100, // High LOC to trigger extract_variable
+          },
+        ],
+      };
+
       const options: PatternDetectionOptions = {
         categories: ['extract'],
         maxSuggestions: 5,
       };
 
       const result = await patternDetector.detectOpportunities(
-        mockProjectAST,
+        largeModuleAST,
         mockSafetyScore,
         options
       );
@@ -216,12 +228,115 @@ describe('PatternDetector', () => {
     });
 
     it('should detect dead code removal opportunities', async () => {
+      // Create mock data that triggers dead code removal (imports.length > 5)
+      const deadCodeModuleAST: ProjectAST = {
+        ...mockProjectAST,
+        modules: [
+          {
+            ...mockProjectAST.modules[0],
+            imports: [
+              {
+                source: 'lodash',
+                imports: ['map'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 1,
+                  startColumn: 1,
+                  endLine: 1,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'react',
+                imports: ['useState'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 2,
+                  startColumn: 1,
+                  endLine: 2,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'axios',
+                imports: ['get'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 3,
+                  startColumn: 1,
+                  endLine: 3,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'moment',
+                imports: ['format'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 4,
+                  startColumn: 1,
+                  endLine: 4,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'lodash',
+                imports: ['filter'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 5,
+                  startColumn: 1,
+                  endLine: 5,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'unused-lib',
+                imports: ['unusedFunction'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 6,
+                  startColumn: 1,
+                  endLine: 6,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'another-unused',
+                imports: ['anotherFunction'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 7,
+                  startColumn: 1,
+                  endLine: 7,
+                  endColumn: 20,
+                },
+              },
+            ],
+          },
+        ],
+      };
+
       const options: PatternDetectionOptions = {
         categories: ['optimize'],
       };
 
       const result = await patternDetector.detectOpportunities(
-        mockProjectAST,
+        deadCodeModuleAST,
         mockSafetyScore,
         options
       );
@@ -236,12 +351,118 @@ describe('PatternDetector', () => {
     });
 
     it('should filter opportunities by safety threshold', async () => {
+      // Create mock data that only triggers remove_dead_code (imports.length > 5)
+      // and doesn't trigger extract_variable (loc <= 50) or extract_function (complexity <= 15)
+      const highSafetyModuleAST: ProjectAST = {
+        ...mockProjectAST,
+        modules: [
+          {
+            ...mockProjectAST.modules[0],
+            complexity: 10, // Low complexity to avoid extract_function
+            loc: 30, // Low LOC to avoid extract_variable
+            imports: [
+              {
+                source: 'lodash',
+                imports: ['map'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 1,
+                  startColumn: 1,
+                  endLine: 1,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'react',
+                imports: ['useState'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 2,
+                  startColumn: 1,
+                  endLine: 2,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'axios',
+                imports: ['get'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 3,
+                  startColumn: 1,
+                  endLine: 3,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'moment',
+                imports: ['format'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 4,
+                  startColumn: 1,
+                  endLine: 4,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'lodash',
+                imports: ['filter'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 5,
+                  startColumn: 1,
+                  endLine: 5,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'unused-lib',
+                imports: ['unusedFunction'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 6,
+                  startColumn: 1,
+                  endLine: 6,
+                  endColumn: 20,
+                },
+              },
+              {
+                source: 'another-unused',
+                imports: ['anotherFunction'],
+                isDefault: false,
+                isNamespace: false,
+                location: {
+                  file: 'src/example.ts',
+                  startLine: 7,
+                  startColumn: 1,
+                  endLine: 7,
+                  endColumn: 20,
+                },
+              },
+            ],
+          },
+        ],
+      };
+
       const options: PatternDetectionOptions = {
         safetyThreshold: 95,
       };
 
       const result = await patternDetector.detectOpportunities(
-        mockProjectAST,
+        highSafetyModuleAST,
         mockSafetyScore,
         options
       );

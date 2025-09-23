@@ -468,10 +468,53 @@ describe('SuggestionEngine', () => {
         },
       };
 
+      // Create a coverage report with low coverage for the specific file
+      const lowCoverageReport: CoverageReport = {
+        ...mockCoverageReport,
+        fileCoverage: [
+          {
+            filePath: 'src/example.ts',
+            relativePath: 'src/example.ts',
+            metrics: {
+              linesCovered: 20,
+              totalLines: 100,
+              linePercentage: 20, // Low coverage to trigger blockers
+              branchesCovered: 15,
+              totalBranches: 100,
+              branchPercentage: 15,
+              functionsCovered: 25,
+              totalFunctions: 100,
+              functionPercentage: 25,
+              statementsCovered: 22,
+              totalStatements: 100,
+              statementPercentage: 22,
+            },
+            uncoveredLines: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+            uncoveredBranches: [],
+            riskLevel: 'high',
+            recommendations: ['Add tests for uncovered lines'],
+          },
+        ],
+        overallCoverage: {
+          linesCovered: 20,
+          totalLines: 100,
+          linePercentage: 20,
+          branchesCovered: 15,
+          totalBranches: 100,
+          branchPercentage: 15,
+          functionsCovered: 25,
+          totalFunctions: 100,
+          functionPercentage: 25,
+          statementsCovered: 22,
+          totalStatements: 100,
+          statementPercentage: 22,
+        },
+      };
+
       const result = await suggestionEngine.generateSuggestions(
         mockProjectAST,
         lowCoverageSafetyScore,
-        mockCoverageReport
+        lowCoverageReport
       );
 
       // Should recommend improving test coverage

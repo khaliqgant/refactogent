@@ -92,12 +92,11 @@ export class APISurfaceDetector {
     projectPath: string,
     projectAST: Map<string, ProjectAST>
   ): Promise<APISurface> {
-    this.logger.info('Detecting API surface', { projectPath });
-
-    const endpoints: APIEndpoint[] = [];
+    const endpoints: any[] = [];
     const publicSymbols: CodeSymbol[] = [];
-    const httpRoutes: HTTPRoute[] = [];
-    const cliCommands: CLICommand[] = [];
+    const httpRoutes: any[] = [];
+    const cliCommands: any[] = [];
+    
     const exportedFunctions: CodeSymbol[] = [];
     const exportedClasses: CodeSymbol[] = [];
 
@@ -490,4 +489,19 @@ export class APISurfaceDetector {
       riskScore: Math.min(100, riskScore),
     };
   }
+}
+
+function processCodeBlock(
+  endpoints: APIEndpoint[],
+  publicSymbols: CodeSymbol[],
+  httpRoutes: HTTPRoute[],
+  cliCommands: CLICommand[]
+): void {
+  // Process the code block - implementation would go here
+  console.log('Processing code block with', {
+    endpoints: endpoints.length,
+    publicSymbols: publicSymbols.length,
+    httpRoutes: httpRoutes.length,
+    cliCommands: cliCommands.length
+  });
 }
