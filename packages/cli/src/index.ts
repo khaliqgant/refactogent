@@ -12,6 +12,7 @@ import { RedTeamTester } from './security/red-team.js';
 import { IntelligentFixer } from './safety/intelligent-fixer.js';
 import { IndexCommand } from './commands/index.js';
 import { CodeGraphCommand } from './commands/code-graph.js';
+import { createRetrieveCommand } from './commands/retrieve.js';
 import { createRefactorSuggestCommand } from './commands/refactor-suggest.js';
 import { createLLMRefactorCommand } from './commands/llm-refactor.js';
 import { createLLMConfigCommand } from './commands/llm-config.js';
@@ -513,6 +514,9 @@ program.addCommand(createLLMConfigCommand());
 
 // 5. Compare - Head-to-head comparison with competitors
 program.addCommand(createCompareCommand());
+
+// 6. Retrieve - Hybrid retrieval with grounding checks and context packing
+program.addCommand(createRetrieveCommand());
 
 // Phase 0: Stabilize & Instrument commands
 program

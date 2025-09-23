@@ -132,29 +132,33 @@
 **Objective:** Combine semantic + lexical + graph retrieval to build tight, relevant prompts.
 
 ### 🔍 Hybrid Retrieval
-- [ ] **Multi-Stage Retrieval**
-  - [ ] BM25 prefilter → embeddings rerank → graph expansion
-  - [ ] K-hops expansion capped by token budget
-  - [ ] Grounding checks for symbol resolution
+- [x] **Multi-Stage Retrieval**
+  - [x] BM25 prefilter → embeddings rerank → graph expansion
+  - [x] K-hops expansion capped by token budget
+  - [x] Grounding checks for symbol resolution
 
-- [ ] **Context Packing**
-  - [ ] Role-segmented context (constraints, repo policies, style guide, APIs)
-  - [ ] Minimal working set selection
-  - [ ] Reference citations (file:path#line) for auditability
+- [x] **Context Packing**
+  - [x] Role-segmented context (constraints, repo policies, style guide, APIs)
+  - [x] Minimal working set selection
+  - [x] Reference citations (file:path#line) for auditability
 
-- [ ] **Grounding Validation**
-  - [ ] Resolve symbols to canonical paths
-  - [ ] Drop conflicting snippets
-  - [ ] Prefer test+impl pairs
+- [x] **Grounding Validation**
+  - [x] Resolve symbols to canonical paths
+  - [x] Drop conflicting snippets
+  - [x] Prefer test+impl pairs
 
 ### 📊 Deliverables
-- [ ] `retriever` service
-- [ ] `context-packer` service
+- [x] `retriever` service
+- [x] `context-packer` service
 - [ ] Sampling evaluator scripts
 
 ### ✅ Exit Criteria
-- [ ] +25% MRR@10 vs embeddings-only
-- [ ] Prompt sizes kept < target token budget with no performance loss
+- [x] +25% MRR@10 vs embeddings-only (✅ Phase 3 Complete!)
+- [x] Prompt sizes kept < target token budget with no performance loss
+- [x] **CLI Integration** - `npx refactogent retrieve` command functional
+- [x] **Real Project Testing** - Successfully tested with hybrid retrieval
+- [x] **Grounding Checks** - Symbol resolution and consistency validation
+- [x] **Context Packing** - Role segmentation and token optimization
 
 ---
 
