@@ -53,7 +53,7 @@ describe('IntentClassifier', () => {
         'extract function from complex code',
         'restructure the code',
         'clean up the implementation',
-        'simplify this method'
+        'simplify this method',
       ];
 
       for (const input of inputs) {
@@ -73,7 +73,7 @@ describe('IntentClassifier', () => {
         'modify the function',
         'change the implementation',
         'update the code',
-        'fix the bug'
+        'fix the bug',
       ];
 
       for (const input of inputs) {
@@ -89,7 +89,7 @@ describe('IntentClassifier', () => {
         'what does this function do',
         'describe the implementation',
         'how does this work',
-        'clarify the logic'
+        'clarify the logic',
       ];
 
       for (const input of inputs) {
@@ -105,7 +105,7 @@ describe('IntentClassifier', () => {
         'create unit tests',
         'write test cases',
         'add test coverage',
-        'test this function'
+        'test this function',
       ];
 
       for (const input of inputs) {
@@ -121,7 +121,7 @@ describe('IntentClassifier', () => {
         'add documentation',
         'write comments',
         'create API docs',
-        'generate README'
+        'generate README',
       ];
 
       for (const input of inputs) {
@@ -137,7 +137,7 @@ describe('IntentClassifier', () => {
         'upgrade the codebase',
         'convert to TypeScript',
         'port to new framework',
-        'transform legacy code'
+        'transform legacy code',
       ];
 
       for (const input of inputs) {
@@ -153,7 +153,7 @@ describe('IntentClassifier', () => {
         'improve speed',
         'reduce memory usage',
         'fix bottleneck',
-        'make it faster'
+        'make it faster',
       ];
 
       for (const input of inputs) {
@@ -169,7 +169,7 @@ describe('IntentClassifier', () => {
         'fix the error',
         'troubleshoot the problem',
         'investigate the bug',
-        'find the issue'
+        'find the issue',
       ];
 
       for (const input of inputs) {
@@ -185,7 +185,7 @@ describe('IntentClassifier', () => {
         'get metrics',
         'generate report',
         'check complexity',
-        'review architecture'
+        'review architecture',
       ];
 
       for (const input of inputs) {
@@ -196,12 +196,7 @@ describe('IntentClassifier', () => {
     });
 
     it('should handle unknown intents', async () => {
-      const inputs = [
-        'random text',
-        'gibberish',
-        'unrelated content',
-        'nonsense'
-      ];
+      const inputs = ['random text', 'gibberish', 'unrelated content', 'nonsense'];
 
       for (const input of inputs) {
         const result = await classifier.classifyIntent(input);
@@ -222,43 +217,35 @@ describe('IntentClassifier', () => {
     });
 
     it('should estimate complexity when requested', async () => {
-      const result = await classifier.classifyIntent(
-        'simple refactor',
-        undefined,
-        { estimateComplexity: true }
-      );
+      const result = await classifier.classifyIntent('simple refactor', undefined, {
+        estimateComplexity: true,
+      });
 
       expect(result.complexity).toBeDefined();
       expect(['low', 'medium', 'high']).toContain(result.complexity);
     });
 
     it('should estimate time when requested', async () => {
-      const result = await classifier.classifyIntent(
-        'complex migration',
-        undefined,
-        { estimateTime: true }
-      );
+      const result = await classifier.classifyIntent('complex migration', undefined, {
+        estimateTime: true,
+      });
 
       expect(result.estimatedTime).toBeGreaterThan(0);
     });
 
     it('should assess risk when requested', async () => {
-      const result = await classifier.classifyIntent(
-        'high-risk operation',
-        undefined,
-        { assessRisk: true }
-      );
+      const result = await classifier.classifyIntent('high-risk operation', undefined, {
+        assessRisk: true,
+      });
 
       expect(result.riskLevel).toBeDefined();
       expect(['low', 'medium', 'high']).toContain(result.riskLevel);
     });
 
     it('should suggest tools when requested', async () => {
-      const result = await classifier.classifyIntent(
-        'refactor code',
-        undefined,
-        { suggestTools: true }
-      );
+      const result = await classifier.classifyIntent('refactor code', undefined, {
+        suggestTools: true,
+      });
 
       expect(result.requiredTools).toBeDefined();
       expect(Array.isArray(result.requiredTools)).toBe(true);
@@ -277,14 +264,14 @@ describe('IntentClassifier', () => {
 
     it('should calculate confidence scores correctly', async () => {
       const result = await classifier.classifyIntent('refactor this function');
-      
+
       expect(result.confidence).toBeGreaterThanOrEqual(0);
       expect(result.confidence).toBeLessThanOrEqual(1);
     });
 
     it('should provide reasoning for classification', async () => {
       const result = await classifier.classifyIntent('extract function');
-      
+
       expect(result.reasoning).toBeDefined();
       expect(typeof result.reasoning).toBe('string');
       expect(result.reasoning.length).toBeGreaterThan(0);
@@ -294,7 +281,7 @@ describe('IntentClassifier', () => {
   describe('getClassificationStats', () => {
     it('should return classification statistics', async () => {
       const stats = await classifier.getClassificationStats();
-      
+
       expect(stats).toBeDefined();
       expect(stats.totalClassifications).toBeDefined();
       expect(stats.intentDistribution).toBeDefined();
@@ -306,7 +293,7 @@ describe('IntentClassifier', () => {
   describe('error handling', () => {
     it('should handle empty input gracefully', async () => {
       const result = await classifier.classifyIntent('');
-      
+
       expect(result).toBeDefined();
       expect(result.intent).toBe('unknown');
     });
@@ -314,7 +301,7 @@ describe('IntentClassifier', () => {
     it('should handle very long input', async () => {
       const longInput = 'refactor '.repeat(1000);
       const result = await classifier.classifyIntent(longInput);
-      
+
       expect(result).toBeDefined();
       expect(result.intent).toBe('refactor');
     });

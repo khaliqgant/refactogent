@@ -46,41 +46,43 @@ describe('PatchSetManager', () => {
     manager = new PatchSetManager(logger, metrics, tracer, config);
   });
 
-  const createMockPatch = (filePath: string, originalContent: string, newContent: string): FilePatch => ({
+  const createMockPatch = (
+    filePath: string,
+    originalContent: string,
+    newContent: string
+  ): FilePatch => ({
     filePath,
     originalContent,
     newContent,
-    changes: [{
-      type: 'replace',
-      startLine: 1,
-      endLine: 1,
-      originalText: originalContent,
-      newText: newContent,
-      context: {
-        before: [],
-        after: []
-      }
-    }],
+    changes: [
+      {
+        type: 'replace',
+        startLine: 1,
+        endLine: 1,
+        originalText: originalContent,
+        newText: newContent,
+        context: {
+          before: [],
+          after: [],
+        },
+      },
+    ],
     metadata: {
       timestamp: Date.now(),
       author: 'test',
       description: 'Test patch',
-      checksum: 'test-checksum'
-    }
+      checksum: 'test-checksum',
+    },
   });
 
   describe('createPatchSet', () => {
     it('should create a patch set with basic options', async () => {
       const patches = [
         createMockPatch('src/test.ts', 'old code', 'new code'),
-        createMockPatch('src/utils.ts', 'old utils', 'new utils')
+        createMockPatch('src/utils.ts', 'old utils', 'new utils'),
       ];
 
-      const patchSet = await manager.createPatchSet(
-        'test-patch-set',
-        'Test patch set',
-        patches
-      );
+      const patchSet = await manager.createPatchSet('test-patch-set', 'Test patch set', patches);
 
       expect(patchSet).toBeDefined();
       expect(patchSet.id).toBeDefined();
@@ -98,7 +100,7 @@ describe('PatchSetManager', () => {
         validateChanges: true,
         includeMetadata: true,
         estimateImpact: true,
-        generateRollback: true
+        generateRollback: true,
       };
 
       const patchSet = await manager.createPatchSet(
@@ -116,7 +118,7 @@ describe('PatchSetManager', () => {
     it('should validate patches when requested', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
       const options: PatchSetOptions = {
-        validateChanges: true
+        validateChanges: true,
       };
 
       const patchSet = await manager.createPatchSet(
@@ -133,10 +135,10 @@ describe('PatchSetManager', () => {
       const patches = [
         createMockPatch('src/test.ts', 'old code', 'new code'),
         createMockPatch('src/utils.ts', 'old utils', 'new utils'),
-        createMockPatch('src/helper.ts', 'old helper', 'new helper')
+        createMockPatch('src/helper.ts', 'old helper', 'new helper'),
       ];
       const options: PatchSetOptions = {
-        estimateImpact: true
+        estimateImpact: true,
       };
 
       const patchSet = await manager.createPatchSet(
@@ -153,7 +155,7 @@ describe('PatchSetManager', () => {
     it('should generate rollback plan when requested', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
       const options: PatchSetOptions = {
-        generateRollback: true
+        generateRollback: true,
       };
 
       const patchSet = await manager.createPatchSet(
@@ -170,11 +172,7 @@ describe('PatchSetManager', () => {
     });
 
     it('should handle empty patches array', async () => {
-      const patchSet = await manager.createPatchSet(
-        'empty-patch-set',
-        'Empty patch set',
-        []
-      );
+      const patchSet = await manager.createPatchSet('empty-patch-set', 'Empty patch set', []);
 
       expect(patchSet).toBeDefined();
       expect(patchSet.patches.length).toBe(0);
@@ -186,11 +184,7 @@ describe('PatchSetManager', () => {
   describe('applyPatchSet', () => {
     it('should apply a patch set successfully', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
-      const patchSet = await manager.createPatchSet(
-        'test-patch-set',
-        'Test patch set',
-        patches
-      );
+      const patchSet = await manager.createPatchSet('test-patch-set', 'Test patch set', patches);
 
       const result = await manager.applyPatchSet(patchSet.id);
 
@@ -201,11 +195,7 @@ describe('PatchSetManager', () => {
 
     it('should handle dry run mode', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
-      const patchSet = await manager.createPatchSet(
-        'test-patch-set',
-        'Test patch set',
-        patches
-      );
+      const patchSet = await manager.createPatchSet('test-patch-set', 'Test patch set', patches);
 
       const result = await manager.applyPatchSet(patchSet.id, { dryRun: true });
 
@@ -215,11 +205,7 @@ describe('PatchSetManager', () => {
 
     it('should create backup when requested', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
-      const patchSet = await manager.createPatchSet(
-        'test-patch-set',
-        'Test patch set',
-        patches
-      );
+      const patchSet = await manager.createPatchSet('test-patch-set', 'Test patch set', patches);
 
       const result = await manager.applyPatchSet(patchSet.id, { backup: true });
 
@@ -235,12 +221,9 @@ describe('PatchSetManager', () => {
   describe('rollbackPatchSet', () => {
     it('should rollback a patch set with rollback plan', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
-      const patchSet = await manager.createPatchSet(
-        'test-patch-set',
-        'Test patch set',
-        patches,
-        { generateRollback: true }
-      );
+      const patchSet = await manager.createPatchSet('test-patch-set', 'Test patch set', patches, {
+        generateRollback: true,
+      });
 
       const result = await manager.rollbackPatchSet(patchSet.id);
 
@@ -251,11 +234,7 @@ describe('PatchSetManager', () => {
 
     it('should handle patch set without rollback plan', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
-      const patchSet = await manager.createPatchSet(
-        'test-patch-set',
-        'Test patch set',
-        patches
-      );
+      const patchSet = await manager.createPatchSet('test-patch-set', 'Test patch set', patches);
 
       await expect(manager.rollbackPatchSet(patchSet.id)).rejects.toThrow();
     });
@@ -268,11 +247,7 @@ describe('PatchSetManager', () => {
   describe('patch set management', () => {
     it('should get patch set by ID', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
-      const patchSet = await manager.createPatchSet(
-        'test-patch-set',
-        'Test patch set',
-        patches
-      );
+      const patchSet = await manager.createPatchSet('test-patch-set', 'Test patch set', patches);
 
       const retrieved = manager.getPatchSet(patchSet.id);
 
@@ -287,17 +262,13 @@ describe('PatchSetManager', () => {
     });
 
     it('should list all patch sets', async () => {
-      const patchSet1 = await manager.createPatchSet(
-        'patch-set-1',
-        'First patch set',
-        [createMockPatch('src/test1.ts', 'old1', 'new1')]
-      );
+      const patchSet1 = await manager.createPatchSet('patch-set-1', 'First patch set', [
+        createMockPatch('src/test1.ts', 'old1', 'new1'),
+      ]);
 
-      const patchSet2 = await manager.createPatchSet(
-        'patch-set-2',
-        'Second patch set',
-        [createMockPatch('src/test2.ts', 'old2', 'new2')]
-      );
+      const patchSet2 = await manager.createPatchSet('patch-set-2', 'Second patch set', [
+        createMockPatch('src/test2.ts', 'old2', 'new2'),
+      ]);
 
       const allPatchSets = manager.listPatchSets();
 
@@ -307,11 +278,9 @@ describe('PatchSetManager', () => {
     });
 
     it('should delete patch set', async () => {
-      const patchSet = await manager.createPatchSet(
-        'test-patch-set',
-        'Test patch set',
-        [createMockPatch('src/test.ts', 'old code', 'new code')]
-      );
+      const patchSet = await manager.createPatchSet('test-patch-set', 'Test patch set', [
+        createMockPatch('src/test.ts', 'old code', 'new code'),
+      ]);
 
       const deleted = await manager.deletePatchSet(patchSet.id);
 
@@ -329,20 +298,14 @@ describe('PatchSetManager', () => {
 
   describe('getPatchSetStats', () => {
     it('should return patch set statistics', async () => {
-      await manager.createPatchSet(
-        'patch-set-1',
-        'First patch set',
-        [createMockPatch('src/test1.ts', 'old1', 'new1')]
-      );
+      await manager.createPatchSet('patch-set-1', 'First patch set', [
+        createMockPatch('src/test1.ts', 'old1', 'new1'),
+      ]);
 
-      await manager.createPatchSet(
-        'patch-set-2',
-        'Second patch set',
-        [
-          createMockPatch('src/test2.ts', 'old2', 'new2'),
-          createMockPatch('src/utils.ts', 'old utils', 'new utils')
-        ]
-      );
+      await manager.createPatchSet('patch-set-2', 'Second patch set', [
+        createMockPatch('src/test2.ts', 'old2', 'new2'),
+        createMockPatch('src/utils.ts', 'old utils', 'new utils'),
+      ]);
 
       const stats = await manager.getPatchSetStats();
 
@@ -366,9 +329,9 @@ describe('PatchSetManager', () => {
             timestamp: Date.now(),
             author: 'test',
             description: 'Test patch',
-            checksum: 'test-checksum'
-          }
-        } as FilePatch
+            checksum: 'test-checksum',
+          },
+        } as FilePatch,
       ];
 
       const patchSet = await manager.createPatchSet(
@@ -384,11 +347,7 @@ describe('PatchSetManager', () => {
     it('should handle empty patch set name', async () => {
       const patches = [createMockPatch('src/test.ts', 'old code', 'new code')];
 
-      const patchSet = await manager.createPatchSet(
-        '',
-        'Empty name patch set',
-        patches
-      );
+      const patchSet = await manager.createPatchSet('', 'Empty name patch set', patches);
 
       expect(patchSet).toBeDefined();
       expect(patchSet.name).toBe('');

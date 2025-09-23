@@ -316,7 +316,7 @@ export class FunctionRefactorer {
       filePath: candidate.filePath,
       projectContext: JSON.stringify(
         this.codebaseContext ||
-        (await this.codebaseAnalyzer.analyzeCodebaseContext(options.projectPath || '.'))
+          (await this.codebaseAnalyzer.analyzeCodebaseContext(options.projectPath || '.'))
       ),
       operation: 'extract',
       options: {

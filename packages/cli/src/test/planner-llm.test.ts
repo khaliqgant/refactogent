@@ -47,14 +47,17 @@ describe('PlannerLLM', () => {
     planner = new PlannerLLM(logger, metrics, tracer, config);
   });
 
-  const createMockIntent = (intent: string, complexity: 'low' | 'medium' | 'high' = 'medium'): IntentClassification => ({
+  const createMockIntent = (
+    intent: string,
+    complexity: 'low' | 'medium' | 'high' = 'medium'
+  ): IntentClassification => ({
     intent: intent as any,
     confidence: 0.8,
     reasoning: 'Test intent',
     complexity,
     estimatedTime: 10,
     requiredTools: ['search', 'read', 'edit'],
-    riskLevel: intent === 'migration' ? 'high' : 'medium'
+    riskLevel: intent === 'migration' ? 'high' : 'medium',
   });
 
   describe('generatePlan', () => {
@@ -101,7 +104,7 @@ describe('PlannerLLM', () => {
 
     it('should handle different complexity levels', async () => {
       const complexities: Array<'low' | 'medium' | 'high'> = ['low', 'medium', 'high'];
-      
+
       for (const complexity of complexities) {
         const intent = createMockIntent('refactor', complexity);
         const plan = await planner.generatePlan(intent, 'refactor code');
@@ -115,7 +118,7 @@ describe('PlannerLLM', () => {
       const intent = createMockIntent('refactor');
       const options: PlannerOptions = {
         includeRollback: true,
-        optimizeForSafety: true
+        optimizeForSafety: true,
       };
 
       const plan = await planner.generatePlan(intent, 'refactor code', options);
@@ -128,7 +131,7 @@ describe('PlannerLLM', () => {
       const intent = createMockIntent('refactor');
       const options: PlannerOptions = {
         optimizeForTime: true,
-        maxParallelism: 3
+        maxParallelism: 3,
       };
 
       const plan = await planner.generatePlan(intent, 'refactor code', options);
@@ -140,15 +143,17 @@ describe('PlannerLLM', () => {
     it('should include verification when requested', async () => {
       const intent = createMockIntent('refactor');
       const options: PlannerOptions = {
-        includeVerification: true
+        includeVerification: true,
       };
 
       const plan = await planner.generatePlan(intent, 'refactor code', options);
 
       expect(plan).toBeDefined();
       // Should include verification nodes
-      const verificationNodes = Array.from(plan.nodes.values())
-        .filter(node => node.name.toLowerCase().includes('verify') || node.name.toLowerCase().includes('check'));
+      const verificationNodes = Array.from(plan.nodes.values()).filter(
+        node =>
+          node.name.toLowerCase().includes('verify') || node.name.toLowerCase().includes('check')
+      );
       expect(verificationNodes.length).toBeGreaterThan(0);
     });
 
@@ -159,16 +164,19 @@ describe('PlannerLLM', () => {
         { intent: 'explain', expectedTools: ['search', 'read'] },
         { intent: 'test-gen', expectedTools: ['search', 'read', 'edit', 'test-runner'] },
         { intent: 'doc-gen', expectedTools: ['search', 'read', 'edit'] },
-        { intent: 'migration', expectedTools: ['search', 'read', 'edit', 'typecheck', 'test-runner', 'format'] },
+        {
+          intent: 'migration',
+          expectedTools: ['search', 'read', 'edit', 'typecheck', 'test-runner', 'format'],
+        },
         { intent: 'optimize', expectedTools: ['search', 'read', 'edit', 'profiler', 'benchmark'] },
         { intent: 'debug', expectedTools: ['search', 'read', 'debugger', 'log-analyzer'] },
-        { intent: 'analyze', expectedTools: ['search', 'read', 'metrics-collector'] }
+        { intent: 'analyze', expectedTools: ['search', 'read', 'metrics-collector'] },
       ];
 
       for (const { intent, expectedTools } of intents) {
         const mockIntent = createMockIntent(intent);
         mockIntent.requiredTools = expectedTools;
-        
+
         const plan = await planner.generatePlan(mockIntent, `perform ${intent} operation`);
 
         expect(plan).toBeDefined();
@@ -218,7 +226,7 @@ describe('PlannerLLM', () => {
     it('should detect cycles in plan', async () => {
       const intent = createMockIntent('refactor');
       const plan = await planner.generatePlan(intent, 'refactor code');
-      
+
       // Manually create a cycle for testing
       const nodeIds = Array.from(plan.nodes.keys());
       if (nodeIds.length >= 2) {
@@ -236,7 +244,7 @@ describe('PlannerLLM', () => {
     it('should detect unreachable nodes', async () => {
       const intent = createMockIntent('refactor');
       const plan = await planner.generatePlan(intent, 'refactor code');
-      
+
       // Add an unreachable node
       const unreachableNode = {
         id: 'unreachable',
@@ -246,7 +254,7 @@ describe('PlannerLLM', () => {
         dependencies: ['nonexistent'],
         estimatedTime: 1,
         riskLevel: 'low' as const,
-        retryable: true
+        retryable: true,
       };
       plan.nodes.set('unreachable', unreachableNode);
 
@@ -258,7 +266,7 @@ describe('PlannerLLM', () => {
     it('should detect missing dependencies', async () => {
       const intent = createMockIntent('refactor');
       const plan = await planner.generatePlan(intent, 'refactor code');
-      
+
       // Add a node with missing dependency
       const nodeWithMissingDep = {
         id: 'missing-dep',
@@ -268,7 +276,7 @@ describe('PlannerLLM', () => {
         dependencies: ['nonexistent'],
         estimatedTime: 1,
         riskLevel: 'low' as const,
-        retryable: true
+        retryable: true,
       };
       plan.nodes.set('missing-dep', nodeWithMissingDep);
 
@@ -283,8 +291,10 @@ describe('PlannerLLM', () => {
       const intent = createMockIntent('refactor');
       const plan = await planner.generatePlan(intent, 'refactor code');
 
-      const calculatedTime = Array.from(plan.nodes.values())
-        .reduce((total, node) => total + node.estimatedTime, 0);
+      const calculatedTime = Array.from(plan.nodes.values()).reduce(
+        (total, node) => total + node.estimatedTime,
+        0
+      );
 
       expect(plan.estimatedTotalTime).toBe(calculatedTime);
     });

@@ -57,7 +57,7 @@ export function createPlannerCommand(): Command {
           includeRollback: options.includeRollback,
           validatePlan: options.validatePlan,
           dryRun: options.dryRun,
-          timeout: parseInt(options.timeout?.toString() || '300') * 1000
+          timeout: parseInt(options.timeout?.toString() || '300') * 1000,
         };
 
         if (options.verbose) {

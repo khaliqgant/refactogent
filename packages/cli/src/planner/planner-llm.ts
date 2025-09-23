@@ -99,7 +99,7 @@ export class PlannerLLM {
       this.metrics.recordPerformance(
         Date.now() - span.startTime,
         0, // memory usage
-        0  // cpu usage
+        0 // cpu usage
       );
 
       return plan;
@@ -119,12 +119,12 @@ export class PlannerLLM {
   ): Promise<PlanGraph> {
     const nodes = new Map<string, PlanNode>();
     const edges = new Map<string, PlanEdge>();
-    
+
     // Generate nodes based on intent and required tools
     const toolNodes = this.generateToolNodes(intent, options);
     const decisionNodes = this.generateDecisionNodes(intent, options);
     const parallelNodes = this.generateParallelNodes(intent, options);
-    
+
     // Add all nodes
     [...toolNodes, ...decisionNodes, ...parallelNodes].forEach(node => {
       nodes.set(node.id, node);
@@ -148,17 +148,14 @@ export class PlannerLLM {
       exitPoints: this.findExitPoints(nodes, edges),
       estimatedTotalTime,
       maxParallelism,
-      riskAssessment
+      riskAssessment,
     };
   }
 
   /**
    * Generate tool nodes based on intent and required tools
    */
-  private generateToolNodes(
-    intent: IntentClassification,
-    options: PlannerOptions
-  ): PlanNode[] {
+  private generateToolNodes(intent: IntentClassification, options: PlannerOptions): PlanNode[] {
     const nodes: PlanNode[] = [];
     const tools = intent.requiredTools || [];
 
@@ -174,7 +171,7 @@ export class PlannerLLM {
         estimatedTime: this.estimateToolTime(tool, intent.complexity),
         riskLevel: this.assessToolRisk(tool),
         retryable: this.isToolRetryable(tool),
-        rollbackPlan: options.includeRollback ? this.generateRollbackPlan(tool) : undefined
+        rollbackPlan: options.includeRollback ? this.generateRollbackPlan(tool) : undefined,
       };
       nodes.push(node);
     });
@@ -189,7 +186,7 @@ export class PlannerLLM {
         dependencies: tools.map((_, index) => `tool-${tools[index]}-${index}`),
         estimatedTime: 2,
         riskLevel: 'low',
-        retryable: true
+        retryable: true,
       };
       nodes.push(verificationNode);
     }
@@ -200,10 +197,7 @@ export class PlannerLLM {
   /**
    * Generate decision nodes for conditional logic
    */
-  private generateDecisionNodes(
-    intent: IntentClassification,
-    options: PlannerOptions
-  ): PlanNode[] {
+  private generateDecisionNodes(intent: IntentClassification, options: PlannerOptions): PlanNode[] {
     const nodes: PlanNode[] = [];
 
     // Add decision nodes for complex intents
@@ -217,7 +211,7 @@ export class PlannerLLM {
         dependencies: [],
         estimatedTime: 1,
         riskLevel: 'medium',
-        retryable: false
+        retryable: false,
       };
       nodes.push(decisionNode);
     }
@@ -228,10 +222,7 @@ export class PlannerLLM {
   /**
    * Generate parallel execution nodes
    */
-  private generateParallelNodes(
-    intent: IntentClassification,
-    options: PlannerOptions
-  ): PlanNode[] {
+  private generateParallelNodes(intent: IntentClassification, options: PlannerOptions): PlanNode[] {
     const nodes: PlanNode[] = [];
 
     // Add parallel execution for compatible tools
@@ -246,7 +237,7 @@ export class PlannerLLM {
           dependencies: [],
           estimatedTime: 5,
           riskLevel: 'medium',
-          retryable: true
+          retryable: true,
         };
         nodes.push(parallelNode);
       }
@@ -276,7 +267,7 @@ export class PlannerLLM {
           from: currentNode.id,
           to: nextNode.id,
           type: 'success',
-          weight: 1.0
+          weight: 1.0,
         });
       }
     }
@@ -290,7 +281,7 @@ export class PlannerLLM {
             to: this.findNextNode(nodeList, node.id),
             type: 'condition',
             condition,
-            weight: 0.8
+            weight: 0.8,
           });
         });
       }
@@ -306,7 +297,7 @@ export class PlannerLLM {
     const baseParams: Record<string, any> = {
       intent: intent.intent,
       complexity: intent.complexity,
-      riskLevel: intent.riskLevel
+      riskLevel: intent.riskLevel,
     };
 
     switch (tool) {
@@ -332,20 +323,20 @@ export class PlannerLLM {
    */
   private estimateToolTime(tool: string, complexity: 'low' | 'medium' | 'high'): number {
     const baseTimes: Record<string, number> = {
-      'search': 2,
-      'read': 1,
-      'edit': 5,
-      'typecheck': 3,
-      'format': 1,
+      search: 2,
+      read: 1,
+      edit: 5,
+      typecheck: 3,
+      format: 1,
       'test-runner': 10,
       'safety-check': 5,
-      'rollback': 2
+      rollback: 2,
     };
 
     const complexityMultiplier = {
-      'low': 0.5,
-      'medium': 1.0,
-      'high': 2.0
+      low: 0.5,
+      medium: 1.0,
+      high: 2.0,
     };
 
     return Math.round((baseTimes[tool] || 5) * complexityMultiplier[complexity]);
@@ -356,14 +347,14 @@ export class PlannerLLM {
    */
   private assessToolRisk(tool: string): 'low' | 'medium' | 'high' {
     const toolRisk: Record<string, 'low' | 'medium' | 'high'> = {
-      'search': 'low',
-      'read': 'low',
-      'edit': 'high',
-      'typecheck': 'low',
-      'format': 'low',
+      search: 'low',
+      read: 'low',
+      edit: 'high',
+      typecheck: 'low',
+      format: 'low',
       'test-runner': 'medium',
       'safety-check': 'low',
-      'rollback': 'high'
+      rollback: 'high',
     };
 
     return toolRisk[tool] || 'medium';
@@ -382,10 +373,10 @@ export class PlannerLLM {
    */
   private generateRollbackPlan(tool: string): string {
     const rollbackPlans: Record<string, string> = {
-      'edit': 'Restore from backup files',
-      'format': 'Revert formatting changes',
+      edit: 'Restore from backup files',
+      format: 'Revert formatting changes',
       'test-runner': 'Skip failed tests and continue',
-      'typecheck': 'Fix type errors or skip strict checking'
+      typecheck: 'Fix type errors or skip strict checking',
     };
 
     return rollbackPlans[tool] || 'Manual intervention required';
@@ -395,34 +386,42 @@ export class PlannerLLM {
    * Calculate total estimated time for the plan
    */
   private calculateTotalTime(nodes: Map<string, PlanNode>): number {
-    return Array.from(nodes.values())
-      .reduce((total, node) => total + node.estimatedTime, 0);
+    return Array.from(nodes.values()).reduce((total, node) => total + node.estimatedTime, 0);
   }
 
   /**
    * Calculate maximum parallelism in the plan
    */
-  private calculateMaxParallelism(nodes: Map<string, PlanNode>, edges: Map<string, PlanEdge>): number {
+  private calculateMaxParallelism(
+    nodes: Map<string, PlanNode>,
+    edges: Map<string, PlanEdge>
+  ): number {
     // Simple calculation - could be more sophisticated
     const parallelNodes = Array.from(nodes.values()).filter(node => node.type === 'parallel');
     const totalNodes = nodes.size;
-    
+
     // For optimization requests, allow more parallelism
-    const hasOptimizationNodes = Array.from(nodes.values())
-      .some(node => node.name.toLowerCase().includes('optimize') || 
-                   node.name.toLowerCase().includes('performance'));
-    
+    const hasOptimizationNodes = Array.from(nodes.values()).some(
+      node =>
+        node.name.toLowerCase().includes('optimize') ||
+        node.name.toLowerCase().includes('performance')
+    );
+
     if (hasOptimizationNodes && totalNodes > 2) {
       return Math.max(2, Math.min(4, totalNodes));
     }
-    
+
     return Math.max(1, parallelNodes.length);
   }
 
   /**
    * Assess overall plan risk
    */
-  private assessPlanRisk(nodes: Map<string, PlanNode>, edges: Map<string, PlanEdge>, intent?: IntentClassification): {
+  private assessPlanRisk(
+    nodes: Map<string, PlanNode>,
+    edges: Map<string, PlanEdge>,
+    intent?: IntentClassification
+  ): {
     overall: 'low' | 'medium' | 'high';
     criticalPaths: string[];
     rollbackPoints: string[];
@@ -437,10 +436,10 @@ export class PlannerLLM {
       .map(node => node.id);
 
     let overall: 'low' | 'medium' | 'high' = 'low';
-    
+
     // Check for migration intent (high risk) - check intent directly
     const isMigrationIntent = intent?.intent === 'migration';
-    
+
     if (isMigrationIntent || highRiskNodes.length > 2) {
       overall = 'high';
     } else if (highRiskNodes.length > 0) {
@@ -450,7 +449,7 @@ export class PlannerLLM {
     return {
       overall,
       criticalPaths,
-      rollbackPoints
+      rollbackPoints,
     };
   }
 
@@ -468,7 +467,7 @@ export class PlannerLLM {
   private findExitPoints(nodes: Map<string, PlanNode>, edges: Map<string, PlanEdge>): string[] {
     const nodeIds = Array.from(nodes.keys());
     const edgeTargets = Array.from(edges.values()).map(edge => edge.to);
-    
+
     return nodeIds.filter(id => !edgeTargets.includes(id));
   }
 
@@ -514,7 +513,7 @@ export class PlannerLLM {
     return {
       isValid: issues.length === 0,
       issues,
-      suggestions
+      suggestions,
     };
   }
 
@@ -533,8 +532,7 @@ export class PlannerLLM {
       visited.add(nodeId);
       recStack.add(nodeId);
 
-      const outgoingEdges = Array.from(plan.edges.values())
-        .filter(edge => edge.from === nodeId);
+      const outgoingEdges = Array.from(plan.edges.values()).filter(edge => edge.from === nodeId);
 
       for (const edge of outgoingEdges) {
         if (dfs(edge.to)) return true;
@@ -565,8 +563,7 @@ export class PlannerLLM {
       if (reachable.has(current)) continue;
 
       reachable.add(current);
-      const outgoingEdges = Array.from(plan.edges.values())
-        .filter(edge => edge.from === current);
+      const outgoingEdges = Array.from(plan.edges.values()).filter(edge => edge.from === current);
 
       for (const edge of outgoingEdges) {
         queue.push(edge.to);

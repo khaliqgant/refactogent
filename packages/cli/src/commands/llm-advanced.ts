@@ -32,7 +32,9 @@ export interface LLMAdvancedCommandOptions {
  */
 export function createLLMAdvancedCommand(): Command {
   const llmAdvancedCommand = new Command('llm-advanced')
-    .description('Advanced LLM operations with multiple providers, safety gates, and context awareness')
+    .description(
+      'Advanced LLM operations with multiple providers, safety gates, and context awareness'
+    )
     .option('-o, --operation <operation>', 'LLM operation type', 'generate')
     .option('-i, --input <input>', 'Input text or code for the operation')
     .option('-c, --context <context>', 'Additional context for the operation')
@@ -55,7 +57,7 @@ export function createLLMAdvancedCommand(): Command {
 
       try {
         const config = await configLoader.loadConfig(process.cwd());
-        
+
         if (!options.input) {
           console.error('❌ Input is required. Use --input to specify the text or code.');
           process.exit(1);
@@ -90,7 +92,7 @@ export function createLLMAdvancedCommand(): Command {
         // Register providers
         await providerManager.registerProviderConfig('openai', {
           apiKey: process.env.OPENAI_API_KEY || '',
-          model: options.model || 'gpt-4'
+          model: options.model || 'gpt-4',
         });
 
         // Execute operation
@@ -99,14 +101,19 @@ export function createLLMAdvancedCommand(): Command {
 
         switch (options.operation) {
           case 'generate':
-            result = await llmService.generateWithContext({
-              prompt: options.input,
-              context: options.context ? { projectPath: options.projectPath, context: options.context } : undefined,
-              options: {
-                maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
-                temperature: parseFloat(options.temperature?.toString() || '0.7')
-              }
-            }, options.provider);
+            result = await llmService.generateWithContext(
+              {
+                prompt: options.input,
+                context: options.context
+                  ? { projectPath: options.projectPath, context: options.context }
+                  : undefined,
+                options: {
+                  maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
+                  temperature: parseFloat(options.temperature?.toString() || '0.7'),
+                },
+              },
+              options.provider
+            );
             break;
 
           case 'refactor':
@@ -117,64 +124,89 @@ export function createLLMAdvancedCommand(): Command {
               operation: 'extract',
               options: {
                 preserveBehavior: true,
-                addDocumentation: true
-              }
+                addDocumentation: true,
+              },
             });
             break;
 
           case 'analyze':
-            result = await llmService.generateWithContext({
-              prompt: `Analyze the following code:\n\n${options.input}\n\nProvide a detailed analysis.`,
-              context: options.context ? { projectPath: options.projectPath, context: options.context } : undefined,
-              options: {
-                maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
-                temperature: parseFloat(options.temperature?.toString() || '0.3')
-              }
-            }, options.provider);
+            result = await llmService.generateWithContext(
+              {
+                prompt: `Analyze the following code:\n\n${options.input}\n\nProvide a detailed analysis.`,
+                context: options.context
+                  ? { projectPath: options.projectPath, context: options.context }
+                  : undefined,
+                options: {
+                  maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
+                  temperature: parseFloat(options.temperature?.toString() || '0.3'),
+                },
+              },
+              options.provider
+            );
             break;
 
           case 'explain':
-            result = await llmService.generateWithContext({
-              prompt: `Explain the following code:\n\n${options.input}\n\nProvide a clear explanation.`,
-              context: options.context ? { projectPath: options.projectPath, context: options.context } : undefined,
-              options: {
-                maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
-                temperature: parseFloat(options.temperature?.toString() || '0.3')
-              }
-            }, options.provider);
+            result = await llmService.generateWithContext(
+              {
+                prompt: `Explain the following code:\n\n${options.input}\n\nProvide a clear explanation.`,
+                context: options.context
+                  ? { projectPath: options.projectPath, context: options.context }
+                  : undefined,
+                options: {
+                  maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
+                  temperature: parseFloat(options.temperature?.toString() || '0.3'),
+                },
+              },
+              options.provider
+            );
             break;
 
           case 'optimize':
-            result = await llmService.generateWithContext({
-              prompt: `Optimize the following code:\n\n${options.input}\n\nProvide optimized version with explanations.`,
-              context: options.context ? { projectPath: options.projectPath, context: options.context } : undefined,
-              options: {
-                maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
-                temperature: parseFloat(options.temperature?.toString() || '0.3')
-              }
-            }, options.provider);
+            result = await llmService.generateWithContext(
+              {
+                prompt: `Optimize the following code:\n\n${options.input}\n\nProvide optimized version with explanations.`,
+                context: options.context
+                  ? { projectPath: options.projectPath, context: options.context }
+                  : undefined,
+                options: {
+                  maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
+                  temperature: parseFloat(options.temperature?.toString() || '0.3'),
+                },
+              },
+              options.provider
+            );
             break;
 
           case 'test':
-            result = await llmService.generateWithContext({
-              prompt: `Generate tests for the following code:\n\n${options.input}\n\nProvide comprehensive test cases.`,
-              context: options.context ? { projectPath: options.projectPath, context: options.context } : undefined,
-              options: {
-                maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
-                temperature: parseFloat(options.temperature?.toString() || '0.3')
-              }
-            }, options.provider);
+            result = await llmService.generateWithContext(
+              {
+                prompt: `Generate tests for the following code:\n\n${options.input}\n\nProvide comprehensive test cases.`,
+                context: options.context
+                  ? { projectPath: options.projectPath, context: options.context }
+                  : undefined,
+                options: {
+                  maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
+                  temperature: parseFloat(options.temperature?.toString() || '0.3'),
+                },
+              },
+              options.provider
+            );
             break;
 
           case 'document':
-            result = await llmService.generateWithContext({
-              prompt: `Generate documentation for the following code:\n\n${options.input}\n\nProvide comprehensive documentation.`,
-              context: options.context ? { projectPath: options.projectPath, context: options.context } : undefined,
-              options: {
-                maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
-                temperature: parseFloat(options.temperature?.toString() || '0.3')
-              }
-            }, options.provider);
+            result = await llmService.generateWithContext(
+              {
+                prompt: `Generate documentation for the following code:\n\n${options.input}\n\nProvide comprehensive documentation.`,
+                context: options.context
+                  ? { projectPath: options.projectPath, context: options.context }
+                  : undefined,
+                options: {
+                  maxTokens: parseInt(options.maxTokens?.toString() || '2000'),
+                  temperature: parseFloat(options.temperature?.toString() || '0.3'),
+                },
+              },
+              options.provider
+            );
             break;
 
           default:
@@ -191,7 +223,9 @@ export function createLLMAdvancedCommand(): Command {
           if (!safetyResult.passed) {
             console.log('⚠️  Safety check failed:');
             safetyResult.violations.forEach((violation, index) => {
-              console.log(`  ${index + 1}. [${violation.severity.toUpperCase()}] ${violation.message}`);
+              console.log(
+                `  ${index + 1}. [${violation.severity.toUpperCase()}] ${violation.message}`
+              );
             });
           }
         }
@@ -199,13 +233,19 @@ export function createLLMAdvancedCommand(): Command {
         const executionTime = Date.now() - startTime;
 
         if (options.format === 'json') {
-          console.log(JSON.stringify({
-            operation: options.operation,
-            result: result.content || result.refactoredCode || result,
-            metadata: result.metadata || {},
-            executionTime,
-            safetyChecks: options.enableSafetyChecks
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                operation: options.operation,
+                result: result.content || result.refactoredCode || result,
+                metadata: result.metadata || {},
+                executionTime,
+                safetyChecks: options.enableSafetyChecks,
+              },
+              null,
+              2
+            )
+          );
         } else if (options.format === 'yaml') {
           console.log('operation:', options.operation);
           console.log('result:', result.content || result.refactoredCode || result);
@@ -219,7 +259,7 @@ export function createLLMAdvancedCommand(): Command {
           console.log(`🔢 Tokens: ${result.context?.totalTokens || 'unknown'}`);
           console.log(`💰 Cost: $${result.metadata?.cost || '0.00'}`);
           console.log(`🎯 Confidence: ${result.metadata?.confidence || 'N/A'}`);
-          
+
           console.log('\n📝 Result:');
           console.log(result.content || result.refactoredCode || result);
         }
@@ -230,7 +270,6 @@ export function createLLMAdvancedCommand(): Command {
         await taskFramework.close();
         await executionFlow.close();
         await contextPackage.close();
-
       } catch (error) {
         console.error('❌ LLM operation failed:', error);
         process.exit(1);

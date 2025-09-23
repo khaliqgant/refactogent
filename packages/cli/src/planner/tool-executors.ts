@@ -49,7 +49,7 @@ export class SearchExecutor implements ToolExecutor {
       this.logger.info('Executing search tool', {
         nodeId: node.id,
         parameters: node.parameters,
-        projectPath: context.projectPath
+        projectPath: context.projectPath,
       });
 
       const query = node.parameters?.query || '';
@@ -57,7 +57,7 @@ export class SearchExecutor implements ToolExecutor {
 
       // Simulate search execution
       const results = await this.performSearch(query, context.projectPath, maxResults);
-      
+
       // Add small delay to simulate real execution
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -68,7 +68,7 @@ export class SearchExecutor implements ToolExecutor {
         success: true,
         data: results,
         executionTime,
-        retryable: true
+        retryable: true,
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
@@ -78,7 +78,7 @@ export class SearchExecutor implements ToolExecutor {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         executionTime,
-        retryable: true
+        retryable: true,
       };
     }
   }
@@ -92,20 +92,29 @@ export class SearchExecutor implements ToolExecutor {
     return true;
   }
 
-  private async performSearch(query: string, projectPath: string, maxResults: number): Promise<any[]> {
+  private async performSearch(
+    query: string,
+    projectPath: string,
+    maxResults: number
+  ): Promise<any[]> {
     // Simulate error for invalid parameters
     if (maxResults < 0) {
       throw new Error('Invalid maxResults parameter');
     }
-    
+
     if (!query || query.trim() === '') {
       throw new Error('Query cannot be empty');
     }
-    
+
     // Simulate search results
     return [
-      { file: 'src/utils.ts', line: 10, content: 'function example() { return "hello"; }', score: 0.9 },
-      { file: 'src/helper.ts', line: 5, content: 'const helper = () => {};', score: 0.8 }
+      {
+        file: 'src/utils.ts',
+        line: 10,
+        content: 'function example() { return "hello"; }',
+        score: 0.9,
+      },
+      { file: 'src/helper.ts', line: 5, content: 'const helper = () => {};', score: 0.8 },
     ].slice(0, maxResults);
   }
 }
@@ -131,7 +140,7 @@ export class ReadExecutor implements ToolExecutor {
       this.logger.info('Executing read tool', {
         nodeId: node.id,
         parameters: node.parameters,
-        projectPath: context.projectPath
+        projectPath: context.projectPath,
       });
 
       const includeTests = node.parameters?.includeTests || false;
@@ -139,7 +148,7 @@ export class ReadExecutor implements ToolExecutor {
 
       // Simulate file reading
       const files = await this.readFiles(context.projectPath, includeTests, includeConfigs);
-      
+
       // Add small delay to simulate real execution
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -150,7 +159,7 @@ export class ReadExecutor implements ToolExecutor {
         success: true,
         data: files,
         executionTime,
-        retryable: true
+        retryable: true,
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
@@ -160,7 +169,7 @@ export class ReadExecutor implements ToolExecutor {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         executionTime,
-        retryable: true
+        retryable: true,
       };
     }
   }
@@ -174,15 +183,23 @@ export class ReadExecutor implements ToolExecutor {
     return true;
   }
 
-  private async readFiles(projectPath: string, includeTests: boolean, includeConfigs: boolean): Promise<any[]> {
+  private async readFiles(
+    projectPath: string,
+    includeTests: boolean,
+    includeConfigs: boolean
+  ): Promise<any[]> {
     // Simulate file reading
     const files = [
       { path: 'src/main.ts', content: 'export function main() {}', type: 'source' },
-      { path: 'src/utils.ts', content: 'export function utils() {}', type: 'source' }
+      { path: 'src/utils.ts', content: 'export function utils() {}', type: 'source' },
     ];
 
     if (includeTests) {
-      files.push({ path: 'test/main.test.ts', content: 'describe("main", () => {});', type: 'test' });
+      files.push({
+        path: 'test/main.test.ts',
+        content: 'describe("main", () => {});',
+        type: 'test',
+      });
     }
 
     if (includeConfigs) {
@@ -214,7 +231,7 @@ export class EditExecutor implements ToolExecutor {
       this.logger.info('Executing edit tool', {
         nodeId: node.id,
         parameters: node.parameters,
-        projectPath: context.projectPath
+        projectPath: context.projectPath,
       });
 
       const backup = node.parameters?.backup || false;
@@ -228,7 +245,7 @@ export class EditExecutor implements ToolExecutor {
 
       // Simulate file editing
       const changes = await this.performEdit(context.projectPath, node.parameters);
-      
+
       // Add small delay to simulate real execution
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -240,7 +257,7 @@ export class EditExecutor implements ToolExecutor {
         data: changes,
         executionTime,
         retryable: true,
-        rollbackData
+        rollbackData,
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
@@ -250,7 +267,7 @@ export class EditExecutor implements ToolExecutor {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         executionTime,
-        retryable: true
+        retryable: true,
       };
     }
   }
@@ -276,7 +293,7 @@ export class EditExecutor implements ToolExecutor {
     // Simulate file editing
     return [
       { file: 'src/main.ts', changes: ['Added new function', 'Updated imports'] },
-      { file: 'src/utils.ts', changes: ['Refactored helper function'] }
+      { file: 'src/utils.ts', changes: ['Refactored helper function'] },
     ];
   }
 
@@ -308,7 +325,7 @@ export class TypeCheckExecutor implements ToolExecutor {
       this.logger.info('Executing typecheck tool', {
         nodeId: node.id,
         parameters: node.parameters,
-        projectPath: context.projectPath
+        projectPath: context.projectPath,
       });
 
       const strict = node.parameters?.strict || false;
@@ -316,7 +333,7 @@ export class TypeCheckExecutor implements ToolExecutor {
 
       // Simulate type checking
       const results = await this.performTypeCheck(context.projectPath, strict, includeTests);
-      
+
       // Add small delay to simulate real execution
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -327,7 +344,7 @@ export class TypeCheckExecutor implements ToolExecutor {
         success: results.errors.length === 0,
         data: results,
         executionTime,
-        retryable: true
+        retryable: true,
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
@@ -337,7 +354,7 @@ export class TypeCheckExecutor implements ToolExecutor {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         executionTime,
-        retryable: true
+        retryable: true,
       };
     }
   }
@@ -351,16 +368,24 @@ export class TypeCheckExecutor implements ToolExecutor {
     return true;
   }
 
-  private async performTypeCheck(projectPath: string, strict: boolean, includeTests: boolean): Promise<any> {
+  private async performTypeCheck(
+    projectPath: string,
+    strict: boolean,
+    includeTests: boolean
+  ): Promise<any> {
     // Simulate type checking results
     return {
-      errors: strict ? [
-        { file: 'src/main.ts', line: 5, message: 'Type error: string is not assignable to number' }
-      ] : [],
-      warnings: [
-        { file: 'src/utils.ts', line: 10, message: 'Unused variable' }
-      ],
-      success: true
+      errors: strict
+        ? [
+            {
+              file: 'src/main.ts',
+              line: 5,
+              message: 'Type error: string is not assignable to number',
+            },
+          ]
+        : [],
+      warnings: [{ file: 'src/utils.ts', line: 10, message: 'Unused variable' }],
+      success: true,
     };
   }
 }
@@ -386,7 +411,7 @@ export class FormatExecutor implements ToolExecutor {
       this.logger.info('Executing format tool', {
         nodeId: node.id,
         parameters: node.parameters,
-        projectPath: context.projectPath
+        projectPath: context.projectPath,
       });
 
       const style = node.parameters?.style || 'prettier';
@@ -394,7 +419,7 @@ export class FormatExecutor implements ToolExecutor {
 
       // Simulate formatting
       const results = await this.performFormat(context.projectPath, style, write);
-      
+
       // Add small delay to simulate real execution
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -405,7 +430,7 @@ export class FormatExecutor implements ToolExecutor {
         success: true,
         data: results,
         executionTime,
-        retryable: true
+        retryable: true,
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
@@ -415,7 +440,7 @@ export class FormatExecutor implements ToolExecutor {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         executionTime,
-        retryable: true
+        retryable: true,
       };
     }
   }
@@ -435,9 +460,9 @@ export class FormatExecutor implements ToolExecutor {
       filesFormatted: 3,
       changes: [
         { file: 'src/main.ts', changes: ['Fixed indentation', 'Added semicolons'] },
-        { file: 'src/utils.ts', changes: ['Reformatted function'] }
+        { file: 'src/utils.ts', changes: ['Reformatted function'] },
       ],
-      style
+      style,
     };
   }
 }
@@ -463,7 +488,7 @@ export class TestRunnerExecutor implements ToolExecutor {
       this.logger.info('Executing test-runner tool', {
         nodeId: node.id,
         parameters: node.parameters,
-        projectPath: context.projectPath
+        projectPath: context.projectPath,
       });
 
       const coverage = node.parameters?.coverage || false;
@@ -471,18 +496,21 @@ export class TestRunnerExecutor implements ToolExecutor {
 
       // Simulate test execution
       const results = await this.performTests(context.projectPath, coverage, verbose);
-      
+
       // Add small delay to simulate real execution
       await new Promise(resolve => setTimeout(resolve, 10));
 
       const executionTime = Date.now() - startTime;
-      this.tracer.recordSuccess(span, `TestRunner completed: ${results.passed}/${results.total} tests passed`);
+      this.tracer.recordSuccess(
+        span,
+        `TestRunner completed: ${results.passed}/${results.total} tests passed`
+      );
 
       return {
         success: results.failed === 0,
         data: results,
         executionTime,
-        retryable: true
+        retryable: true,
       };
     } catch (error) {
       const executionTime = Date.now() - startTime;
@@ -492,7 +520,7 @@ export class TestRunnerExecutor implements ToolExecutor {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         executionTime,
-        retryable: true
+        retryable: true,
       };
     }
   }
@@ -506,7 +534,11 @@ export class TestRunnerExecutor implements ToolExecutor {
     return true;
   }
 
-  private async performTests(projectPath: string, coverage: boolean, verbose: boolean): Promise<any> {
+  private async performTests(
+    projectPath: string,
+    coverage: boolean,
+    verbose: boolean
+  ): Promise<any> {
     // Simulate test execution results
     return {
       total: 10,
@@ -516,8 +548,8 @@ export class TestRunnerExecutor implements ToolExecutor {
       coverage: coverage ? { lines: 85, functions: 90, branches: 80 } : undefined,
       failures: [
         { test: 'should handle edge case', error: 'Expected true but got false' },
-        { test: 'should validate input', error: 'TypeError: Cannot read property of undefined' }
-      ]
+        { test: 'should validate input', error: 'TypeError: Cannot read property of undefined' },
+      ],
     };
   }
 }

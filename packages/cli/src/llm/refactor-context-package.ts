@@ -97,14 +97,14 @@ export class RefactorContextPackage {
       const rcp = {
         codeSelection: [],
         guardrails: {
-          rules: []
+          rules: [],
         },
         testSignals: {
-          testFiles: []
+          testFiles: [],
         },
         repoContext: {
-          namingConventions: []
-        }
+          namingConventions: [],
+        },
       };
 
       this.tracer.recordSuccess(span, 'RCP built successfully');
@@ -132,7 +132,7 @@ export class RefactorContextPackage {
         name,
         description,
         projectPath: context.projectPath,
-        filePath: context.filePath
+        filePath: context.filePath,
       });
 
       // Build context package
@@ -146,13 +146,13 @@ export class RefactorContextPackage {
           createdBy: 'refactogent',
           version: '1.0.0',
           size: 0,
-          tokens: 0
+          tokens: 0,
         },
         validation: {
           isValid: false,
           errors: [],
-          warnings: []
-        }
+          warnings: [],
+        },
       };
 
       // Calculate size and tokens
@@ -192,21 +192,21 @@ export class RefactorContextPackage {
         files: context.projectStructure.files || [],
         dependencies: context.projectStructure.dependencies || [],
         testFiles: options.includeTests ? context.projectStructure.testFiles || [] : [],
-        configFiles: context.projectStructure.configFiles || []
+        configFiles: context.projectStructure.configFiles || [],
       },
       codebaseContext: {
         architecturalPatterns: context.codebaseContext.architecturalPatterns || [],
         codingStandards: context.codebaseContext.codingStandards || [],
         namingConventions: context.codebaseContext.namingConventions || [],
-        styleGuide: context.codebaseContext.styleGuide || ''
+        styleGuide: context.codebaseContext.styleGuide || '',
       },
       refactoringHistory: options.includeHistory ? context.refactoringHistory || [] : [],
       safetyContext: {
         riskLevel: context.safetyContext.riskLevel || 'medium',
         criticalPaths: context.safetyContext.criticalPaths || [],
         dependencies: context.safetyContext.dependencies || [],
-        testCoverage: context.safetyContext.testCoverage || 0
-      }
+        testCoverage: context.safetyContext.testCoverage || 0,
+      },
     };
 
     // Apply size limits
@@ -215,7 +215,7 @@ export class RefactorContextPackage {
       if (serialized.length > options.maxContextSize) {
         this.logger.warn('Context size exceeds limit, truncating', {
           size: serialized.length,
-          limit: options.maxContextSize
+          limit: options.maxContextSize,
         });
         // Truncate context (simplified)
         builtContext.surroundingCode = builtContext.surroundingCode.substring(0, 1000);
@@ -267,18 +267,20 @@ export class RefactorContextPackage {
     }
 
     // Check size limits
-    if (contextPackage.metadata.size > 1000000) { // 1MB
+    if (contextPackage.metadata.size > 1000000) {
+      // 1MB
       warnings.push('Context package is very large');
     }
 
-    if (contextPackage.metadata.tokens > 100000) { // 100k tokens
+    if (contextPackage.metadata.tokens > 100000) {
+      // 100k tokens
       warnings.push('Context package has high token count');
     }
 
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -299,10 +301,7 @@ export class RefactorContextPackage {
   /**
    * Update context package
    */
-  async updatePackage(
-    packageId: string,
-    updates: Partial<RefactorContext>
-  ): Promise<boolean> {
+  async updatePackage(packageId: string, updates: Partial<RefactorContext>): Promise<boolean> {
     const contextPackage = this.packages.get(packageId);
     if (!contextPackage) {
       return false;
@@ -311,7 +310,7 @@ export class RefactorContextPackage {
     // Update context
     contextPackage.context = {
       ...contextPackage.context,
-      ...updates
+      ...updates,
     };
 
     // Recalculate metadata
@@ -325,7 +324,7 @@ export class RefactorContextPackage {
     this.logger.info('Updated context package', {
       packageId,
       newSize: contextPackage.metadata.size,
-      newTokens: contextPackage.metadata.tokens
+      newTokens: contextPackage.metadata.tokens,
     });
 
     return true;
@@ -352,11 +351,12 @@ export class RefactorContextPackage {
     const packages = Array.from(this.packages.values());
     const lowerQuery = query.toLowerCase();
 
-    return packages.filter(pkg => 
-      pkg.name.toLowerCase().includes(lowerQuery) ||
-      pkg.description.toLowerCase().includes(lowerQuery) ||
-      pkg.context.filePath.toLowerCase().includes(lowerQuery) ||
-      pkg.context.projectPath.toLowerCase().includes(lowerQuery)
+    return packages.filter(
+      pkg =>
+        pkg.name.toLowerCase().includes(lowerQuery) ||
+        pkg.description.toLowerCase().includes(lowerQuery) ||
+        pkg.context.filePath.toLowerCase().includes(lowerQuery) ||
+        pkg.context.projectPath.toLowerCase().includes(lowerQuery)
     );
   }
 
@@ -381,7 +381,7 @@ export class RefactorContextPackage {
     };
   }> {
     const packages = Array.from(this.packages.values());
-    
+
     const totalSize = packages.reduce((sum, pkg) => sum + pkg.metadata.size, 0);
     const totalTokens = packages.reduce((sum, pkg) => sum + pkg.metadata.tokens, 0);
     const averageSize = packages.length > 0 ? totalSize / packages.length : 0;
@@ -390,13 +390,14 @@ export class RefactorContextPackage {
     const validationStats = {
       valid: packages.filter(pkg => pkg.validation.isValid).length,
       invalid: packages.filter(pkg => !pkg.validation.isValid).length,
-      warnings: packages.filter(pkg => pkg.validation.warnings.length > 0).length
+      warnings: packages.filter(pkg => pkg.validation.warnings.length > 0).length,
     };
 
     const sizeDistribution = {
       small: packages.filter(pkg => pkg.metadata.size < 10000).length,
-      medium: packages.filter(pkg => pkg.metadata.size >= 10000 && pkg.metadata.size < 100000).length,
-      large: packages.filter(pkg => pkg.metadata.size >= 100000).length
+      medium: packages.filter(pkg => pkg.metadata.size >= 10000 && pkg.metadata.size < 100000)
+        .length,
+      large: packages.filter(pkg => pkg.metadata.size >= 100000).length,
     };
 
     return {
@@ -406,7 +407,7 @@ export class RefactorContextPackage {
       averageSize,
       averageTokens,
       validationStats,
-      sizeDistribution
+      sizeDistribution,
     };
   }
 

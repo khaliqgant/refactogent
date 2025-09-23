@@ -128,7 +128,7 @@ export class LLMProviderManager {
       cacheTimeout: 300000, // 5 minutes
       enableMetrics: true,
       enableTracing: true,
-      ...options
+      ...options,
     };
   }
 
@@ -141,24 +141,21 @@ export class LLMProviderManager {
     providerConfig: LLMProviderConfig
   ): Promise<void> {
     this.logger.info('Registering LLM provider', { name, capabilities: provider.capabilities });
-    
+
     this.providers.set(name, provider);
     this.providerConfigs.set(name, providerConfig);
-    
+
     this.metrics.recordLLM(0, 0, 0, 0, true); // Provider registration
   }
 
   /**
    * Register a provider with config only
    */
-  async registerProviderConfig(
-    name: string,
-    config: LLMProviderConfig
-  ): Promise<void> {
+  async registerProviderConfig(name: string, config: LLMProviderConfig): Promise<void> {
     const provider = new LLMProviderImpl(name, config);
     this.providers.set(name, provider);
     this.providerConfigs.set(name, config);
-    
+
     this.metrics.recordLLM(0, 0, 0, 0, true); // Provider registration
   }
 
@@ -211,11 +208,10 @@ export class LLMProviderManager {
     if (!provider) {
       throw new Error(`Provider ${providerName} not found`);
     }
-    
+
     // This would be implemented by the actual provider
     throw new Error('callLLM not implemented');
   }
-
 
   /**
    * Get default provider
@@ -231,7 +227,7 @@ export class LLMProviderManager {
     return {
       totalCalls: 0,
       totalTokens: 0,
-      totalCost: 0
+      totalCost: 0,
     };
   }
 
@@ -241,7 +237,6 @@ export class LLMProviderManager {
   resetUsage(): void {
     // Reset usage tracking
   }
-
 
   /**
    * Get provider by name
@@ -262,10 +257,7 @@ export class LLMProviderManager {
   /**
    * Generate text using the best available provider
    */
-  async generateText(
-    request: LLMRequest,
-    preferredProvider?: string
-  ): Promise<LLMResponse> {
+  async generateText(request: LLMRequest, preferredProvider?: string): Promise<LLMResponse> {
     const span = this.tracer.startAnalysisTrace('.', 'llm-generation');
     const startTime = Date.now();
 
@@ -289,12 +281,12 @@ export class LLMProviderManager {
       this.logger.info('Generating text with LLM', {
         provider: provider.name,
         promptLength: request.prompt.length,
-        maxTokens: request.maxTokens
+        maxTokens: request.maxTokens,
       });
 
       // Generate text
       const response = await this.callProvider(provider.name, request);
-      
+
       // Cache response
       if (this.options.enableCaching) {
         const cacheKey = this.generateCacheKey(request);
@@ -320,12 +312,12 @@ export class LLMProviderManager {
       return response;
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'LLM generation failed');
-      
+
       // Try fallback providers
       if (this.options.fallbackChain && this.options.fallbackChain.length > 0) {
         return await this.tryFallbackProviders(request);
       }
-      
+
       throw error;
     }
   }
@@ -349,15 +341,12 @@ export class LLMProviderManager {
 
       this.logger.info('Generating streaming text with LLM', {
         provider: provider.name,
-        promptLength: request.prompt.length
+        promptLength: request.prompt.length,
       });
 
       const response = await this.callProviderStream(provider.name, request, onChunk);
 
-      this.tracer.recordSuccess(
-        span,
-        `Streamed text: ${response.usage.totalTokens} tokens`
-      );
+      this.tracer.recordSuccess(span, `Streamed text: ${response.usage.totalTokens} tokens`);
 
       return response;
     } catch (error) {
@@ -405,17 +394,17 @@ export class LLMProviderManager {
   private async callProvider(providerName: string, request: LLMRequest): Promise<LLMResponse> {
     const provider = this.providers.get(providerName);
     const providerConfig = this.providerConfigs.get(providerName);
-    
+
     if (!provider || !providerConfig) {
       throw new Error(`Provider ${providerName} not found`);
     }
 
     // Simulate provider call (in real implementation, this would call actual APIs)
     const startTime = Date.now();
-    
+
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
-    
+
     const latency = Date.now() - startTime;
     const promptTokens = Math.ceil(request.prompt.length / 4); // Rough estimation
     const completionTokens = Math.ceil((request.maxTokens || 1000) * 0.8);
@@ -427,15 +416,15 @@ export class LLMProviderManager {
       usage: {
         promptTokens,
         completionTokens,
-        totalTokens
+        totalTokens,
       },
       metadata: {
         provider: providerName,
         model: providerConfig.model || 'default',
         latency,
         cost,
-        finishReason: 'stop'
-      }
+        finishReason: 'stop',
+      },
     };
   }
 
@@ -449,14 +438,14 @@ export class LLMProviderManager {
   ): Promise<LLMResponse> {
     const provider = this.providers.get(providerName);
     const providerConfig = this.providerConfigs.get(providerName);
-    
+
     if (!provider || !providerConfig) {
       throw new Error(`Provider ${providerName} not found`);
     }
 
     const startTime = Date.now();
     const content = `Generated streaming response from ${providerName}: ${request.prompt.substring(0, 100)}...`;
-    
+
     // Simulate streaming
     const words = content.split(' ');
     for (let i = 0; i < words.length; i++) {
@@ -475,15 +464,15 @@ export class LLMProviderManager {
       usage: {
         promptTokens,
         completionTokens,
-        totalTokens
+        totalTokens,
       },
       metadata: {
         provider: providerName,
         model: providerConfig.model || 'default',
         latency,
         cost,
-        finishReason: 'stop'
-      }
+        finishReason: 'stop',
+      },
     };
   }
 
@@ -503,7 +492,7 @@ export class LLMProviderManager {
         } catch (error) {
           this.logger.warn('Fallback provider failed', {
             provider: providerName,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
           continue;
         }
@@ -522,7 +511,7 @@ export class LLMProviderManager {
       context: request.context,
       systemMessage: request.systemMessage,
       maxTokens: request.maxTokens,
-      temperature: request.temperature
+      temperature: request.temperature,
     });
     return Buffer.from(key).toString('base64');
   }
@@ -546,8 +535,9 @@ export class LLMProviderManager {
     totalCost: number;
     cacheHitRate: number;
   }> {
-    const availableProviders = Array.from(this.providers.keys())
-      .filter(name => this.isProviderAvailable(name)).length;
+    const availableProviders = Array.from(this.providers.keys()).filter(name =>
+      this.isProviderAvailable(name)
+    ).length;
 
     return {
       totalProviders: this.providers.size,
@@ -555,7 +545,7 @@ export class LLMProviderManager {
       totalRequests: 0, // Would be tracked in real implementation
       averageLatency: 0,
       totalCost: 0,
-      cacheHitRate: 0
+      cacheHitRate: 0,
     };
   }
 

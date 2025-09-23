@@ -81,9 +81,9 @@ export function createLLMRefactorCommand(): Command {
                 id: 'analyze',
                 type: 'analysis',
                 target: options.target,
-                operation: options.operation
-              }
-            ]
+                operation: options.operation,
+              },
+            ],
           },
           {
             includeTestCreation: options.includeTests,

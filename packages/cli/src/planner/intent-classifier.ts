@@ -3,16 +3,16 @@ import { RefactoGentMetrics } from '../observability/metrics.js';
 import { RefactoGentTracer } from '../observability/tracing.js';
 import { RefactoGentConfig } from '../config/refactogent-schema.js';
 
-export type IntentType = 
-  | 'refactor' 
-  | 'edit' 
-  | 'explain' 
-  | 'test-gen' 
-  | 'doc-gen' 
-  | 'migration' 
-  | 'optimize' 
-  | 'debug' 
-  | 'analyze' 
+export type IntentType =
+  | 'refactor'
+  | 'edit'
+  | 'explain'
+  | 'test-gen'
+  | 'doc-gen'
+  | 'migration'
+  | 'optimize'
+  | 'debug'
+  | 'analyze'
   | 'unknown';
 
 export interface IntentClassification {
@@ -82,7 +82,7 @@ export class IntentClassifier {
       this.metrics.recordPerformance(
         Date.now() - span.startTime,
         0, // memory usage
-        0  // cpu usage
+        0 // cpu usage
       );
 
       return classification;
@@ -105,11 +105,11 @@ export class IntentClassifier {
 
     // Intent patterns and keywords
     const intentPatterns = this.getIntentPatterns();
-    
+
     let bestMatch: { intent: IntentType; confidence: number; reasoning: string } = {
       intent: 'unknown',
       confidence: 0,
-      reasoning: 'No clear intent pattern matched'
+      reasoning: 'No clear intent pattern matched',
     };
 
     // Check each intent pattern
@@ -128,7 +128,7 @@ export class IntentClassifier {
       complexity: 'medium',
       estimatedTime: 10,
       requiredTools: [],
-      riskLevel: 'medium'
+      riskLevel: 'medium',
     };
 
     // Add optional analysis
@@ -160,47 +160,160 @@ export class IntentClassifier {
    */
   private getIntentPatterns(): Map<IntentType, string[]> {
     return new Map([
-      ['refactor', [
-        'refactor', 'restructure', 'improve', 'clean up', 'simplify',
-        'extract function', 'inline function', 'rename', 'move', 'split', 'merge'
-      ]],
-      ['edit', [
-        'edit this file', 'modify the function', 'change the implementation', 'update the code', 'fix the bug',
-        'edit this', 'modify this', 'change this', 'update this', 'fix this',
-        'add code', 'remove code', 'delete code', 'insert code', 'replace code'
-      ]],
-      ['explain', [
-        'explain', 'describe', 'what does', 'how does', 'why', 'document', 'comment',
-        'clarify', 'understand', 'break down'
-      ]],
-      ['test-gen', [
-        'generate tests', 'create unit tests', 'write test cases', 'add test coverage', 'test this function',
-        'write test', 'create test', 'add test', 'unit test for', 'integration test',
-        'test case for', 'testing this', 'test coverage', 'test suite'
-      ]],
-      ['doc-gen', [
-        'document this code', 'add documentation', 'write comments', 'create API docs', 'generate README',
-        'document this', 'add documentation', 'write docs', 'comment this',
-        'api documentation', 'readme for', 'manual for', 'guide for'
-      ]],
-      ['migration', [
-        'migrate', 'upgrade', 'convert', 'port', 'transform', 'translate',
-        'legacy', 'deprecated', 'version', 'breaking change'
-      ]],
-      ['optimize', [
-        'optimize performance', 'improve speed', 'reduce memory usage', 'fix bottleneck', 'make it faster',
-        'make faster', 'speed up', 'improve performance',
-        'memory optimization', 'cpu optimization', 'bottleneck', 'profiling'
-      ]],
-      ['debug', [
-        'debug', 'bug', 'error', 'issue', 'problem', 'troubleshoot',
-        'investigate', 'trace', 'log', 'exception', 'crash'
-      ]],
-      ['analyze', [
-        'analyze the code', 'get metrics', 'generate report', 'check complexity', 'review architecture',
-        'analyze code', 'code analysis', 'review code', 'audit code',
-        'inspect code', 'examine code', 'metrics for', 'statistics for'
-      ]]
+      [
+        'refactor',
+        [
+          'refactor',
+          'restructure',
+          'improve',
+          'clean up',
+          'simplify',
+          'extract function',
+          'inline function',
+          'rename',
+          'move',
+          'split',
+          'merge',
+        ],
+      ],
+      [
+        'edit',
+        [
+          'edit this file',
+          'modify the function',
+          'change the implementation',
+          'update the code',
+          'fix the bug',
+          'edit this',
+          'modify this',
+          'change this',
+          'update this',
+          'fix this',
+          'add code',
+          'remove code',
+          'delete code',
+          'insert code',
+          'replace code',
+        ],
+      ],
+      [
+        'explain',
+        [
+          'explain',
+          'describe',
+          'what does',
+          'how does',
+          'why',
+          'document',
+          'comment',
+          'clarify',
+          'understand',
+          'break down',
+        ],
+      ],
+      [
+        'test-gen',
+        [
+          'generate tests',
+          'create unit tests',
+          'write test cases',
+          'add test coverage',
+          'test this function',
+          'write test',
+          'create test',
+          'add test',
+          'unit test for',
+          'integration test',
+          'test case for',
+          'testing this',
+          'test coverage',
+          'test suite',
+        ],
+      ],
+      [
+        'doc-gen',
+        [
+          'document this code',
+          'add documentation',
+          'write comments',
+          'create API docs',
+          'generate README',
+          'document this',
+          'add documentation',
+          'write docs',
+          'comment this',
+          'api documentation',
+          'readme for',
+          'manual for',
+          'guide for',
+        ],
+      ],
+      [
+        'migration',
+        [
+          'migrate',
+          'upgrade',
+          'convert',
+          'port',
+          'transform',
+          'translate',
+          'legacy',
+          'deprecated',
+          'version',
+          'breaking change',
+        ],
+      ],
+      [
+        'optimize',
+        [
+          'optimize performance',
+          'improve speed',
+          'reduce memory usage',
+          'fix bottleneck',
+          'make it faster',
+          'make faster',
+          'speed up',
+          'improve performance',
+          'memory optimization',
+          'cpu optimization',
+          'bottleneck',
+          'profiling',
+        ],
+      ],
+      [
+        'debug',
+        [
+          'debug',
+          'bug',
+          'error',
+          'issue',
+          'problem',
+          'troubleshoot',
+          'investigate',
+          'trace',
+          'log',
+          'exception',
+          'crash',
+        ],
+      ],
+      [
+        'analyze',
+        [
+          'analyze the code',
+          'get metrics',
+          'generate report',
+          'check complexity',
+          'review architecture',
+          'analyze code',
+          'code analysis',
+          'review code',
+          'audit code',
+          'inspect code',
+          'examine code',
+          'metrics for',
+          'statistics for',
+        ],
+      ],
     ]);
   }
 
@@ -220,13 +333,13 @@ export class IntentClassifier {
 
     for (const pattern of patterns) {
       const patternLower = pattern.toLowerCase();
-      
+
       // Check for exact word matches
       if (inputLower.includes(patternLower) || contextLower.includes(patternLower)) {
         confidence += 0.3;
         matchedPatterns.push(pattern);
       }
-      
+
       // Check for partial matches
       const words = inputLower.split(/\s+/);
       for (const word of words) {
@@ -239,7 +352,10 @@ export class IntentClassifier {
 
     // Boost confidence for exact matches
     for (const pattern of patterns) {
-      if (inputLower === pattern.toLowerCase() || inputLower.startsWith(pattern.toLowerCase() + ' ')) {
+      if (
+        inputLower === pattern.toLowerCase() ||
+        inputLower.startsWith(pattern.toLowerCase() + ' ')
+      ) {
         confidence += 0.4;
         break;
       }
@@ -248,9 +364,10 @@ export class IntentClassifier {
     // Cap confidence at 1.0
     confidence = Math.min(confidence, 1.0);
 
-    const reasoning = matchedPatterns.length > 0 
-      ? `Matched patterns: ${matchedPatterns.join(', ')}`
-      : 'No patterns matched';
+    const reasoning =
+      matchedPatterns.length > 0
+        ? `Matched patterns: ${matchedPatterns.join(', ')}`
+        : 'No patterns matched';
 
     return { confidence, reasoning };
   }
@@ -290,32 +407,32 @@ export class IntentClassifier {
   private estimateComplexity(input: string, intent: IntentType): 'low' | 'medium' | 'high' {
     const complexityIndicators = {
       low: ['simple', 'easy', 'quick', 'small', 'minor'],
-      high: ['complex', 'difficult', 'major', 'large', 'comprehensive', 'complete']
+      high: ['complex', 'difficult', 'major', 'large', 'comprehensive', 'complete'],
     };
 
     const inputLower = input.toLowerCase();
-    
+
     // Check for complexity indicators
     for (const indicator of complexityIndicators.low) {
       if (inputLower.includes(indicator)) return 'low';
     }
-    
+
     for (const indicator of complexityIndicators.high) {
       if (inputLower.includes(indicator)) return 'high';
     }
 
     // Default complexity based on intent
     const intentComplexity: Record<IntentType, 'low' | 'medium' | 'high'> = {
-      'refactor': 'medium',
-      'edit': 'low',
-      'explain': 'low',
+      refactor: 'medium',
+      edit: 'low',
+      explain: 'low',
       'test-gen': 'medium',
       'doc-gen': 'low',
-      'migration': 'high',
-      'optimize': 'high',
-      'debug': 'medium',
-      'analyze': 'medium',
-      'unknown': 'medium'
+      migration: 'high',
+      optimize: 'high',
+      debug: 'medium',
+      analyze: 'medium',
+      unknown: 'medium',
     };
 
     return intentComplexity[intent];
@@ -326,22 +443,22 @@ export class IntentClassifier {
    */
   private estimateTime(complexity: 'low' | 'medium' | 'high', intent: IntentType): number {
     const baseTime: Record<IntentType, number> = {
-      'refactor': 15,
-      'edit': 5,
-      'explain': 3,
+      refactor: 15,
+      edit: 5,
+      explain: 3,
       'test-gen': 20,
       'doc-gen': 10,
-      'migration': 60,
-      'optimize': 30,
-      'debug': 15,
-      'analyze': 10,
-      'unknown': 10
+      migration: 60,
+      optimize: 30,
+      debug: 15,
+      analyze: 10,
+      unknown: 10,
     };
 
     const complexityMultiplier = {
-      'low': 0.5,
-      'medium': 1.0,
-      'high': 2.0
+      low: 0.5,
+      medium: 1.0,
+      high: 2.0,
     };
 
     return Math.round(baseTime[intent] * complexityMultiplier[complexity]);
@@ -350,24 +467,27 @@ export class IntentClassifier {
   /**
    * Assess risk level of the task
    */
-  private assessRisk(intent: IntentType, complexity: 'low' | 'medium' | 'high'): 'low' | 'medium' | 'high' {
+  private assessRisk(
+    intent: IntentType,
+    complexity: 'low' | 'medium' | 'high'
+  ): 'low' | 'medium' | 'high' {
     const intentRisk: Record<IntentType, 'low' | 'medium' | 'high'> = {
-      'refactor': 'medium',
-      'edit': 'low',
-      'explain': 'low',
+      refactor: 'medium',
+      edit: 'low',
+      explain: 'low',
       'test-gen': 'low',
       'doc-gen': 'low',
-      'migration': 'high',
-      'optimize': 'medium',
-      'debug': 'low',
-      'analyze': 'low',
-      'unknown': 'medium'
+      migration: 'high',
+      optimize: 'medium',
+      debug: 'low',
+      analyze: 'low',
+      unknown: 'medium',
     };
 
     const complexityRisk = {
-      'low': 'low',
-      'medium': 'medium',
-      'high': 'high'
+      low: 'low',
+      medium: 'medium',
+      high: 'high',
     };
 
     // Take the higher risk between intent and complexity
@@ -384,16 +504,16 @@ export class IntentClassifier {
    */
   private suggestTools(intent: IntentType, complexity: 'low' | 'medium' | 'high'): string[] {
     const baseTools: Record<IntentType, string[]> = {
-      'refactor': ['search', 'read', 'edit', 'typecheck', 'format'],
-      'edit': ['read', 'edit', 'format'],
-      'explain': ['search', 'read'],
+      refactor: ['search', 'read', 'edit', 'typecheck', 'format'],
+      edit: ['read', 'edit', 'format'],
+      explain: ['search', 'read'],
       'test-gen': ['search', 'read', 'edit', 'test-runner'],
       'doc-gen': ['search', 'read', 'edit'],
-      'migration': ['search', 'read', 'edit', 'typecheck', 'test-runner', 'format'],
-      'optimize': ['search', 'read', 'edit', 'profiler', 'benchmark'],
-      'debug': ['search', 'read', 'debugger', 'log-analyzer'],
-      'analyze': ['search', 'read', 'metrics-collector'],
-      'unknown': ['search', 'read']
+      migration: ['search', 'read', 'edit', 'typecheck', 'test-runner', 'format'],
+      optimize: ['search', 'read', 'edit', 'profiler', 'benchmark'],
+      debug: ['search', 'read', 'debugger', 'log-analyzer'],
+      analyze: ['search', 'read', 'metrics-collector'],
+      unknown: ['search', 'read'],
     };
 
     const tools = baseTools[intent] || ['search', 'read'];
@@ -420,7 +540,7 @@ export class IntentClassifier {
       totalClassifications: 0,
       intentDistribution: {} as Record<IntentType, number>,
       averageConfidence: 0,
-      averageComplexity: {}
+      averageComplexity: {},
     };
   }
 }

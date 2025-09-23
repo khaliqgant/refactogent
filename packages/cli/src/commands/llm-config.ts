@@ -119,7 +119,7 @@ export function createLLMConfigCommand(): Command {
               const testPrompt = 'Hello, this is a test prompt for RefactoGent.';
               const response = await providerManager.callLLM(options.provider, {
                 prompt: testPrompt,
-                maxTokens: 100
+                maxTokens: 100,
               });
 
               console.log(`✅ Test call successful:`);

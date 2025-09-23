@@ -77,7 +77,7 @@ export class ContextAwareLLMService {
     this.logger.info('Initializing context-aware LLM service');
     await this.providerManager.registerProviderConfig('openai', {
       apiKey: process.env.OPENAI_API_KEY || '',
-      model: 'gpt-4'
+      model: 'gpt-4',
     });
   }
 
@@ -91,7 +91,7 @@ export class ContextAwareLLMService {
       const llmRequest: LLMRequest = {
         prompt: request.prompt,
         maxTokens: request.options?.maxTokens || 2000,
-        temperature: request.options?.temperature || 0.7
+        temperature: request.options?.temperature || 0.7,
       };
 
       const response = await this.providerManager.generateText(llmRequest, preferredProvider);
@@ -103,14 +103,14 @@ export class ContextAwareLLMService {
           contextTokens: 0,
           totalTokens: response.usage.totalTokens,
           provider: response.metadata.provider,
-          model: response.metadata.model
+          model: response.metadata.model,
         },
         metadata: {
           latency: response.metadata.latency,
           cost: response.metadata.cost,
           confidence: 0.8,
-          reasoning: 'Generated with context'
-        }
+          reasoning: 'Generated with context',
+        },
       };
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Context-aware generation failed');
@@ -131,8 +131,8 @@ export class ContextAwareLLMService {
         context: request.projectContext,
         options: {
           maxTokens: 2000,
-          temperature: 0.3
-        }
+          temperature: 0.3,
+        },
       });
 
       return {
@@ -141,7 +141,7 @@ export class ContextAwareLLMService {
         explanation: this.extractExplanation(response.content),
         confidence: 0.8,
         extractedFunction: this.extractRefactoredCode(response.content),
-        functionCall: this.extractFunctionCall(response.content)
+        functionCall: this.extractFunctionCall(response.content),
       };
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'LLM refactoring failed');

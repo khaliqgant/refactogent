@@ -91,9 +91,9 @@ export class LLMTaskFramework {
       taskTimeout: 300000, // 5 minutes
       enableMetrics: true,
       enableTracing: true,
-      ...options
+      ...options,
     };
-    
+
     this.llmService = new ContextAwareLLMService(logger, metrics, tracer, config);
     this.safetyGates = new LLMSafetyGates(logger, metrics, tracer, config);
   }
@@ -139,7 +139,7 @@ export class LLMTaskFramework {
       retryCount: 0,
       maxRetries: options.maxRetries || this.options.defaultRetries || 3,
       dependencies: options.dependencies || [],
-      safetyChecks: options.safetyChecks !== false
+      safetyChecks: options.safetyChecks !== false,
     };
 
     this.tasks.set(taskId, task);
@@ -149,7 +149,7 @@ export class LLMTaskFramework {
       taskId,
       type,
       name,
-      priority: task.priority
+      priority: task.priority,
     });
 
     // Start processing if not at capacity
@@ -243,7 +243,7 @@ export class LLMTaskFramework {
       this.logger.info('Executing LLM task', {
         taskId: task.id,
         type: task.type,
-        name: task.name
+        name: task.name,
       });
 
       // Execute task based on type
@@ -280,7 +280,7 @@ export class LLMTaskFramework {
           JSON.stringify(result),
           task.description
         );
-        
+
         if (!safetyResult.passed) {
           throw new Error(`Safety check failed: ${safetyResult.violations.length} violations`);
         }
@@ -294,14 +294,10 @@ export class LLMTaskFramework {
 
       this.runningTasks.delete(task.id);
 
-      this.tracer.recordSuccess(
-        span,
-        `Task completed: ${task.id} in ${task.actualDuration}ms`
-      );
+      this.tracer.recordSuccess(span, `Task completed: ${task.id} in ${task.actualDuration}ms`);
 
       // Process next tasks
       this.processTaskQueue();
-
     } catch (error) {
       task.status = 'failed';
       task.updatedAt = Date.now();
@@ -315,11 +311,11 @@ export class LLMTaskFramework {
         task.status = 'pending';
         task.updatedAt = Date.now();
         this.taskQueue.push(task);
-        
+
         this.logger.info('Retrying task', {
           taskId: task.id,
           retryCount: task.retryCount,
-          maxRetries: task.maxRetries
+          maxRetries: task.maxRetries,
         });
       }
 
@@ -335,12 +331,12 @@ export class LLMTaskFramework {
     const response = await this.llmService.generateWithContext({
       prompt: task.input.prompt,
       context: task.input.context,
-      options: task.input.options
+      options: task.input.options,
     });
 
     return {
       refactoredCode: response.content,
-      metadata: response.metadata
+      metadata: response.metadata,
     };
   }
 
@@ -351,12 +347,12 @@ export class LLMTaskFramework {
     const response = await this.llmService.generateWithContext({
       prompt: `Analyze the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
       context: task.input.context,
-      options: task.input.options
+      options: task.input.options,
     });
 
     return {
       analysis: response.content,
-      metadata: response.metadata
+      metadata: response.metadata,
     };
   }
 
@@ -367,12 +363,12 @@ export class LLMTaskFramework {
     const response = await this.llmService.generateWithContext({
       prompt: task.input.prompt,
       context: task.input.context,
-      options: task.input.options
+      options: task.input.options,
     });
 
     return {
       generatedContent: response.content,
-      metadata: response.metadata
+      metadata: response.metadata,
     };
   }
 
@@ -383,12 +379,12 @@ export class LLMTaskFramework {
     const response = await this.llmService.generateWithContext({
       prompt: `Explain the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
       context: task.input.context,
-      options: task.input.options
+      options: task.input.options,
     });
 
     return {
       explanation: response.content,
-      metadata: response.metadata
+      metadata: response.metadata,
     };
   }
 
@@ -399,12 +395,12 @@ export class LLMTaskFramework {
     const response = await this.llmService.generateWithContext({
       prompt: `Optimize the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
       context: task.input.context,
-      options: task.input.options
+      options: task.input.options,
     });
 
     return {
       optimizedCode: response.content,
-      metadata: response.metadata
+      metadata: response.metadata,
     };
   }
 
@@ -415,12 +411,12 @@ export class LLMTaskFramework {
     const response = await this.llmService.generateWithContext({
       prompt: `Generate tests for the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
       context: task.input.context,
-      options: task.input.options
+      options: task.input.options,
     });
 
     return {
       testCode: response.content,
-      metadata: response.metadata
+      metadata: response.metadata,
     };
   }
 
@@ -431,12 +427,12 @@ export class LLMTaskFramework {
     const response = await this.llmService.generateWithContext({
       prompt: `Generate documentation for the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
       context: task.input.context,
-      options: task.input.options
+      options: task.input.options,
     });
 
     return {
       documentation: response.content,
-      metadata: response.metadata
+      metadata: response.metadata,
     };
   }
 
@@ -464,16 +460,16 @@ export class LLMTaskFramework {
       explain: 10000,
       optimize: 25000,
       test: 20000,
-      document: 15000
+      document: 15000,
     };
 
     let duration = baseDuration[type] || 15000;
-    
+
     // Adjust based on input size
     if (input.code) {
       duration += Math.ceil(input.code.length / 1000) * 5000;
     }
-    
+
     if (input.prompt) {
       duration += Math.ceil(input.prompt.length / 500) * 2000;
     }
@@ -503,14 +499,14 @@ export class LLMTaskFramework {
     const tasks = Array.from(this.tasks.values());
     const completedTasks = tasks.filter(t => t.status === 'completed');
     const failedTasks = tasks.filter(t => t.status === 'failed');
-    
-    const averageDuration = completedTasks.length > 0
-      ? completedTasks.reduce((sum, t) => sum + (t.actualDuration || 0), 0) / completedTasks.length
-      : 0;
 
-    const successRate = tasks.length > 0
-      ? completedTasks.length / tasks.length
-      : 0;
+    const averageDuration =
+      completedTasks.length > 0
+        ? completedTasks.reduce((sum, t) => sum + (t.actualDuration || 0), 0) /
+          completedTasks.length
+        : 0;
+
+    const successRate = tasks.length > 0 ? completedTasks.length / tasks.length : 0;
 
     return {
       totalTasks: tasks.length,
@@ -519,7 +515,7 @@ export class LLMTaskFramework {
       completedTasks: completedTasks.length,
       failedTasks: failedTasks.length,
       averageDuration,
-      successRate
+      successRate,
     };
   }
 

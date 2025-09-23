@@ -1,12 +1,12 @@
-import { 
-  ToolExecutorRegistry, 
-  SearchExecutor, 
-  ReadExecutor, 
-  EditExecutor, 
-  TypeCheckExecutor, 
-  FormatExecutor, 
+import {
+  ToolExecutorRegistry,
+  SearchExecutor,
+  ReadExecutor,
+  EditExecutor,
+  TypeCheckExecutor,
+  FormatExecutor,
   TestRunnerExecutor,
-  ExecutionContext 
+  ExecutionContext,
 } from '../planner/tool-executors.js';
 import { PlanNode } from '../planner/planner-llm.js';
 import { Logger } from '../utils/logger.js';
@@ -66,7 +66,7 @@ describe('Tool Executors', () => {
     dependencies: [],
     estimatedTime: 1,
     riskLevel: 'low',
-    retryable: true
+    retryable: true,
   });
 
   const createMockContext = (): ExecutionContext => ({
@@ -74,7 +74,7 @@ describe('Tool Executors', () => {
     workingDirectory: '/test/project',
     environment: { NODE_ENV: 'test' },
     previousResults: new Map(),
-    options: {}
+    options: {},
   });
 
   describe('ToolExecutorRegistry', () => {
@@ -212,11 +212,11 @@ describe('Tool Executors', () => {
     });
 
     it('should handle rollback', async () => {
-      const result = { 
-        success: true, 
-        retryable: true, 
+      const result = {
+        success: true,
+        retryable: true,
         executionTime: 0,
-        rollbackData: { timestamp: Date.now(), files: ['test.ts'] }
+        rollbackData: { timestamp: Date.now(), files: ['test.ts'] },
       };
       const rollbackResult = await executor.rollback(result);
       expect(rollbackResult).toBe(true);
@@ -284,7 +284,7 @@ describe('Tool Executors', () => {
 
     it('should handle different formatting styles', async () => {
       const styles = ['prettier', 'eslint', 'standard'];
-      
+
       for (const style of styles) {
         const node = createMockNode('format', { style, write: false });
         const context = createMockContext();
@@ -411,7 +411,7 @@ describe('Tool Executors', () => {
           workingDirectory: '',
           environment: {},
           previousResults: new Map(),
-          options: {}
+          options: {},
         };
 
         const result = await executor.execute(node, invalidContext);

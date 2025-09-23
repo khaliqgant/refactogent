@@ -99,7 +99,7 @@ export class PatchSetManager {
         name,
         description,
         patchCount: patches.length,
-        options
+        options,
       });
 
       // Validate patches if requested
@@ -128,10 +128,10 @@ export class PatchSetManager {
           createdBy: 'refactogent',
           totalChanges: this.calculateTotalChanges(patches),
           filesAffected: patches.length,
-          estimatedImpact: options.estimateImpact ? this.estimateImpact(patches) : 'medium'
+          estimatedImpact: options.estimateImpact ? this.estimateImpact(patches) : 'medium',
         },
         dependencies: [],
-        rollbackPlan
+        rollbackPlan,
       };
 
       this.patchSets.set(patchSet.id, patchSet);
@@ -151,7 +151,10 @@ export class PatchSetManager {
   /**
    * Apply a patch set to the filesystem
    */
-  async applyPatchSet(patchSetId: string, options: { dryRun?: boolean; backup?: boolean } = {}): Promise<{
+  async applyPatchSet(
+    patchSetId: string,
+    options: { dryRun?: boolean; backup?: boolean } = {}
+  ): Promise<{
     success: boolean;
     appliedPatches: string[];
     failedPatches: string[];
@@ -169,7 +172,7 @@ export class PatchSetManager {
       this.logger.info('Applying patch set', {
         patchSetId,
         patchCount: patchSet.patches.length,
-        options
+        options,
       });
 
       const appliedPatches: string[] = [];
@@ -194,7 +197,7 @@ export class PatchSetManager {
         } catch (error) {
           this.logger.error('Failed to apply patch', {
             filePath: patch.filePath,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
           failedPatches.push(patch.filePath);
         }
@@ -212,7 +215,7 @@ export class PatchSetManager {
         success: failedPatches.length === 0,
         appliedPatches,
         failedPatches,
-        rollbackData
+        rollbackData,
       };
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Patch set application failed');
@@ -242,7 +245,7 @@ export class PatchSetManager {
 
       this.logger.info('Rolling back patch set', {
         patchSetId,
-        rollbackPatches: patchSet.rollbackPlan.patches.length
+        rollbackPatches: patchSet.rollbackPlan.patches.length,
       });
 
       const rolledBackPatches: string[] = [];
@@ -256,7 +259,7 @@ export class PatchSetManager {
         } catch (error) {
           this.logger.error('Failed to rollback patch', {
             filePath: rollbackPatch.filePath,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
           });
           failedPatches.push(rollbackPatch.filePath);
         }
@@ -270,7 +273,7 @@ export class PatchSetManager {
       return {
         success: failedPatches.length === 0,
         rolledBackPatches,
-        failedPatches
+        failedPatches,
       };
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Patch set rollback failed');
@@ -327,8 +330,8 @@ export class PatchSetManager {
       files: patches.map(patch => ({
         filePath: patch.filePath,
         content: patch.originalContent,
-        checksum: this.calculateChecksum(patch.originalContent)
-      }))
+        checksum: this.calculateChecksum(patch.originalContent),
+      })),
     };
 
     this.logger.info('Created backup', { fileCount: backupData.files.length });
@@ -346,26 +349,26 @@ export class PatchSetManager {
       changes: patch.changes.map(change => ({
         ...change,
         originalText: change.newText,
-        newText: change.originalText
+        newText: change.originalText,
       })),
       metadata: {
         ...patch.metadata,
         description: `Rollback: ${patch.metadata.description}`,
-        checksum: this.calculateChecksum(patch.originalContent)
-      }
+        checksum: this.calculateChecksum(patch.originalContent),
+      },
     }));
 
     return {
       patches: rollbackPatches,
       verification: {
         checksum: this.calculateChecksum(JSON.stringify(rollbackPatches)),
-        backupPath: `/tmp/refactogent-backup-${Date.now()}`
+        backupPath: `/tmp/refactogent-backup-${Date.now()}`,
       },
       instructions: [
         'Restore original file contents',
         'Verify file integrity',
-        'Run tests to ensure system stability'
-      ]
+        'Run tests to ensure system stability',
+      ],
     };
   }
 
@@ -376,7 +379,7 @@ export class PatchSetManager {
     // Simulate file patching
     this.logger.debug('Applying patch', {
       filePath: patch.filePath,
-      changeCount: patch.changes.length
+      changeCount: patch.changes.length,
     });
 
     // In a real implementation, this would:
@@ -420,7 +423,7 @@ export class PatchSetManager {
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return hash.toString(16);
@@ -437,18 +440,22 @@ export class PatchSetManager {
     impactDistribution: Record<string, number>;
   }> {
     const patchSets = Array.from(this.patchSets.values());
-    
+
     return {
       totalPatchSets: patchSets.length,
       totalPatches: patchSets.reduce((total, ps) => total + ps.patches.length, 0),
       totalFilesAffected: patchSets.reduce((total, ps) => total + ps.metadata.filesAffected, 0),
-      averageChangesPerPatchSet: patchSets.length > 0 
-        ? patchSets.reduce((total, ps) => total + ps.metadata.totalChanges, 0) / patchSets.length 
-        : 0,
-      impactDistribution: patchSets.reduce((dist, ps) => {
-        dist[ps.metadata.estimatedImpact] = (dist[ps.metadata.estimatedImpact] || 0) + 1;
-        return dist;
-      }, {} as Record<string, number>)
+      averageChangesPerPatchSet:
+        patchSets.length > 0
+          ? patchSets.reduce((total, ps) => total + ps.metadata.totalChanges, 0) / patchSets.length
+          : 0,
+      impactDistribution: patchSets.reduce(
+        (dist, ps) => {
+          dist[ps.metadata.estimatedImpact] = (dist[ps.metadata.estimatedImpact] || 0) + 1;
+          return dist;
+        },
+        {} as Record<string, number>
+      ),
     };
   }
 }

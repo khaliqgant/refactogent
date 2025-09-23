@@ -71,7 +71,7 @@ export class LLMSafetyGates {
       this.logger.info('Running safety gate checks', {
         contentLength: content.length,
         hasContext: !!context,
-        options
+        options,
       });
 
       const violations: SafetyViolation[] = [];
@@ -125,7 +125,7 @@ export class LLMSafetyGates {
         violations,
         warnings,
         score,
-        recommendations
+        recommendations,
       };
 
       this.tracer.recordSuccess(
@@ -150,7 +150,7 @@ export class LLMSafetyGates {
     const inappropriatePatterns = [
       /inappropriate|offensive|harmful/i,
       /hate|discrimination|racism/i,
-      /violence|threat|danger/i
+      /violence|threat|danger/i,
     ];
 
     for (const pattern of inappropriatePatterns) {
@@ -160,7 +160,7 @@ export class LLMSafetyGates {
           severity: 'medium',
           message: 'Potentially inappropriate content detected',
           details: `Content matches pattern: ${pattern.source}`,
-          confidence: 0.8
+          confidence: 0.8,
         });
       }
     }
@@ -177,7 +177,7 @@ export class LLMSafetyGates {
       /password|secret|key|token/i,
       /sql.*injection|script.*injection/i,
       /eval\(|exec\(|system\(/i,
-      /dangerous|unsafe|vulnerable/i
+      /dangerous|unsafe|vulnerable/i,
     ];
 
     for (const pattern of securityPatterns) {
@@ -187,7 +187,7 @@ export class LLMSafetyGates {
           severity: 'high',
           message: 'Potential security issue detected',
           details: `Content matches security pattern: ${pattern.source}`,
-          confidence: 0.9
+          confidence: 0.9,
         });
       }
     }
@@ -203,7 +203,7 @@ export class LLMSafetyGates {
     const biasPatterns = [
       /stereotypical|biased|discriminatory/i,
       /gender.*assumption|race.*assumption/i,
-      /unfair|prejudiced/i
+      /unfair|prejudiced/i,
     ];
 
     for (const pattern of biasPatterns) {
@@ -213,7 +213,7 @@ export class LLMSafetyGates {
           severity: 'medium',
           message: 'Potential bias detected',
           details: `Content matches bias pattern: ${pattern.source}`,
-          confidence: 0.7
+          confidence: 0.7,
         });
       }
     }
@@ -229,7 +229,7 @@ export class LLMSafetyGates {
     const harmfulPatterns = [
       /self.*harm|suicide|kill.*self/i,
       /violence|weapon|danger/i,
-      /illegal|criminal|fraud/i
+      /illegal|criminal|fraud/i,
     ];
 
     for (const pattern of harmfulPatterns) {
@@ -239,7 +239,7 @@ export class LLMSafetyGates {
           severity: 'critical',
           message: 'Potentially harmful content detected',
           details: `Content matches harmful pattern: ${pattern.source}`,
-          confidence: 0.9
+          confidence: 0.9,
         });
       }
     }
@@ -259,7 +259,7 @@ export class LLMSafetyGates {
         type: 'quality',
         message: 'Code contains TODO or FIXME comments',
         suggestion: 'Consider addressing pending items before deployment',
-        confidence: 0.8
+        confidence: 0.8,
       });
     }
 
@@ -268,7 +268,7 @@ export class LLMSafetyGates {
         type: 'quality',
         message: 'Code contains debugging statements',
         suggestion: 'Remove debugging statements before production',
-        confidence: 0.9
+        confidence: 0.9,
       });
     }
 
@@ -278,7 +278,7 @@ export class LLMSafetyGates {
         type: 'consistency',
         message: 'Mixed variable declarations detected',
         suggestion: 'Use consistent variable declaration style',
-        confidence: 0.7
+        confidence: 0.7,
       });
     }
 
@@ -300,7 +300,7 @@ export class LLMSafetyGates {
             severity: 'medium',
             message: 'Content matches custom rule',
             details: `Rule: ${rule}`,
-            confidence: 0.8
+            confidence: 0.8,
           });
         }
       } catch (error) {
@@ -411,18 +411,14 @@ export class LLMSafetyGates {
       failedChecks: 0,
       averageScore: 0,
       violationTypes: {},
-      warningTypes: {}
+      warningTypes: {},
     };
   }
 
   /**
    * Execute validation pipeline
    */
-  async executeValidationPipeline(
-    task: any,
-    contextPackage: any,
-    options: any = {}
-  ): Promise<any> {
+  async executeValidationPipeline(task: any, contextPackage: any, options: any = {}): Promise<any> {
     const span = this.tracer.startAnalysisTrace('.', 'validation-pipeline');
 
     try {
@@ -430,10 +426,10 @@ export class LLMSafetyGates {
 
       // Run safety checks
       const safetyResult = await this.checkSafety(task.content, options);
-      
+
       // Run content validation
       const contentResult = await this.validateContent(task.content, options);
-      
+
       // Run security checks
       const securityResult = await this.checkSecurityIssues(task.content);
 
@@ -442,7 +438,7 @@ export class LLMSafetyGates {
         safety: safetyResult,
         content: contentResult,
         security: securityResult,
-        taskId: task.id
+        taskId: task.id,
       };
 
       this.tracer.recordSuccess(span, `Validation pipeline completed for task ${task.id}`);
@@ -458,7 +454,7 @@ export class LLMSafetyGates {
     return {
       passed: true,
       score: 0.9,
-      issues: []
+      issues: [],
     };
   }
 
@@ -471,16 +467,16 @@ export class LLMSafetyGates {
     try {
       // Simple safety check - in real implementation would be more sophisticated
       const violations: string[] = [];
-      
+
       // Check for harmful content
       if (content.includes('harmful') || content.includes('dangerous')) {
         violations.push('Potentially harmful content detected');
       }
-      
+
       return {
         passed: violations.length === 0,
         score: violations.length === 0 ? 1.0 : 0.5,
-        violations
+        violations,
       };
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Safety check failed');

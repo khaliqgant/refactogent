@@ -50,7 +50,7 @@ export class PlannerService {
     this.metrics = metrics;
     this.tracer = tracer;
     this.config = config;
-    
+
     this.intentClassifier = new IntentClassifier(logger, metrics, tracer, config);
     this.plannerLLM = new PlannerLLM(logger, metrics, tracer, config);
     this.toolRegistry = new ToolExecutorRegistry(logger, metrics, tracer, config);
@@ -74,7 +74,7 @@ export class PlannerService {
         input: input.substring(0, 100),
         context: context?.substring(0, 50),
         projectPath,
-        options
+        options,
       });
 
       // Step 1: Classify intent
@@ -83,14 +83,14 @@ export class PlannerService {
         estimateComplexity: true,
         estimateTime: true,
         assessRisk: true,
-        suggestTools: true
+        suggestTools: true,
       });
 
       this.logger.info('Intent classified', {
         intent: intent.intent,
         confidence: intent.confidence,
         complexity: intent.complexity,
-        riskLevel: intent.riskLevel
+        riskLevel: intent.riskLevel,
       });
 
       // Step 2: Generate plan
@@ -100,7 +100,7 @@ export class PlannerService {
         optimizeForTime: !options.validatePlan,
         optimizeForSafety: options.validatePlan,
         includeVerification: true,
-        maxRetries: options.maxRetries || 3
+        maxRetries: options.maxRetries || 3,
       };
 
       const planGraph = await this.plannerLLM.generatePlan(intent, context, planOptions);
@@ -109,7 +109,7 @@ export class PlannerService {
         nodeCount: planGraph.nodes.size,
         edgeCount: planGraph.edges.size,
         estimatedTime: planGraph.estimatedTotalTime,
-        riskLevel: planGraph.riskAssessment.overall
+        riskLevel: planGraph.riskAssessment.overall,
       });
 
       // Step 3: Validate plan if requested
@@ -118,7 +118,7 @@ export class PlannerService {
         if (!validation.isValid) {
           this.logger.warn('Plan validation failed', {
             issues: validation.issues,
-            suggestions: validation.suggestions
+            suggestions: validation.suggestions,
           });
         }
       }
@@ -128,8 +128,9 @@ export class PlannerService {
 
       // Step 5: Create patch set if there were edits
       let patchSet: PatchSet | undefined;
-      const editResults = Array.from(executionResults.values())
-        .filter(result => result.data && result.data.changes);
+      const editResults = Array.from(executionResults.values()).filter(
+        result => result.data && result.data.changes
+      );
 
       if (editResults.length > 0) {
         patchSet = await this.createPatchSetFromResults(editResults, intent, options);
@@ -155,7 +156,7 @@ export class PlannerService {
         errors: Array.from(executionResults.values())
           .filter(result => !result.success)
           .map(result => result.error || 'Unknown error'),
-        warnings: []
+        warnings: [],
       };
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Planner execution failed');
@@ -177,7 +178,7 @@ export class PlannerService {
       workingDirectory: projectPath,
       environment: process.env as Record<string, string>,
       previousResults: executionResults,
-      options: {}
+      options: {},
     };
 
     // Execute nodes in dependency order
@@ -186,14 +187,14 @@ export class PlannerService {
 
     while (pendingNodes.size > 0) {
       const readyNodes = this.findReadyNodes(planGraph, executedNodes, pendingNodes);
-      
+
       if (readyNodes.length === 0) {
         this.logger.error('No ready nodes found, possible circular dependency');
         break;
       }
 
       // Execute ready nodes (potentially in parallel)
-      const executionPromises = readyNodes.map(nodeId => 
+      const executionPromises = readyNodes.map(nodeId =>
         this.executeNode(nodeId, planGraph, executionContext, options)
       );
 
@@ -210,14 +211,14 @@ export class PlannerService {
         } else {
           this.logger.error('Node execution failed', {
             nodeId,
-            error: result.reason
+            error: result.reason,
           });
           // Mark as failed but continue
           executionResults.set(nodeId, {
             success: false,
             error: result.reason instanceof Error ? result.reason.message : String(result.reason),
             executionTime: 0,
-            retryable: true
+            retryable: true,
           });
           executedNodes.add(nodeId);
           pendingNodes.delete(nodeId);
@@ -263,7 +264,7 @@ export class PlannerService {
       nodeId,
       type: node.type,
       name: node.name,
-      tool: node.tool
+      tool: node.tool,
     });
 
     if (node.type === 'tool' && node.tool) {
@@ -285,12 +286,12 @@ export class PlannerService {
   private async executeNonToolNode(node: any, context: ExecutionContext): Promise<ToolResult> {
     // Simulate execution of decision, parallel, or sequential nodes
     this.logger.debug('Executing non-tool node', { nodeId: node.id, type: node.type });
-    
+
     return {
       success: true,
       data: { nodeType: node.type, executed: true },
       executionTime: 1,
-      retryable: false
+      retryable: false,
     };
   }
 
@@ -309,23 +310,25 @@ export class PlannerService {
         filePath: change.file,
         originalContent: change.original || '',
         newContent: change.updated || '',
-        changes: [{
-          type: 'replace' as const,
-          startLine: change.startLine || 1,
-          endLine: change.endLine || 1,
-          originalText: change.original || '',
-          newText: change.updated || '',
-          context: {
-            before: [],
-            after: []
-          }
-        }],
+        changes: [
+          {
+            type: 'replace' as const,
+            startLine: change.startLine || 1,
+            endLine: change.endLine || 1,
+            originalText: change.original || '',
+            newText: change.updated || '',
+            context: {
+              before: [],
+              after: [],
+            },
+          },
+        ],
         metadata: {
           timestamp: Date.now(),
           author: 'refactogent',
           description: `Generated by ${intent.intent} operation`,
-          checksum: this.calculateChecksum(change.updated || '')
-        }
+          checksum: this.calculateChecksum(change.updated || ''),
+        },
       }));
 
     const patchSetOptions: PatchSetOptions = {
@@ -333,7 +336,7 @@ export class PlannerService {
       validateChanges: true,
       includeMetadata: true,
       estimateImpact: true,
-      generateRollback: options.includeRollback
+      generateRollback: options.includeRollback,
     };
 
     return await this.patchSetManager.createPatchSet(
@@ -351,7 +354,7 @@ export class PlannerService {
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return hash.toString(16);
@@ -373,7 +376,7 @@ export class PlannerService {
       successRate: 0,
       averageExecutionTime: 0,
       intentDistribution: {},
-      toolUsage: {}
+      toolUsage: {},
     };
   }
 

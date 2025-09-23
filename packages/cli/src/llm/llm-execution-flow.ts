@@ -91,9 +91,9 @@ export class LLMExecutionFlow {
       stepTimeout: 60000, // 1 minute
       enableMetrics: true,
       enableTracing: true,
-      ...options
+      ...options,
     };
-    
+
     this.taskFramework = new LLMTaskFramework(logger, metrics, tracer, config);
     this.llmService = new ContextAwareLLMService(logger, metrics, tracer, config);
     this.safetyGates = new LLMSafetyGates(logger, metrics, tracer, config);
@@ -131,7 +131,7 @@ export class LLMExecutionFlow {
         retryCount: 0,
         maxRetries: step.maxRetries || 3,
         timeout: step.timeout || this.options.stepTimeout || 60000,
-        metadata: {}
+        metadata: {},
       })),
       status: 'pending',
       createdAt: now,
@@ -140,8 +140,8 @@ export class LLMExecutionFlow {
         totalTokens: 0,
         totalCost: 0,
         safetyScore: 0,
-        successRate: 0
-      }
+        successRate: 0,
+      },
     };
 
     this.flows.set(flowId, flow);
@@ -149,7 +149,7 @@ export class LLMExecutionFlow {
     this.logger.info('Created execution flow', {
       flowId,
       name,
-      stepCount: flow.steps.length
+      stepCount: flow.steps.length,
     });
 
     // Start execution
@@ -179,7 +179,7 @@ export class LLMExecutionFlow {
       this.logger.info('Executing flow', {
         flowId,
         name: flow.name,
-        stepCount: flow.steps.length
+        stepCount: flow.steps.length,
       });
 
       // Execute steps in dependency order
@@ -187,7 +187,7 @@ export class LLMExecutionFlow {
       const pendingSteps = [...flow.steps];
 
       while (pendingSteps.length > 0) {
-        const readySteps = pendingSteps.filter(step => 
+        const readySteps = pendingSteps.filter(step =>
           step.dependencies.every(dep => executedSteps.has(dep))
         );
 
@@ -214,7 +214,7 @@ export class LLMExecutionFlow {
             this.logger.error('Step execution failed', {
               flowId,
               stepId: step.id,
-              error: result.reason
+              error: result.reason,
             });
           }
         }
@@ -232,11 +232,7 @@ export class LLMExecutionFlow {
       flow.updatedAt = Date.now();
       this.runningFlows.delete(flowId);
 
-      this.tracer.recordSuccess(
-        span,
-        `Flow completed: ${flowId} in ${flow.totalDuration}ms`
-      );
-
+      this.tracer.recordSuccess(span, `Flow completed: ${flowId} in ${flow.totalDuration}ms`);
     } catch (error) {
       flow.status = 'failed';
       flow.updatedAt = Date.now();
@@ -261,7 +257,7 @@ export class LLMExecutionFlow {
         flowId,
         stepId: step.id,
         name: step.name,
-        type: step.type
+        type: step.type,
       });
 
       let output: any;
@@ -288,11 +284,7 @@ export class LLMExecutionFlow {
       step.metadata.endTime = Date.now();
       step.metadata.duration = step.metadata.endTime - step.metadata.startTime!;
 
-      this.tracer.recordSuccess(
-        span,
-        `Step completed: ${step.id} in ${step.metadata.duration}ms`
-      );
-
+      this.tracer.recordSuccess(span, `Step completed: ${step.id} in ${step.metadata.duration}ms`);
     } catch (error) {
       step.status = 'failed';
       step.metadata.endTime = Date.now();
@@ -308,7 +300,7 @@ export class LLMExecutionFlow {
           flowId,
           stepId: step.id,
           retryCount: step.retryCount,
-          maxRetries: step.maxRetries
+          maxRetries: step.maxRetries,
         });
       }
     }
@@ -321,7 +313,7 @@ export class LLMExecutionFlow {
     const response = await this.llmService.generateWithContext({
       prompt: step.input.prompt,
       context: step.input.context,
-      options: step.input.options
+      options: step.input.options,
     });
 
     step.metadata.tokens = response.context.totalTokens;
@@ -355,7 +347,7 @@ export class LLMExecutionFlow {
   private async executeValidationStep(step: ExecutionFlowStep): Promise<any> {
     // Simulate validation logic
     const isValid = this.validateContent(step.input.content, step.input.rules);
-    
+
     if (!isValid) {
       throw new Error('Validation failed');
     }
@@ -457,14 +449,13 @@ export class LLMExecutionFlow {
     const flows = Array.from(this.flows.values());
     const completedFlows = flows.filter(f => f.status === 'completed');
     const failedFlows = flows.filter(f => f.status === 'failed');
-    
-    const averageDuration = completedFlows.length > 0
-      ? completedFlows.reduce((sum, f) => sum + (f.totalDuration || 0), 0) / completedFlows.length
-      : 0;
 
-    const successRate = flows.length > 0
-      ? completedFlows.length / flows.length
-      : 0;
+    const averageDuration =
+      completedFlows.length > 0
+        ? completedFlows.reduce((sum, f) => sum + (f.totalDuration || 0), 0) / completedFlows.length
+        : 0;
+
+    const successRate = flows.length > 0 ? completedFlows.length / flows.length : 0;
 
     const totalTokens = flows.reduce((sum, f) => sum + f.metadata.totalTokens, 0);
     const totalCost = flows.reduce((sum, f) => sum + f.metadata.totalCost, 0);
@@ -477,22 +468,19 @@ export class LLMExecutionFlow {
       averageDuration,
       successRate,
       totalTokens,
-      totalCost
+      totalCost,
     };
   }
 
   /**
    * Execute workflow
    */
-  async executeWorkflow(
-    workflow: any,
-    options: any = {}
-  ): Promise<any> {
+  async executeWorkflow(workflow: any, options: any = {}): Promise<any> {
     const span = this.tracer.startAnalysisTrace('.', 'execute-workflow');
 
     try {
       this.logger.info('Executing LLM workflow', { workflowId: workflow.id });
-      
+
       // Execute workflow steps
       const results = [];
       for (const step of workflow.steps) {
@@ -504,14 +492,13 @@ export class LLMExecutionFlow {
       return {
         success: true,
         results,
-        workflowId: workflow.id
+        workflowId: workflow.id,
       };
     } catch (error) {
       this.tracer.recordError(span, error as Error, 'Workflow execution failed');
       throw error;
     }
   }
-
 
   /**
    * Close the execution flow
