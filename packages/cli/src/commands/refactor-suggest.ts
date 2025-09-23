@@ -160,8 +160,8 @@ async function executeRefactorSuggest(
     projectAST = await astService.analyzeProject(resolvedPath, projectType);
   } catch (error) {
     if (options.format !== 'json') {
-      logger.error('Failed to analyze project structure', { 
-        error: error instanceof Error ? error.message : String(error) 
+      logger.error('Failed to analyze project structure', {
+        error: error instanceof Error ? error.message : String(error),
       });
     }
     throw new Error(
