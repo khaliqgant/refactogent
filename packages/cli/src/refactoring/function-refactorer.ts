@@ -10,6 +10,8 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { Logger } from '../utils/logger.js';
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
 import { CodebaseContextAnalyzer, CodebaseContext } from '../analysis/codebase-context-analyzer.js';
 import { ContextAwareLLMService, LLMRefactoringRequest } from '../llm/context-aware-llm-service.js';
 
@@ -140,7 +142,10 @@ export class FunctionRefactorer {
       },
     });
     this.codebaseAnalyzer = new CodebaseContextAnalyzer(logger);
-    this.llmService = new ContextAwareLLMService(logger);
+    const metrics = new RefactoGentMetrics(logger);
+    const tracer = new RefactoGentTracer(logger);
+    const config = { repository: { language: ['typescript'] } } as any;
+    this.llmService = new ContextAwareLLMService(logger, metrics, tracer, config);
   }
 
   /**
@@ -309,9 +314,10 @@ export class FunctionRefactorer {
     const llmRequest: LLMRefactoringRequest = {
       codeBlock: candidate.codeBlock,
       filePath: candidate.filePath,
-      projectContext:
+      projectContext: JSON.stringify(
         this.codebaseContext ||
-        (await this.codebaseAnalyzer.analyzeCodebaseContext(options.projectPath || '.')),
+        (await this.codebaseAnalyzer.analyzeCodebaseContext(options.projectPath || '.'))
+      ),
       operation: 'extract',
       options: {
         suggestedName: newFunctionName,
@@ -345,7 +351,7 @@ export class FunctionRefactorer {
         column: 1,
       },
       originalText: candidate.codeBlock,
-      newText: functionCall,
+      newText: functionCall || '',
       description: `Replace code block with call to ${betterName}()`,
     });
 
@@ -359,7 +365,7 @@ export class FunctionRefactorer {
         column: insertionPoint.column,
       },
       originalText: '',
-      newText: newFunction,
+      newText: newFunction || '',
       description: `Insert extracted function ${betterName}()`,
     });
 

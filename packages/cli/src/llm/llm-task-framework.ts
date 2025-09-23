@@ -1,557 +1,533 @@
 import { Logger } from '../utils/logger.js';
-import { RefactorContextPackage } from './refactor-context-package.js';
-import { LLMProviderManager } from './llm-provider-manager.js';
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
+import { RefactoGentConfig } from '../config/refactogent-schema.js';
+import { ContextAwareLLMService } from './context-aware-llm-service.js';
+import { LLMSafetyGates } from './llm-safety-gates.js';
 
 export interface LLMTask {
   id: string;
-  type: 'refactor-proposal' | 'test-creation' | 'validation-critique';
-  input: TaskInput;
-  output: TaskOutput;
-  metadata: TaskMetadata;
-}
-
-export interface TaskInput {
-  rcp: RefactorContextPackage;
-  additionalContext?: any;
-  constraints?: TaskConstraints;
-}
-
-export interface TaskOutput {
-  result: any;
-  confidence: number;
-  reasoning: string[];
-  citations: string[];
-  metadata: OutputMetadata;
-}
-
-export interface TaskMetadata {
-  createdAt: string;
-  taskType: string;
-  version: string;
-  processingTime: number;
-}
-
-export interface TaskConstraints {
-  maxTokens?: number;
-  temperature?: number;
-  safetyLevel?: 'strict' | 'moderate' | 'permissive';
-  styleRequirements?: string[];
-  bannedPatterns?: string[];
-}
-
-export interface OutputMetadata {
-  tokensUsed: number;
-  processingTime: number;
-  qualityScore: number;
-  safetyScore: number;
-}
-
-export interface RefactorProposalTask extends LLMTask {
-  type: 'refactor-proposal';
+  type: 'refactor' | 'analyze' | 'generate' | 'explain' | 'optimize' | 'test' | 'document';
+  name: string;
+  description: string;
   input: {
-    rcp: RefactorContextPackage;
-    targetCode: string;
-    refactoringType: 'extract' | 'inline' | 'rename' | 'reorganize' | 'optimize';
-    constraints?: TaskConstraints;
+    code?: string;
+    prompt: string;
+    context?: any;
+    options?: any;
   };
-  output: {
-    result: {
-      patch: string;
-      description: string;
-      safetyAnalysis: string;
-      testRecommendations: string[];
-    };
-    confidence: number;
-    reasoning: string[];
-    citations: string[];
-    metadata: OutputMetadata;
+  output?: {
+    result: any;
+    metadata: any;
+  };
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  createdAt: number;
+  updatedAt: number;
+  estimatedDuration: number;
+  actualDuration?: number;
+  retryCount: number;
+  maxRetries: number;
+  dependencies: string[];
+  safetyChecks: boolean;
+}
+
+export interface LLMTaskResult {
+  taskId: string;
+  success: boolean;
+  result?: any;
+  error?: string;
+  metadata: {
+    duration: number;
+    tokens: number;
+    cost: number;
+    provider: string;
+    model: string;
+    safetyScore: number;
   };
 }
 
-export interface TestCreationTask extends LLMTask {
-  type: 'test-creation';
-  input: {
-    rcp: RefactorContextPackage;
-    targetCode: string;
-    testType: 'unit' | 'integration' | 'characterization';
-    coverageGaps: string[];
-    constraints?: TaskConstraints;
-  };
-  output: {
-    result: {
-      testCode: string;
-      testDescription: string;
-      coverageAnalysis: string;
-      qualityMetrics: string;
-    };
-    confidence: number;
-    reasoning: string[];
-    citations: string[];
-    metadata: OutputMetadata;
-  };
-}
-
-export interface ValidationCritiqueTask extends LLMTask {
-  type: 'validation-critique';
-  input: {
-    rcp: RefactorContextPackage;
-    proposedChanges: string;
-    originalCode: string;
-    constraints?: TaskConstraints;
-  };
-  output: {
-    result: {
-      critique: string;
-      violations: string[];
-      suggestions: string[];
-      safetyAssessment: string;
-    };
-    confidence: number;
-    reasoning: string[];
-    citations: string[];
-    metadata: OutputMetadata;
-  };
+export interface LLMTaskFrameworkOptions {
+  maxConcurrentTasks?: number;
+  enableSafetyChecks?: boolean;
+  enableRetries?: boolean;
+  defaultRetries?: number;
+  taskTimeout?: number;
+  enableMetrics?: boolean;
+  enableTracing?: boolean;
 }
 
 /**
- * LLM Task Type Framework
- * This system orchestrates different types of LLM tasks with proper input/output handling
- * Demonstrates RefactoGent's multi-pass approach vs. Cursor/Claude's single-call approach
+ * LLM task framework for structured operations
  */
 export class LLMTaskFramework {
   private logger: Logger;
-  private providerManager: LLMProviderManager;
+  private metrics: RefactoGentMetrics;
+  private tracer: RefactoGentTracer;
+  private config: RefactoGentConfig;
+  private llmService: ContextAwareLLMService;
+  private safetyGates: LLMSafetyGates;
+  private options: LLMTaskFrameworkOptions;
+  private tasks: Map<string, LLMTask> = new Map();
+  private runningTasks: Set<string> = new Set();
+  private taskQueue: LLMTask[] = [];
 
-  constructor(logger: Logger) {
+  constructor(
+    logger: Logger,
+    metrics: RefactoGentMetrics,
+    tracer: RefactoGentTracer,
+    config: RefactoGentConfig,
+    options: LLMTaskFrameworkOptions = {}
+  ) {
     this.logger = logger;
-    this.providerManager = new LLMProviderManager(logger);
+    this.metrics = metrics;
+    this.tracer = tracer;
+    this.config = config;
+    this.options = {
+      maxConcurrentTasks: 3,
+      enableSafetyChecks: true,
+      enableRetries: true,
+      defaultRetries: 3,
+      taskTimeout: 300000, // 5 minutes
+      enableMetrics: true,
+      enableTracing: true,
+      ...options
+    };
+    
+    this.llmService = new ContextAwareLLMService(logger, metrics, tracer, config);
+    this.safetyGates = new LLMSafetyGates(logger, metrics, tracer, config);
   }
 
   /**
-   * Create refactor proposal task
-   * This is the core refactoring task that generates PR-ready patches
+   * Initialize the task framework
    */
-  async createRefactorProposalTask(
-    rcp: RefactorContextPackage,
-    targetCode: string,
-    refactoringType: 'extract' | 'inline' | 'rename' | 'reorganize' | 'optimize',
-    constraints?: TaskConstraints
-  ): Promise<RefactorProposalTask> {
-    this.logger.info('Creating refactor proposal task', { refactoringType });
+  async initialize(): Promise<void> {
+    this.logger.info('Initializing LLM task framework');
+    await this.llmService.initialize();
+    this.logger.info('LLM task framework initialized');
+  }
 
-    const task: RefactorProposalTask = {
-      id: `refactor-${Date.now()}`,
-      type: 'refactor-proposal',
-      input: {
-        rcp,
-        targetCode,
-        refactoringType,
-        constraints,
-      },
-      output: {
-        result: {
-          patch: '',
-          description: '',
-          safetyAnalysis: '',
-          testRecommendations: [],
-        },
-        confidence: 0,
-        reasoning: [],
-        citations: [],
-        metadata: {
-          tokensUsed: 0,
-          processingTime: 0,
-          qualityScore: 0,
-          safetyScore: 0,
-        },
-      },
-      metadata: {
-        createdAt: new Date().toISOString(),
-        taskType: 'refactor-proposal',
-        version: '1.0.0',
-        processingTime: 0,
-      },
+  /**
+   * Create a new task
+   */
+  async createTask(
+    type: LLMTask['type'],
+    name: string,
+    description: string,
+    input: LLMTask['input'],
+    options: {
+      priority?: LLMTask['priority'];
+      maxRetries?: number;
+      safetyChecks?: boolean;
+      dependencies?: string[];
+    } = {}
+  ): Promise<string> {
+    const taskId = this.generateTaskId();
+    const now = Date.now();
+
+    const task: LLMTask = {
+      id: taskId,
+      type,
+      name,
+      description,
+      input,
+      status: 'pending',
+      priority: options.priority || 'medium',
+      createdAt: now,
+      updatedAt: now,
+      estimatedDuration: this.estimateTaskDuration(type, input),
+      retryCount: 0,
+      maxRetries: options.maxRetries || this.options.defaultRetries || 3,
+      dependencies: options.dependencies || [],
+      safetyChecks: options.safetyChecks !== false
     };
 
-    return task;
+    this.tasks.set(taskId, task);
+    this.taskQueue.push(task);
+
+    this.logger.info('Created LLM task', {
+      taskId,
+      type,
+      name,
+      priority: task.priority
+    });
+
+    // Start processing if not at capacity
+    this.processTaskQueue();
+
+    return taskId;
   }
 
   /**
-   * Create test creation/augmentation task
-   * This generates tests that match project style and cover gaps
+   * Get task by ID
    */
-  async createTestCreationTask(
-    rcp: RefactorContextPackage,
-    targetCode: string,
-    testType: 'unit' | 'integration' | 'characterization',
-    coverageGaps: string[],
-    constraints?: TaskConstraints
-  ): Promise<TestCreationTask> {
-    this.logger.info('Creating test creation task', { testType, gaps: coverageGaps.length });
-
-    const task: TestCreationTask = {
-      id: `test-${Date.now()}`,
-      type: 'test-creation',
-      input: {
-        rcp,
-        targetCode,
-        testType,
-        coverageGaps,
-        constraints,
-      },
-      output: {
-        result: {
-          testCode: '',
-          testDescription: '',
-          coverageAnalysis: '',
-          qualityMetrics: '',
-        },
-        confidence: 0,
-        reasoning: [],
-        citations: [],
-        metadata: {
-          tokensUsed: 0,
-          processingTime: 0,
-          qualityScore: 0,
-          safetyScore: 0,
-        },
-      },
-      metadata: {
-        createdAt: new Date().toISOString(),
-        taskType: 'test-creation',
-        version: '1.0.0',
-        processingTime: 0,
-      },
-    };
-
-    return task;
+  getTask(taskId: string): LLMTask | undefined {
+    return this.tasks.get(taskId);
   }
 
   /**
-   * Create validation and self-critique task
-   * This provides quality assurance and catches issues before commit
+   * Get all tasks
    */
-  async createValidationCritiqueTask(
-    rcp: RefactorContextPackage,
-    proposedChanges: string,
-    originalCode: string,
-    constraints?: TaskConstraints
-  ): Promise<ValidationCritiqueTask> {
-    this.logger.info('Creating validation critique task');
-
-    const task: ValidationCritiqueTask = {
-      id: `critique-${Date.now()}`,
-      type: 'validation-critique',
-      input: {
-        rcp,
-        proposedChanges,
-        originalCode,
-        constraints,
-      },
-      output: {
-        result: {
-          critique: '',
-          violations: [],
-          suggestions: [],
-          safetyAssessment: '',
-        },
-        confidence: 0,
-        reasoning: [],
-        citations: [],
-        metadata: {
-          tokensUsed: 0,
-          processingTime: 0,
-          qualityScore: 0,
-          safetyScore: 0,
-        },
-      },
-      metadata: {
-        createdAt: new Date().toISOString(),
-        taskType: 'validation-critique',
-        version: '1.0.0',
-        processingTime: 0,
-      },
-    };
-
-    return task;
+  getAllTasks(): LLMTask[] {
+    return Array.from(this.tasks.values());
   }
 
   /**
-   * Execute task with proper input preparation and output normalization
+   * Get tasks by status
    */
-  async executeTask(task: LLMTask): Promise<LLMTask> {
+  getTasksByStatus(status: LLMTask['status']): LLMTask[] {
+    return Array.from(this.tasks.values()).filter(task => task.status === status);
+  }
+
+  /**
+   * Cancel a task
+   */
+  async cancelTask(taskId: string): Promise<boolean> {
+    const task = this.tasks.get(taskId);
+    if (!task) {
+      return false;
+    }
+
+    if (task.status === 'running') {
+      task.status = 'cancelled';
+      task.updatedAt = Date.now();
+      this.runningTasks.delete(taskId);
+    } else if (task.status === 'pending') {
+      task.status = 'cancelled';
+      task.updatedAt = Date.now();
+      // Remove from queue
+      const index = this.taskQueue.findIndex(t => t.id === taskId);
+      if (index !== -1) {
+        this.taskQueue.splice(index, 1);
+      }
+    }
+
+    this.logger.info('Cancelled task', { taskId });
+    return true;
+  }
+
+  /**
+   * Process the task queue
+   */
+  private async processTaskQueue(): Promise<void> {
+    while (
+      this.taskQueue.length > 0 &&
+      this.runningTasks.size < (this.options.maxConcurrentTasks || 3)
+    ) {
+      const task = this.taskQueue.shift();
+      if (!task) break;
+
+      // Check dependencies
+      if (!this.areDependenciesMet(task)) {
+        this.taskQueue.push(task); // Put back in queue
+        continue;
+      }
+
+      // Start task execution
+      this.executeTask(task);
+    }
+  }
+
+  /**
+   * Execute a task
+   */
+  private async executeTask(task: LLMTask): Promise<void> {
+    const span = this.tracer.startAnalysisTrace('.', 'llm-task-execution');
     const startTime = Date.now();
-    this.logger.info('Executing LLM task', { taskId: task.id, type: task.type });
 
     try {
-      // Prepare input based on task type
-      const preparedInput = await this.prepareTaskInput(task);
+      task.status = 'running';
+      task.updatedAt = Date.now();
+      this.runningTasks.add(task.id);
 
-      // Execute LLM call (would integrate with actual LLM provider)
-      const llmResponse = await this.callLLM(preparedInput, task);
-
-      // Normalize output based on task type
-      const normalizedOutput = await this.normalizeTaskOutput(llmResponse, task);
-
-      // Update task with results
-      task.output = normalizedOutput;
-      task.metadata.processingTime = Date.now() - startTime;
-
-      this.logger.info('LLM task executed successfully', {
+      this.logger.info('Executing LLM task', {
         taskId: task.id,
-        processingTime: task.metadata.processingTime,
-        confidence: task.output.confidence,
+        type: task.type,
+        name: task.name
       });
 
-      return task;
+      // Execute task based on type
+      let result: any;
+      switch (task.type) {
+        case 'refactor':
+          result = await this.executeRefactorTask(task);
+          break;
+        case 'analyze':
+          result = await this.executeAnalyzeTask(task);
+          break;
+        case 'generate':
+          result = await this.executeGenerateTask(task);
+          break;
+        case 'explain':
+          result = await this.executeExplainTask(task);
+          break;
+        case 'optimize':
+          result = await this.executeOptimizeTask(task);
+          break;
+        case 'test':
+          result = await this.executeTestTask(task);
+          break;
+        case 'document':
+          result = await this.executeDocumentTask(task);
+          break;
+        default:
+          throw new Error(`Unknown task type: ${task.type}`);
+      }
+
+      // Safety checks
+      if (task.safetyChecks && this.options.enableSafetyChecks) {
+        const safetyResult = await this.safetyGates.checkContent(
+          JSON.stringify(result),
+          task.description
+        );
+        
+        if (!safetyResult.passed) {
+          throw new Error(`Safety check failed: ${safetyResult.violations.length} violations`);
+        }
+      }
+
+      // Update task
+      task.status = 'completed';
+      task.output = { result, metadata: { completedAt: Date.now() } };
+      task.actualDuration = Date.now() - startTime;
+      task.updatedAt = Date.now();
+
+      this.runningTasks.delete(task.id);
+
+      this.tracer.recordSuccess(
+        span,
+        `Task completed: ${task.id} in ${task.actualDuration}ms`
+      );
+
+      // Process next tasks
+      this.processTaskQueue();
+
     } catch (error) {
-      this.logger.error('Failed to execute LLM task', {
-        taskId: task.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
+      task.status = 'failed';
+      task.updatedAt = Date.now();
+      this.runningTasks.delete(task.id);
+
+      this.tracer.recordError(span, error as Error, `Task failed: ${task.id}`);
+
+      // Retry if enabled
+      if (this.options.enableRetries && task.retryCount < task.maxRetries) {
+        task.retryCount++;
+        task.status = 'pending';
+        task.updatedAt = Date.now();
+        this.taskQueue.push(task);
+        
+        this.logger.info('Retrying task', {
+          taskId: task.id,
+          retryCount: task.retryCount,
+          maxRetries: task.maxRetries
+        });
+      }
+
+      // Process next tasks
+      this.processTaskQueue();
     }
   }
 
   /**
-   * Prepare task input with RCP context and constraints
+   * Execute refactor task
    */
-  private async prepareTaskInput(task: LLMTask): Promise<any> {
-    this.logger.info('Preparing task input', { taskId: task.id });
+  private async executeRefactorTask(task: LLMTask): Promise<any> {
+    const response = await this.llmService.generateWithContext({
+      prompt: task.input.prompt,
+      context: task.input.context,
+      options: task.input.options
+    });
 
-    const baseInput = {
-      rcp: task.input.rcp,
-      constraints: task.input.constraints,
+    return {
+      refactoredCode: response.content,
+      metadata: response.metadata
+    };
+  }
+
+  /**
+   * Execute analyze task
+   */
+  private async executeAnalyzeTask(task: LLMTask): Promise<any> {
+    const response = await this.llmService.generateWithContext({
+      prompt: `Analyze the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
+      context: task.input.context,
+      options: task.input.options
+    });
+
+    return {
+      analysis: response.content,
+      metadata: response.metadata
+    };
+  }
+
+  /**
+   * Execute generate task
+   */
+  private async executeGenerateTask(task: LLMTask): Promise<any> {
+    const response = await this.llmService.generateWithContext({
+      prompt: task.input.prompt,
+      context: task.input.context,
+      options: task.input.options
+    });
+
+    return {
+      generatedContent: response.content,
+      metadata: response.metadata
+    };
+  }
+
+  /**
+   * Execute explain task
+   */
+  private async executeExplainTask(task: LLMTask): Promise<any> {
+    const response = await this.llmService.generateWithContext({
+      prompt: `Explain the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
+      context: task.input.context,
+      options: task.input.options
+    });
+
+    return {
+      explanation: response.content,
+      metadata: response.metadata
+    };
+  }
+
+  /**
+   * Execute optimize task
+   */
+  private async executeOptimizeTask(task: LLMTask): Promise<any> {
+    const response = await this.llmService.generateWithContext({
+      prompt: `Optimize the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
+      context: task.input.context,
+      options: task.input.options
+    });
+
+    return {
+      optimizedCode: response.content,
+      metadata: response.metadata
+    };
+  }
+
+  /**
+   * Execute test task
+   */
+  private async executeTestTask(task: LLMTask): Promise<any> {
+    const response = await this.llmService.generateWithContext({
+      prompt: `Generate tests for the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
+      context: task.input.context,
+      options: task.input.options
+    });
+
+    return {
+      testCode: response.content,
+      metadata: response.metadata
+    };
+  }
+
+  /**
+   * Execute document task
+   */
+  private async executeDocumentTask(task: LLMTask): Promise<any> {
+    const response = await this.llmService.generateWithContext({
+      prompt: `Generate documentation for the following code:\n\n${task.input.code}\n\n${task.input.prompt}`,
+      context: task.input.context,
+      options: task.input.options
+    });
+
+    return {
+      documentation: response.content,
+      metadata: response.metadata
+    };
+  }
+
+  /**
+   * Check if task dependencies are met
+   */
+  private areDependenciesMet(task: LLMTask): boolean {
+    for (const depId of task.dependencies) {
+      const depTask = this.tasks.get(depId);
+      if (!depTask || depTask.status !== 'completed') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Estimate task duration
+   */
+  private estimateTaskDuration(type: LLMTask['type'], input: LLMTask['input']): number {
+    const baseDuration = {
+      refactor: 30000,
+      analyze: 20000,
+      generate: 15000,
+      explain: 10000,
+      optimize: 25000,
+      test: 20000,
+      document: 15000
     };
 
-    // Add task-specific input
-    switch (task.type) {
-      case 'refactor-proposal':
-        const refactorTask = task as RefactorProposalTask;
-        return {
-          ...baseInput,
-          targetCode: refactorTask.input.targetCode,
-          refactoringType: refactorTask.input.refactoringType,
-        };
-
-      case 'test-creation':
-        const testTask = task as TestCreationTask;
-        return {
-          ...baseInput,
-          targetCode: testTask.input.targetCode,
-          testType: testTask.input.testType,
-          coverageGaps: testTask.input.coverageGaps,
-        };
-
-      case 'validation-critique':
-        const critiqueTask = task as ValidationCritiqueTask;
-        return {
-          ...baseInput,
-          proposedChanges: critiqueTask.input.proposedChanges,
-          originalCode: critiqueTask.input.originalCode,
-        };
-
-      default:
-        throw new Error(`Unknown task type: ${task.type}`);
+    let duration = baseDuration[type] || 15000;
+    
+    // Adjust based on input size
+    if (input.code) {
+      duration += Math.ceil(input.code.length / 1000) * 5000;
     }
+    
+    if (input.prompt) {
+      duration += Math.ceil(input.prompt.length / 500) * 2000;
+    }
+
+    return duration;
   }
 
   /**
-   * Call LLM with prepared input
-   * This integrates with actual LLM providers (OpenAI, Anthropic, etc.)
+   * Generate unique task ID
    */
-  private async callLLM(preparedInput: any, task: LLMTask): Promise<any> {
-    this.logger.info('Calling LLM', { taskId: task.id, type: task.type });
-
-    // Get available providers
-    const providers = this.providerManager.listProviders();
-    if (providers.length === 0) {
-      this.logger.warn('No LLM providers configured, using mock response');
-      return this.generateMockResponse(task.type);
-    }
-
-    // Use the first available provider (could be made configurable)
-    const provider = providers[0];
-    const prompt = this.buildPrompt(preparedInput, task);
-
-    try {
-      const response = await this.providerManager.callLLM(provider, prompt, {
-        maxTokens: 4000,
-        temperature: 0.1,
-      });
-
-      return {
-        content: response.content,
-        tokensUsed: response.tokensUsed,
-        processingTime: response.processingTime,
-        model: response.model,
-        provider: response.provider,
-      };
-    } catch (error) {
-      this.logger.warn('LLM call failed, using mock response', { error });
-      return this.generateMockResponse(task.type);
-    }
+  private generateTaskId(): string {
+    return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
-   * Build prompt for LLM based on task type and input
+   * Get framework statistics
    */
-  private buildPrompt(preparedInput: any, task: LLMTask): string {
-    const basePrompt = `You are RefactoGent, an advanced refactoring assistant.`;
+  async getFrameworkStats(): Promise<{
+    totalTasks: number;
+    pendingTasks: number;
+    runningTasks: number;
+    completedTasks: number;
+    failedTasks: number;
+    averageDuration: number;
+    successRate: number;
+  }> {
+    const tasks = Array.from(this.tasks.values());
+    const completedTasks = tasks.filter(t => t.status === 'completed');
+    const failedTasks = tasks.filter(t => t.status === 'failed');
+    
+    const averageDuration = completedTasks.length > 0
+      ? completedTasks.reduce((sum, t) => sum + (t.actualDuration || 0), 0) / completedTasks.length
+      : 0;
 
-    switch (task.type) {
-      case 'refactor-proposal':
-        return `${basePrompt}
-        
-Task: Generate a refactoring proposal
-Input: ${JSON.stringify(preparedInput, null, 2)}
+    const successRate = tasks.length > 0
+      ? completedTasks.length / tasks.length
+      : 0;
 
-Generate a production-ready refactoring patch that follows project guardrails and preserves behavior.`;
-
-      case 'test-creation':
-        return `${basePrompt}
-        
-Task: Generate test code
-Input: ${JSON.stringify(preparedInput, null, 2)}
-
-Generate test code that matches the project style and covers identified gaps.`;
-
-      case 'validation-critique':
-        return `${basePrompt}
-        
-Task: Validate and critique proposed changes
-Input: ${JSON.stringify(preparedInput, null, 2)}
-
-Provide a comprehensive critique of the proposed changes, identifying any violations or issues.`;
-
-      default:
-        return `${basePrompt}
-        
-Task: ${task.type}
-Input: ${JSON.stringify(preparedInput, null, 2)}
-
-Process this request according to RefactoGent's standards.`;
-    }
-  }
-
-  /**
-   * Normalize LLM output based on task type
-   */
-  private async normalizeTaskOutput(llmResponse: any, task: LLMTask): Promise<TaskOutput> {
-    this.logger.info('Normalizing task output', { taskId: task.id });
-
-    const baseOutput: TaskOutput = {
-      result: {},
-      confidence: Math.floor(Math.random() * 30) + 70, // 70-100% confidence
-      reasoning: [
-        "Analysis based on RefactoGent's deterministic pre-work",
-        'Structured context (RCP) provides relevant information',
-        'Project guardrails ensure compliance',
-        'Testing signals inform safety decisions',
-      ],
-      citations: [
-        'RefactoGent RCP Analysis',
-        'Project Guardrails',
-        'Testing Signals',
-        'Repo Context',
-      ],
-      metadata: {
-        tokensUsed: llmResponse.tokensUsed,
-        processingTime: llmResponse.processingTime,
-        qualityScore: Math.floor(Math.random() * 20) + 80, // 80-100% quality
-        safetyScore: Math.floor(Math.random() * 15) + 85, // 85-100% safety
-      },
+    return {
+      totalTasks: tasks.length,
+      pendingTasks: tasks.filter(t => t.status === 'pending').length,
+      runningTasks: this.runningTasks.size,
+      completedTasks: completedTasks.length,
+      failedTasks: failedTasks.length,
+      averageDuration,
+      successRate
     };
-
-    // Add task-specific result normalization
-    switch (task.type) {
-      case 'refactor-proposal':
-        baseOutput.result = {
-          patch: this.generateMockPatch(),
-          description: 'Refactoring proposal generated by RefactoGent',
-          safetyAnalysis: 'All changes validated for safety and correctness',
-          testRecommendations: [
-            'Add unit tests for extracted function',
-            'Update integration tests',
-          ],
-        };
-        break;
-
-      case 'test-creation':
-        baseOutput.result = {
-          testCode: this.generateMockTestCode(),
-          testDescription: 'Test generated to match project style',
-          coverageAnalysis: 'Test covers identified gaps',
-          qualityMetrics: 'High quality test following project conventions',
-        };
-        break;
-
-      case 'validation-critique':
-        baseOutput.result = {
-          critique: 'Comprehensive critique of proposed changes',
-          violations: [],
-          suggestions: ['Consider adding error handling', 'Improve variable naming'],
-          safetyAssessment: 'Changes are safe and follow project guidelines',
-        };
-        break;
-    }
-
-    return baseOutput;
   }
 
   /**
-   * Generate mock response for testing
+   * Close the framework
    */
-  private generateMockResponse(taskType: string): string {
-    const responses = {
-      'refactor-proposal': 'Generated refactoring proposal with patch and safety analysis',
-      'test-creation': 'Generated test code matching project style and covering gaps',
-      'validation-critique': 'Generated comprehensive critique with suggestions',
-    };
-    return responses[taskType as keyof typeof responses] || 'Mock response';
-  }
-
-  /**
-   * Generate mock patch for testing
-   */
-  private generateMockPatch(): string {
-    return `--- a/src/utils/helpers.ts
-+++ b/src/utils/helpers.ts
-@@ -1,3 +1,8 @@
-+/**
-+ * Extracted utility function
-+ * Generated by RefactoGent
-+ */
-+function formatCurrency(amount: number): string {
-+  return \`$\${amount.toFixed(2)}\`;
-+}
- 
- function processUserData(user: any) {
-@@ -5,7 +10,7 @@ function processUserData(user: any) {
--  const formattedPrice = \`$\${user.price.toFixed(2)}\`;
-+  const formattedPrice = formatCurrency(user.price);
-   return { formattedPrice };
- }`;
-  }
-
-  /**
-   * Generate mock test code for testing
-   */
-  private generateMockTestCode(): string {
-    return `import { formatCurrency } from '../utils/helpers';
-
-describe('formatCurrency', () => {
-  it('should format positive numbers correctly', () => {
-    expect(formatCurrency(123.45)).toBe('$123.45');
-  });
-
-  it('should format zero correctly', () => {
-    expect(formatCurrency(0)).toBe('$0.00');
-  });
-
-  it('should format negative numbers correctly', () => {
-    expect(formatCurrency(-123.45)).toBe('$-123.45');
-  });
-});`;
+  async close(): Promise<void> {
+    this.logger.info('Closing LLM task framework');
+    await this.llmService.close();
   }
 }

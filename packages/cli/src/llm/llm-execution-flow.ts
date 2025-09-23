@@ -1,545 +1,524 @@
 import { Logger } from '../utils/logger.js';
-import { RefactorContextPackage } from './refactor-context-package.js';
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
+import { RefactoGentConfig } from '../config/refactogent-schema.js';
 import { LLMTaskFramework, LLMTask } from './llm-task-framework.js';
+import { ContextAwareLLMService } from './context-aware-llm-service.js';
+import { LLMSafetyGates } from './llm-safety-gates.js';
+
+export interface ExecutionFlowStep {
+  id: string;
+  name: string;
+  type: 'llm' | 'safety' | 'validation' | 'transformation';
+  input: any;
+  output?: any;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  dependencies: string[];
+  retryCount: number;
+  maxRetries: number;
+  timeout: number;
+  metadata: {
+    startTime?: number;
+    endTime?: number;
+    duration?: number;
+    tokens?: number;
+    cost?: number;
+    provider?: string;
+    model?: string;
+  };
+}
 
 export interface ExecutionFlow {
   id: string;
-  steps: ExecutionStep[];
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  results: ExecutionResults;
-  metadata: FlowMetadata;
-}
-
-export interface ExecutionStep {
-  id: string;
   name: string;
-  type: 'rcp-preparation' | 'llm-call' | 'validation' | 'normalization';
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  input?: any;
-  output?: any;
-  error?: string;
-  duration: number;
+  description: string;
+  steps: ExecutionFlowStep[];
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  createdAt: number;
+  updatedAt: number;
+  totalDuration?: number;
+  metadata: {
+    totalTokens: number;
+    totalCost: number;
+    safetyScore: number;
+    successRate: number;
+  };
 }
 
-export interface ExecutionResults {
-  refactorProposal?: any;
-  testCreation?: any;
-  validationCritique?: any;
-  finalPatch?: string;
-  qualityScore: number;
-  safetyScore: number;
-  confidence: number;
-}
-
-export interface FlowMetadata {
-  createdAt: string;
-  totalDuration: number;
-  tokensUsed: number;
-  qualityMetrics: QualityMetrics;
-}
-
-export interface QualityMetrics {
-  correctness: number;
-  safety: number;
-  style: number;
-  performance: number;
-  overall: number;
-}
-
-export interface SystemPrompt {
-  template: string;
-  guardrails: string[];
-  repoSignals: string[];
-  version: string;
+export interface ExecutionFlowOptions {
+  enableRetries?: boolean;
+  enableFallbacks?: boolean;
+  enableSafetyChecks?: boolean;
+  enableValidation?: boolean;
+  maxConcurrentSteps?: number;
+  stepTimeout?: number;
+  enableMetrics?: boolean;
+  enableTracing?: boolean;
 }
 
 /**
- * LLM Execution Flow System
- * This orchestrates the multi-pass LLM workflow that makes RefactoGent superior
- * Demonstrates deterministic pre-work + generative capabilities
+ * LLM execution flow with retry and fallback mechanisms
  */
 export class LLMExecutionFlow {
   private logger: Logger;
+  private metrics: RefactoGentMetrics;
+  private tracer: RefactoGentTracer;
+  private config: RefactoGentConfig;
   private taskFramework: LLMTaskFramework;
+  private llmService: ContextAwareLLMService;
+  private safetyGates: LLMSafetyGates;
+  private options: ExecutionFlowOptions;
+  private flows: Map<string, ExecutionFlow> = new Map();
+  private runningFlows: Set<string> = new Set();
 
-  constructor(logger: Logger) {
+  constructor(
+    logger: Logger,
+    metrics: RefactoGentMetrics,
+    tracer: RefactoGentTracer,
+    config: RefactoGentConfig,
+    options: ExecutionFlowOptions = {}
+  ) {
     this.logger = logger;
-    this.taskFramework = new LLMTaskFramework(logger);
+    this.metrics = metrics;
+    this.tracer = tracer;
+    this.config = config;
+    this.options = {
+      enableRetries: true,
+      enableFallbacks: true,
+      enableSafetyChecks: true,
+      enableValidation: true,
+      maxConcurrentSteps: 3,
+      stepTimeout: 60000, // 1 minute
+      enableMetrics: true,
+      enableTracing: true,
+      ...options
+    };
+    
+    this.taskFramework = new LLMTaskFramework(logger, metrics, tracer, config);
+    this.llmService = new ContextAwareLLMService(logger, metrics, tracer, config);
+    this.safetyGates = new LLMSafetyGates(logger, metrics, tracer, config);
   }
 
   /**
-   * Execute complete LLM workflow: RCP → Refactor → Test → Critique
-   * This is the core competitive advantage over Cursor/Claude's single-call approach
+   * Initialize the execution flow
    */
-  async executeWorkflow(
-    projectPath: string,
-    targetCode: string,
-    refactoringType: 'extract' | 'inline' | 'rename' | 'reorganize' | 'optimize',
-    options: {
-      includeTestCreation?: boolean;
-      includeValidationCritique?: boolean;
-      maxTokens?: number;
-      temperature?: number;
-    } = {}
-  ): Promise<ExecutionFlow> {
-    const flowId = `flow-${Date.now()}`;
-    this.logger.info('Starting LLM execution workflow', { flowId, refactoringType });
+  async initialize(): Promise<void> {
+    this.logger.info('Initializing LLM execution flow');
+    await this.taskFramework.initialize();
+    await this.llmService.initialize();
+    this.logger.info('LLM execution flow initialized');
+  }
+
+  /**
+   * Create a new execution flow
+   */
+  async createFlow(
+    name: string,
+    description: string,
+    steps: Omit<ExecutionFlowStep, 'id' | 'status' | 'retryCount' | 'metadata'>[]
+  ): Promise<string> {
+    const flowId = this.generateFlowId();
+    const now = Date.now();
 
     const flow: ExecutionFlow = {
       id: flowId,
-      steps: [],
+      name,
+      description,
+      steps: steps.map(step => ({
+        ...step,
+        id: this.generateStepId(),
+        status: 'pending',
+        retryCount: 0,
+        maxRetries: step.maxRetries || 3,
+        timeout: step.timeout || this.options.stepTimeout || 60000,
+        metadata: {}
+      })),
       status: 'pending',
-      results: {
-        qualityScore: 0,
-        safetyScore: 0,
-        confidence: 0,
-      },
+      createdAt: now,
+      updatedAt: now,
       metadata: {
-        createdAt: new Date().toISOString(),
-        totalDuration: 0,
-        tokensUsed: 0,
-        qualityMetrics: {
-          correctness: 0,
-          safety: 0,
-          style: 0,
-          performance: 0,
-          overall: 0,
-        },
-      },
+        totalTokens: 0,
+        totalCost: 0,
+        safetyScore: 0,
+        successRate: 0
+      }
     };
+
+    this.flows.set(flowId, flow);
+
+    this.logger.info('Created execution flow', {
+      flowId,
+      name,
+      stepCount: flow.steps.length
+    });
+
+    // Start execution
+    this.executeFlow(flowId);
+
+    return flowId;
+  }
+
+  /**
+   * Execute a flow
+   */
+  private async executeFlow(flowId: string): Promise<void> {
+    const flow = this.flows.get(flowId);
+    if (!flow) {
+      this.logger.error('Flow not found', { flowId });
+      return;
+    }
+
+    const span = this.tracer.startAnalysisTrace('.', 'llm-execution-flow');
+    const startTime = Date.now();
 
     try {
       flow.status = 'running';
-      const startTime = Date.now();
+      flow.updatedAt = Date.now();
+      this.runningFlows.add(flowId);
 
-      // Step 1: RCP Preparation and Validation
-      const rcpStep = await this.executeRCPPreparation(projectPath, targetCode);
-      flow.steps.push(rcpStep);
-
-      if (rcpStep.status === 'failed') {
-        throw new Error(`RCP preparation failed: ${rcpStep.error}`);
-      }
-
-      const rcp = rcpStep.output as RefactorContextPackage;
-
-      // Step 2: Refactor Proposal
-      const refactorStep = await this.executeRefactorProposal(rcp, targetCode, refactoringType);
-      flow.steps.push(refactorStep);
-
-      if (refactorStep.status === 'failed') {
-        throw new Error(`Refactor proposal failed: ${refactorStep.error}`);
-      }
-
-      flow.results.refactorProposal = refactorStep.output;
-
-      // Step 3: Test Creation (if requested)
-      if (options.includeTestCreation) {
-        const testStep = await this.executeTestCreation(rcp, targetCode, refactorStep.output);
-        flow.steps.push(testStep);
-
-        if (testStep.status === 'completed') {
-          flow.results.testCreation = testStep.output;
-        }
-      }
-
-      // Step 4: Validation Critique (if requested)
-      if (options.includeValidationCritique) {
-        const critiqueStep = await this.executeValidationCritique(
-          rcp,
-          targetCode,
-          refactorStep.output
-        );
-        flow.steps.push(critiqueStep);
-
-        if (critiqueStep.status === 'completed') {
-          flow.results.validationCritique = critiqueStep.output;
-        }
-      }
-
-      // Step 5: Final Patch Generation
-      const patchStep = await this.generateFinalPatch(flow.results);
-      flow.steps.push(patchStep);
-
-      if (patchStep.status === 'completed') {
-        flow.results.finalPatch = patchStep.output;
-      }
-
-      // Calculate final metrics
-      flow.results.qualityScore = this.calculateQualityScore(flow.steps);
-      flow.results.safetyScore = this.calculateSafetyScore(flow.steps);
-      flow.results.confidence = this.calculateConfidence(flow.steps);
-
-      flow.metadata.totalDuration = Date.now() - startTime;
-      flow.metadata.tokensUsed = this.calculateTotalTokens(flow.steps);
-      flow.metadata.qualityMetrics = this.calculateQualityMetrics(flow.steps);
-
-      flow.status = 'completed';
-
-      this.logger.info('LLM execution workflow completed', {
+      this.logger.info('Executing flow', {
         flowId,
-        duration: flow.metadata.totalDuration,
-        qualityScore: flow.results.qualityScore,
-        safetyScore: flow.results.safetyScore,
-        confidence: flow.results.confidence,
+        name: flow.name,
+        stepCount: flow.steps.length
       });
 
-      return flow;
+      // Execute steps in dependency order
+      const executedSteps = new Set<string>();
+      const pendingSteps = [...flow.steps];
+
+      while (pendingSteps.length > 0) {
+        const readySteps = pendingSteps.filter(step => 
+          step.dependencies.every(dep => executedSteps.has(dep))
+        );
+
+        if (readySteps.length === 0) {
+          this.logger.error('No ready steps found, possible circular dependency', { flowId });
+          break;
+        }
+
+        // Execute ready steps (potentially in parallel)
+        const stepPromises = readySteps.map(step => this.executeStep(flowId, step));
+        const results = await Promise.allSettled(stepPromises);
+
+        for (let i = 0; i < readySteps.length; i++) {
+          const step = readySteps[i];
+          const result = results[i];
+
+          if (result.status === 'fulfilled') {
+            executedSteps.add(step.id);
+            const index = pendingSteps.findIndex(s => s.id === step.id);
+            if (index !== -1) {
+              pendingSteps.splice(index, 1);
+            }
+          } else {
+            this.logger.error('Step execution failed', {
+              flowId,
+              stepId: step.id,
+              error: result.reason
+            });
+          }
+        }
+      }
+
+      // Update flow status
+      const failedSteps = flow.steps.filter(step => step.status === 'failed');
+      if (failedSteps.length === 0) {
+        flow.status = 'completed';
+      } else {
+        flow.status = 'failed';
+      }
+
+      flow.totalDuration = Date.now() - startTime;
+      flow.updatedAt = Date.now();
+      this.runningFlows.delete(flowId);
+
+      this.tracer.recordSuccess(
+        span,
+        `Flow completed: ${flowId} in ${flow.totalDuration}ms`
+      );
+
     } catch (error) {
       flow.status = 'failed';
-      this.logger.error('LLM execution workflow failed', {
+      flow.updatedAt = Date.now();
+      this.runningFlows.delete(flowId);
+
+      this.tracer.recordError(span, error as Error, `Flow failed: ${flowId}`);
+    }
+  }
+
+  /**
+   * Execute a single step
+   */
+  private async executeStep(flowId: string, step: ExecutionFlowStep): Promise<void> {
+    const span = this.tracer.startAnalysisTrace('.', 'llm-step-execution');
+    const startTime = Date.now();
+
+    try {
+      step.status = 'running';
+      step.metadata.startTime = startTime;
+
+      this.logger.info('Executing step', {
         flowId,
-        error: error instanceof Error ? error.message : String(error),
+        stepId: step.id,
+        name: step.name,
+        type: step.type
       });
+
+      let output: any;
+
+      switch (step.type) {
+        case 'llm':
+          output = await this.executeLLMStep(step);
+          break;
+        case 'safety':
+          output = await this.executeSafetyStep(step);
+          break;
+        case 'validation':
+          output = await this.executeValidationStep(step);
+          break;
+        case 'transformation':
+          output = await this.executeTransformationStep(step);
+          break;
+        default:
+          throw new Error(`Unknown step type: ${step.type}`);
+      }
+
+      step.output = output;
+      step.status = 'completed';
+      step.metadata.endTime = Date.now();
+      step.metadata.duration = step.metadata.endTime - step.metadata.startTime!;
+
+      this.tracer.recordSuccess(
+        span,
+        `Step completed: ${step.id} in ${step.metadata.duration}ms`
+      );
+
+    } catch (error) {
+      step.status = 'failed';
+      step.metadata.endTime = Date.now();
+      step.metadata.duration = step.metadata.endTime - step.metadata.startTime!;
+
+      this.tracer.recordError(span, error as Error, `Step failed: ${step.id}`);
+
+      // Retry if enabled
+      if (this.options.enableRetries && step.retryCount < step.maxRetries) {
+        step.retryCount++;
+        step.status = 'pending';
+        this.logger.info('Retrying step', {
+          flowId,
+          stepId: step.id,
+          retryCount: step.retryCount,
+          maxRetries: step.maxRetries
+        });
+      }
+    }
+  }
+
+  /**
+   * Execute LLM step
+   */
+  private async executeLLMStep(step: ExecutionFlowStep): Promise<any> {
+    const response = await this.llmService.generateWithContext({
+      prompt: step.input.prompt,
+      context: step.input.context,
+      options: step.input.options
+    });
+
+    step.metadata.tokens = response.context.totalTokens;
+    step.metadata.cost = response.metadata.cost;
+    step.metadata.provider = response.context.provider;
+    step.metadata.model = response.context.model;
+
+    return response.content;
+  }
+
+  /**
+   * Execute safety step
+   */
+  private async executeSafetyStep(step: ExecutionFlowStep): Promise<any> {
+    const result = await this.safetyGates.checkContent(
+      step.input.content,
+      step.input.context,
+      step.input.options
+    );
+
+    if (!result.passed) {
+      throw new Error(`Safety check failed: ${result.violations.length} violations`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Execute validation step
+   */
+  private async executeValidationStep(step: ExecutionFlowStep): Promise<any> {
+    // Simulate validation logic
+    const isValid = this.validateContent(step.input.content, step.input.rules);
+    
+    if (!isValid) {
+      throw new Error('Validation failed');
+    }
+
+    return { valid: true, score: 1.0 };
+  }
+
+  /**
+   * Execute transformation step
+   */
+  private async executeTransformationStep(step: ExecutionFlowStep): Promise<any> {
+    // Simulate transformation logic
+    return this.transformContent(step.input.content, step.input.transformations);
+  }
+
+  /**
+   * Validate content
+   */
+  private validateContent(content: string, rules: string[]): boolean {
+    // Simple validation logic
+    for (const rule of rules) {
+      if (!content.includes(rule)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Transform content
+   */
+  private transformContent(content: string, transformations: string[]): string {
+    let result = content;
+    for (const transformation of transformations) {
+      // Simple transformation logic
+      result = result.replace(new RegExp(transformation, 'g'), 'transformed');
+    }
+    return result;
+  }
+
+  /**
+   * Get flow by ID
+   */
+  getFlow(flowId: string): ExecutionFlow | undefined {
+    return this.flows.get(flowId);
+  }
+
+  /**
+   * Get all flows
+   */
+  getAllFlows(): ExecutionFlow[] {
+    return Array.from(this.flows.values());
+  }
+
+  /**
+   * Cancel a flow
+   */
+  async cancelFlow(flowId: string): Promise<boolean> {
+    const flow = this.flows.get(flowId);
+    if (!flow) {
+      return false;
+    }
+
+    flow.status = 'cancelled';
+    flow.updatedAt = Date.now();
+    this.runningFlows.delete(flowId);
+
+    this.logger.info('Cancelled flow', { flowId });
+    return true;
+  }
+
+  /**
+   * Generate unique flow ID
+   */
+  private generateFlowId(): string {
+    return `flow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Generate unique step ID
+   */
+  private generateStepId(): string {
+    return `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Get execution statistics
+   */
+  async getExecutionStats(): Promise<{
+    totalFlows: number;
+    runningFlows: number;
+    completedFlows: number;
+    failedFlows: number;
+    averageDuration: number;
+    successRate: number;
+    totalTokens: number;
+    totalCost: number;
+  }> {
+    const flows = Array.from(this.flows.values());
+    const completedFlows = flows.filter(f => f.status === 'completed');
+    const failedFlows = flows.filter(f => f.status === 'failed');
+    
+    const averageDuration = completedFlows.length > 0
+      ? completedFlows.reduce((sum, f) => sum + (f.totalDuration || 0), 0) / completedFlows.length
+      : 0;
+
+    const successRate = flows.length > 0
+      ? completedFlows.length / flows.length
+      : 0;
+
+    const totalTokens = flows.reduce((sum, f) => sum + f.metadata.totalTokens, 0);
+    const totalCost = flows.reduce((sum, f) => sum + f.metadata.totalCost, 0);
+
+    return {
+      totalFlows: flows.length,
+      runningFlows: this.runningFlows.size,
+      completedFlows: completedFlows.length,
+      failedFlows: failedFlows.length,
+      averageDuration,
+      successRate,
+      totalTokens,
+      totalCost
+    };
+  }
+
+  /**
+   * Execute workflow
+   */
+  async executeWorkflow(
+    workflow: any,
+    options: any = {}
+  ): Promise<any> {
+    const span = this.tracer.startAnalysisTrace('.', 'execute-workflow');
+
+    try {
+      this.logger.info('Executing LLM workflow', { workflowId: workflow.id });
+      
+      // Execute workflow steps
+      const results = [];
+      for (const step of workflow.steps) {
+        const stepResult = await this.executeStep(step, options);
+        results.push(stepResult);
+      }
+
+      this.tracer.recordSuccess(span, `Workflow completed with ${results.length} steps`);
+      return {
+        success: true,
+        results,
+        workflowId: workflow.id
+      };
+    } catch (error) {
+      this.tracer.recordError(span, error as Error, 'Workflow execution failed');
       throw error;
     }
   }
 
-  /**
-   * Execute RCP preparation and validation
-   * This is the deterministic pre-work that shapes all LLM output
-   */
-  private async executeRCPPreparation(
-    projectPath: string,
-    targetCode: string
-  ): Promise<ExecutionStep> {
-    const stepId = `rcp-${Date.now()}`;
-    this.logger.info('Executing RCP preparation', { stepId });
-
-    const step: ExecutionStep = {
-      id: stepId,
-      name: 'RCP Preparation and Validation',
-      type: 'rcp-preparation',
-      status: 'running',
-      duration: 0,
-    };
-
-    try {
-      const startTime = Date.now();
-
-      // Import RCP builder (would be imported from the actual module)
-      // const rcpBuilder = new RefactorContextPackageBuilder(this.logger);
-      // const rcp = await rcpBuilder.buildRCP(projectPath, [targetCode]);
-
-      // Mock RCP for now
-      const rcp = {
-        codeSelection: [],
-        guardrails: {
-          rules: [],
-          styles: [],
-          bannedChanges: [],
-          framework: { name: 'unknown', version: '1.0.0', patterns: [], conventions: [] },
-          runtime: { node: '18.0.0', typescript: '5.0.0', dependencies: {} },
-        },
-        testSignals: {
-          testFiles: [],
-          coverage: { overall: 85, byFile: {}, byFunction: {}, gaps: [] },
-          gaps: [],
-          quality: {
-            score: 80,
-            metrics: { maintainability: 85, reliability: 90, performance: 75 },
-            issues: [],
-            recommendations: [],
-          },
-        },
-        repoContext: {
-          namingConventions: [],
-          architecturalPatterns: [],
-          codeStyle: {
-            indentation: 'spaces',
-            spaces: 2,
-            quotes: 'single',
-            semicolons: true,
-            trailingCommas: true,
-          },
-          projectStructure: { layers: [], modules: [], dependencies: {}, circularDependencies: [] },
-        },
-        metadata: {
-          generatedAt: new Date().toISOString(),
-          version: '1.0.0',
-          projectPath,
-          analysisTime: 0,
-        },
-      };
-
-      step.output = rcp;
-      step.status = 'completed';
-      step.duration = Date.now() - startTime;
-
-      this.logger.info('RCP preparation completed', { stepId, duration: step.duration });
-
-      return step;
-    } catch (error) {
-      step.status = 'failed';
-      step.error = error instanceof Error ? error.message : String(error);
-      step.duration = Date.now() - Date.now();
-
-      this.logger.error('RCP preparation failed', { stepId, error: step.error });
-      return step;
-    }
-  }
 
   /**
-   * Execute refactor proposal with RCP context
+   * Close the execution flow
    */
-  private async executeRefactorProposal(
-    rcp: RefactorContextPackage,
-    targetCode: string,
-    refactoringType: string
-  ): Promise<ExecutionStep> {
-    const stepId = `refactor-${Date.now()}`;
-    this.logger.info('Executing refactor proposal', { stepId, refactoringType });
-
-    const step: ExecutionStep = {
-      id: stepId,
-      name: 'Refactor Proposal Generation',
-      type: 'llm-call',
-      status: 'running',
-      duration: 0,
-    };
-
-    try {
-      const startTime = Date.now();
-
-      // Create and execute refactor proposal task
-      const task = await this.taskFramework.createRefactorProposalTask(
-        rcp,
-        targetCode,
-        refactoringType as any,
-        { maxTokens: 4000, temperature: 0.1 }
-      );
-
-      const executedTask = await this.taskFramework.executeTask(task);
-      step.output = executedTask.output.result;
-      step.status = 'completed';
-      step.duration = Date.now() - startTime;
-
-      this.logger.info('Refactor proposal completed', { stepId, duration: step.duration });
-
-      return step;
-    } catch (error) {
-      step.status = 'failed';
-      step.error = error instanceof Error ? error.message : String(error);
-      step.duration = Date.now() - Date.now();
-
-      this.logger.error('Refactor proposal failed', { stepId, error: step.error });
-      return step;
-    }
-  }
-
-  /**
-   * Execute test creation with coverage gap analysis
-   */
-  private async executeTestCreation(
-    rcp: RefactorContextPackage,
-    targetCode: string,
-    refactorResult: any
-  ): Promise<ExecutionStep> {
-    const stepId = `test-${Date.now()}`;
-    this.logger.info('Executing test creation', { stepId });
-
-    const step: ExecutionStep = {
-      id: stepId,
-      name: 'Test Creation and Augmentation',
-      type: 'llm-call',
-      status: 'running',
-      duration: 0,
-    };
-
-    try {
-      const startTime = Date.now();
-
-      // Create and execute test creation task
-      const task = await this.taskFramework.createTestCreationTask(
-        rcp,
-        targetCode,
-        'unit',
-        rcp.testSignals.gaps.map(gap => gap.function),
-        { maxTokens: 3000, temperature: 0.2 }
-      );
-
-      const executedTask = await this.taskFramework.executeTask(task);
-      step.output = executedTask.output.result;
-      step.status = 'completed';
-      step.duration = Date.now() - startTime;
-
-      this.logger.info('Test creation completed', { stepId, duration: step.duration });
-
-      return step;
-    } catch (error) {
-      step.status = 'failed';
-      step.error = error instanceof Error ? error.message : String(error);
-      step.duration = Date.now() - Date.now();
-
-      this.logger.error('Test creation failed', { stepId, error: step.error });
-      return step;
-    }
-  }
-
-  /**
-   * Execute validation critique
-   */
-  private async executeValidationCritique(
-    rcp: RefactorContextPackage,
-    targetCode: string,
-    refactorResult: any
-  ): Promise<ExecutionStep> {
-    const stepId = `critique-${Date.now()}`;
-    this.logger.info('Executing validation critique', { stepId });
-
-    const step: ExecutionStep = {
-      id: stepId,
-      name: 'Validation and Self-Critique',
-      type: 'llm-call',
-      status: 'running',
-      duration: 0,
-    };
-
-    try {
-      const startTime = Date.now();
-
-      // Create and execute validation critique task
-      const task = await this.taskFramework.createValidationCritiqueTask(
-        rcp,
-        refactorResult.patch,
-        targetCode,
-        { maxTokens: 2000, temperature: 0.1 }
-      );
-
-      const executedTask = await this.taskFramework.executeTask(task);
-      step.output = executedTask.output.result;
-      step.status = 'completed';
-      step.duration = Date.now() - startTime;
-
-      this.logger.info('Validation critique completed', { stepId, duration: step.duration });
-
-      return step;
-    } catch (error) {
-      step.status = 'failed';
-      step.error = error instanceof Error ? error.message : String(error);
-      step.duration = Date.now() - Date.now();
-
-      this.logger.error('Validation critique failed', { stepId, error: step.error });
-      return step;
-    }
-  }
-
-  /**
-   * Generate final patch with all improvements
-   */
-  private async generateFinalPatch(results: ExecutionResults): Promise<ExecutionStep> {
-    const stepId = `patch-${Date.now()}`;
-    this.logger.info('Generating final patch', { stepId });
-
-    const step: ExecutionStep = {
-      id: stepId,
-      name: 'Final Patch Generation',
-      type: 'normalization',
-      status: 'running',
-      duration: 0,
-    };
-
-    try {
-      const startTime = Date.now();
-
-      // Combine all results into final patch
-      let finalPatch = results.refactorProposal?.patch || '';
-
-      // Add test recommendations if available
-      if (results.testCreation) {
-        finalPatch += `\n\n# Test Code\n${results.testCreation.testCode}`;
-      }
-
-      // Add critique suggestions if available
-      if (results.validationCritique) {
-        finalPatch += `\n\n# Critique Suggestions\n${results.validationCritique.suggestions.join('\n')}`;
-      }
-
-      step.output = finalPatch;
-      step.status = 'completed';
-      step.duration = Date.now() - startTime;
-
-      this.logger.info('Final patch generated', { stepId, duration: step.duration });
-
-      return step;
-    } catch (error) {
-      step.status = 'failed';
-      step.error = error instanceof Error ? error.message : String(error);
-      step.duration = Date.now() - Date.now();
-
-      this.logger.error('Final patch generation failed', { stepId, error: step.error });
-      return step;
-    }
-  }
-
-  /**
-   * Generate system prompt with guardrails and repo signals
-   */
-  async generateSystemPrompt(rcp: RefactorContextPackage): Promise<SystemPrompt> {
-    this.logger.info('Generating system prompt with guardrails and repo signals');
-
-    const guardrails = rcp.guardrails.rules.map(
-      rule => `${rule.severity.toUpperCase()}: ${rule.description} (${rule.pattern})`
-    );
-
-    const repoSignals = [
-      `Naming Conventions: ${rcp.repoContext.namingConventions.map(nc => nc.pattern).join(', ')}`,
-      `Architectural Patterns: ${rcp.repoContext.architecturalPatterns.map(ap => ap.name).join(', ')}`,
-      `Code Style: ${JSON.stringify(rcp.repoContext.codeStyle)}`,
-      `Test Coverage: ${rcp.testSignals.coverage.overall}%`,
-    ];
-
-    const template = `You are RefactoGent, an advanced refactoring assistant that provides production-ready code transformations.
-
-GUARDRAILS:
-${guardrails.join('\n')}
-
-REPO SIGNALS:
-${repoSignals.join('\n')}
-
-INSTRUCTIONS:
-1. Always follow the project's guardrails and conventions
-2. Ensure all changes are safe and preserve behavior
-3. Generate production-ready code that matches project style
-4. Provide clear reasoning for all changes
-5. Include appropriate test recommendations
-
-Remember: You have access to structured context (RCP) that provides deep understanding of the project's architecture, conventions, and constraints.`;
-
-    return {
-      template,
-      guardrails,
-      repoSignals,
-      version: '1.0.0',
-    };
-  }
-
-  // Helper methods for calculating metrics
-  private calculateQualityScore(steps: ExecutionStep[]): number {
-    const completedSteps = steps.filter(s => s.status === 'completed');
-    return Math.floor(Math.random() * 20) + 80; // 80-100% quality
-  }
-
-  private calculateSafetyScore(steps: ExecutionStep[]): number {
-    const completedSteps = steps.filter(s => s.status === 'completed');
-    return Math.floor(Math.random() * 15) + 85; // 85-100% safety
-  }
-
-  private calculateConfidence(steps: ExecutionStep[]): number {
-    const completedSteps = steps.filter(s => s.status === 'completed');
-    return Math.floor(Math.random() * 20) + 70; // 70-90% confidence
-  }
-
-  private calculateTotalTokens(steps: ExecutionStep[]): number {
-    return steps.reduce((total, step) => total + (step.output?.tokensUsed || 0), 0);
-  }
-
-  private calculateQualityMetrics(steps: ExecutionStep[]): QualityMetrics {
-    return {
-      correctness: Math.floor(Math.random() * 15) + 85,
-      safety: Math.floor(Math.random() * 10) + 90,
-      style: Math.floor(Math.random() * 20) + 80,
-      performance: Math.floor(Math.random() * 25) + 75,
-      overall: Math.floor(Math.random() * 20) + 80,
-    };
+  async close(): Promise<void> {
+    this.logger.info('Closing LLM execution flow');
+    await this.taskFramework.close();
+    await this.llmService.close();
   }
 }

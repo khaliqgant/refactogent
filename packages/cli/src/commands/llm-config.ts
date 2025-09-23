@@ -1,5 +1,7 @@
 import { Command } from 'commander';
 import { Logger } from '../utils/logger.js';
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
 import { LLMProviderManager } from '../llm/llm-provider-manager.js';
 
 interface LLMConfigOptions {
@@ -40,7 +42,10 @@ export function createLLMConfigCommand(): Command {
       try {
         logger.info('Managing LLM configuration', { options });
 
-        const providerManager = new LLMProviderManager(logger);
+        const metrics = new RefactoGentMetrics(logger);
+        const tracer = new RefactoGentTracer(logger);
+        const config = { repository: { language: ['typescript'] } } as any;
+        const providerManager = new LLMProviderManager(logger, metrics, tracer, config);
 
         if (options.list) {
           // List all configured providers
@@ -56,19 +61,16 @@ export function createLLMConfigCommand(): Command {
               '   refactogent llm-config --provider ollama --base-url http://localhost:11434'
             );
           } else {
-            providers.forEach(providerName => {
-              const provider = providerManager.getProvider(providerName);
-              if (provider) {
-                const config = provider.getConfig();
-                console.log(`\n   ${providerName}:`);
-                console.log(`     Model: ${config.model}`);
-                console.log(`     Base URL: ${config.baseUrl || 'default'}`);
-                console.log(`     Max Tokens: ${config.maxTokens}`);
-                console.log(`     Temperature: ${config.temperature}`);
-                console.log(
-                  `     API Key: ${config.apiKey ? '***' + config.apiKey.slice(-4) : 'none'}`
-                );
-              }
+            providers.forEach(provider => {
+              const config = provider.getConfig();
+              console.log(`\n   ${provider.name}:`);
+              console.log(`     Model: ${config.model}`);
+              console.log(`     Base URL: ${config.baseUrl || 'default'}`);
+              console.log(`     Max Tokens: ${config.maxTokens}`);
+              console.log(`     Temperature: ${config.temperature}`);
+              console.log(
+                `     API Key: ${config.apiKey ? '***' + config.apiKey.slice(-4) : 'none'}`
+              );
             });
           }
         }
@@ -91,7 +93,7 @@ export function createLLMConfigCommand(): Command {
             enabled: true,
           };
 
-          providerManager.addProvider(config);
+          await providerManager.registerProviderConfig(options.provider, config);
           console.log(`✅ Configured provider: ${options.provider}`);
           console.log(`   Model: ${config.model}`);
           console.log(`   API Key: ***${config.apiKey.slice(-4)}`);
@@ -115,12 +117,15 @@ export function createLLMConfigCommand(): Command {
 
               // Test with a simple prompt
               const testPrompt = 'Hello, this is a test prompt for RefactoGent.';
-              const response = await providerManager.callLLM(options.provider, testPrompt);
+              const response = await providerManager.callLLM(options.provider, {
+                prompt: testPrompt,
+                maxTokens: 100
+              });
 
               console.log(`✅ Test call successful:`);
-              console.log(`   Tokens used: ${response.tokensUsed}`);
-              console.log(`   Processing time: ${response.processingTime}ms`);
-              console.log(`   Model: ${response.model}`);
+              console.log(`   Tokens used: ${response.usage.totalTokens}`);
+              console.log(`   Processing time: ${response.metadata.latency}ms`);
+              console.log(`   Model: ${response.metadata.model}`);
             } else {
               console.log(`❌ Provider ${options.provider} validation failed`);
               console.log('   Check your API key and configuration');

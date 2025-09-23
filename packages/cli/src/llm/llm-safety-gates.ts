@@ -1,597 +1,494 @@
 import { Logger } from '../utils/logger.js';
-import { RefactorContextPackage } from './refactor-context-package.js';
-import { LLMTask } from './llm-task-framework.js';
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
+import { RefactoGentConfig } from '../config/refactogent-schema.js';
 
-export interface SafetyGate {
-  id: string;
-  name: string;
-  description: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  enabled: boolean;
-  validation: (input: any, rcp: RefactorContextPackage) => Promise<GateResult>;
-}
-
-export interface GateResult {
+export interface SafetyGateResult {
   passed: boolean;
+  violations: SafetyViolation[];
+  warnings: SafetyWarning[];
   score: number;
-  violations: Violation[];
-  suggestions: string[];
-  metadata: GateMetadata;
-}
-
-export interface Violation {
-  id: string;
-  type: string;
-  message: string;
-  severity: 'error' | 'warning' | 'info';
-  line?: number;
-  column?: number;
-  suggestion?: string;
-}
-
-export interface GateMetadata {
-  executionTime: number;
-  checksPerformed: number;
-  confidence: number;
-  details: string[];
-}
-
-export interface ValidationPipeline {
-  id: string;
-  gates: SafetyGate[];
-  results: PipelineResult;
-  metadata: PipelineMetadata;
-}
-
-export interface PipelineResult {
-  overallPassed: boolean;
-  criticalFailures: number;
-  totalViolations: number;
-  qualityScore: number;
-  safetyScore: number;
   recommendations: string[];
 }
 
-export interface PipelineMetadata {
-  executionTime: number;
-  gatesExecuted: number;
-  totalChecks: number;
+export interface SafetyViolation {
+  type: 'content' | 'security' | 'bias' | 'harmful' | 'inappropriate';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  details: string;
   confidence: number;
 }
 
+export interface SafetyWarning {
+  type: 'quality' | 'consistency' | 'best-practice';
+  message: string;
+  suggestion: string;
+  confidence: number;
+}
+
+export interface SafetyGateOptions {
+  enableContentFiltering?: boolean;
+  enableSecurityScanning?: boolean;
+  enableBiasDetection?: boolean;
+  enableHarmfulContentDetection?: boolean;
+  enableQualityChecks?: boolean;
+  strictMode?: boolean;
+  customRules?: string[];
+}
+
 /**
- * LLM Safety and Validation Gates
- * This system ensures RefactoGent's output is always safe and compliant
- * Demonstrates deterministic validation before and after LLM calls
+ * LLM safety gates for content filtering and quality assurance
  */
 export class LLMSafetyGates {
   private logger: Logger;
-  private gates: Map<string, SafetyGate>;
+  private metrics: RefactoGentMetrics;
+  private tracer: RefactoGentTracer;
+  private config: RefactoGentConfig;
 
-  constructor(logger: Logger) {
+  constructor(
+    logger: Logger,
+    metrics: RefactoGentMetrics,
+    tracer: RefactoGentTracer,
+    config: RefactoGentConfig
+  ) {
     this.logger = logger;
-    this.gates = new Map();
-    this.initializeDefaultGates();
+    this.metrics = metrics;
+    this.tracer = tracer;
+    this.config = config;
   }
 
   /**
-   * Initialize default safety gates
-   * These gates ensure RefactoGent's output meets quality and safety standards
+   * Check content against safety gates
    */
-  private initializeDefaultGates(): void {
-    this.logger.info('Initializing LLM safety gates');
-
-    // Gate 1: Deterministic Pre-Work Validation
-    this.addGate({
-      id: 'deterministic-pre-work',
-      name: 'Deterministic Pre-Work Validation',
-      description: 'Validates that deterministic analysis is complete before LLM calls',
-      severity: 'critical',
-      enabled: true,
-      validation: this.validateDeterministicPreWork.bind(this),
-    });
-
-    // Gate 2: Guardrail Compliance
-    this.addGate({
-      id: 'guardrail-compliance',
-      name: 'Guardrail Compliance Check',
-      description: 'Ensures LLM output follows project guardrails',
-      severity: 'high',
-      enabled: true,
-      validation: this.validateGuardrailCompliance.bind(this),
-    });
-
-    // Gate 3: Behavior Preservation
-    this.addGate({
-      id: 'behavior-preservation',
-      name: 'Behavior Preservation Validation',
-      description: 'Ensures refactoring preserves existing behavior',
-      severity: 'critical',
-      enabled: true,
-      validation: this.validateBehaviorPreservation.bind(this),
-    });
-
-    // Gate 4: Safety-First Approach
-    this.addGate({
-      id: 'safety-first',
-      name: 'Safety-First Validation',
-      description: 'Validates that all changes are safe for production',
-      severity: 'critical',
-      enabled: true,
-      validation: this.validateSafetyFirst.bind(this),
-    });
-
-    // Gate 5: Style Consistency
-    this.addGate({
-      id: 'style-consistency',
-      name: 'Style Consistency Check',
-      description: 'Ensures output matches project style conventions',
-      severity: 'medium',
-      enabled: true,
-      validation: this.validateStyleConsistency.bind(this),
-    });
-
-    // Gate 6: Test Coverage
-    this.addGate({
-      id: 'test-coverage',
-      name: 'Test Coverage Validation',
-      description: 'Ensures adequate test coverage for changes',
-      severity: 'high',
-      enabled: true,
-      validation: this.validateTestCoverage.bind(this),
-    });
-
-    this.logger.info('Safety gates initialized', { count: this.gates.size });
-  }
-
-  /**
-   * Add a new safety gate
-   */
-  addGate(gate: SafetyGate): void {
-    this.gates.set(gate.id, gate);
-    this.logger.info('Added safety gate', { id: gate.id, name: gate.name });
-  }
-
-  /**
-   * Execute validation pipeline
-   * This runs all enabled gates to ensure LLM output quality
-   */
-  async executeValidationPipeline(
-    task: LLMTask,
-    rcp: RefactorContextPackage,
-    options: {
-      strictMode?: boolean;
-      skipNonCritical?: boolean;
-    } = {}
-  ): Promise<ValidationPipeline> {
-    const pipelineId = `pipeline-${Date.now()}`;
-    this.logger.info('Executing validation pipeline', { pipelineId });
-
-    const pipeline: ValidationPipeline = {
-      id: pipelineId,
-      gates: Array.from(this.gates.values()).filter(gate => gate.enabled),
-      results: {
-        overallPassed: true,
-        criticalFailures: 0,
-        totalViolations: 0,
-        qualityScore: 0,
-        safetyScore: 0,
-        recommendations: [],
-      },
-      metadata: {
-        executionTime: 0,
-        gatesExecuted: 0,
-        totalChecks: 0,
-        confidence: 0,
-      },
-    };
-
-    const startTime = Date.now();
+  async checkContent(
+    content: string,
+    context?: string,
+    options: SafetyGateOptions = {}
+  ): Promise<SafetyGateResult> {
+    const span = this.tracer.startAnalysisTrace('.', 'safety-gate-check');
 
     try {
-      // Execute each gate
-      for (const gate of pipeline.gates) {
-        if (options.skipNonCritical && gate.severity === 'low') {
-          continue;
-        }
+      this.logger.info('Running safety gate checks', {
+        contentLength: content.length,
+        hasContext: !!context,
+        options
+      });
 
-        this.logger.info('Executing safety gate', { gateId: gate.id, name: gate.name });
+      const violations: SafetyViolation[] = [];
+      const warnings: SafetyWarning[] = [];
 
-        const gateResult = await gate.validation(task, rcp);
-        pipeline.metadata.gatesExecuted++;
-        pipeline.metadata.totalChecks += gateResult.metadata.checksPerformed;
-
-        if (!gateResult.passed) {
-          pipeline.results.overallPassed = false;
-
-          if (gate.severity === 'critical') {
-            pipeline.results.criticalFailures++;
-          }
-
-          pipeline.results.totalViolations += gateResult.violations.length;
-        }
-
-        // Add violations to pipeline results
-        gateResult.violations.forEach(violation => {
-          if (violation.severity === 'error') {
-            pipeline.results.criticalFailures++;
-          }
-        });
-
-        // Add suggestions
-        pipeline.results.recommendations.push(...gateResult.suggestions);
+      // Content filtering
+      if (options.enableContentFiltering !== false) {
+        const contentViolations = await this.checkContentFiltering(content);
+        violations.push(...contentViolations);
       }
 
-      // Calculate final scores
-      pipeline.results.qualityScore = this.calculateQualityScore(pipeline);
-      pipeline.results.safetyScore = this.calculateSafetyScore(pipeline);
-      pipeline.metadata.confidence = this.calculateConfidence(pipeline);
-      pipeline.metadata.executionTime = Date.now() - startTime;
+      // Security scanning
+      if (options.enableSecurityScanning !== false) {
+        const securityViolations = await this.checkSecurityIssues(content);
+        violations.push(...securityViolations);
+      }
 
-      this.logger.info('Validation pipeline completed', {
-        pipelineId,
-        overallPassed: pipeline.results.overallPassed,
-        criticalFailures: pipeline.results.criticalFailures,
-        qualityScore: pipeline.results.qualityScore,
-        safetyScore: pipeline.results.safetyScore,
-      });
+      // Bias detection
+      if (options.enableBiasDetection !== false) {
+        const biasViolations = await this.checkBias(content);
+        violations.push(...biasViolations);
+      }
 
-      return pipeline;
+      // Harmful content detection
+      if (options.enableHarmfulContentDetection !== false) {
+        const harmfulViolations = await this.checkHarmfulContent(content);
+        violations.push(...harmfulViolations);
+      }
+
+      // Quality checks
+      if (options.enableQualityChecks !== false) {
+        const qualityWarnings = await this.checkQuality(content);
+        warnings.push(...qualityWarnings);
+      }
+
+      // Custom rules
+      if (options.customRules && options.customRules.length > 0) {
+        const customViolations = await this.checkCustomRules(content, options.customRules);
+        violations.push(...customViolations);
+      }
+
+      // Calculate safety score
+      const score = this.calculateSafetyScore(violations, warnings);
+      const passed = this.determinePassed(violations, warnings, options.strictMode);
+
+      // Generate recommendations
+      const recommendations = this.generateRecommendations(violations, warnings);
+
+      const result: SafetyGateResult = {
+        passed,
+        violations,
+        warnings,
+        score,
+        recommendations
+      };
+
+      this.tracer.recordSuccess(
+        span,
+        `Safety gate check completed: ${violations.length} violations, ${warnings.length} warnings`
+      );
+
+      this.metrics.recordSafetyViolation('safety');
+
+      return result;
     } catch (error) {
-      this.logger.error('Validation pipeline failed', {
-        pipelineId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.tracer.recordError(span, error as Error, 'Safety gate check failed');
       throw error;
     }
   }
 
   /**
-   * Validate deterministic pre-work completion
+   * Check content filtering
    */
-  private async validateDeterministicPreWork(
-    task: LLMTask,
-    rcp: RefactorContextPackage
-  ): Promise<GateResult> {
-    const startTime = Date.now();
-    const violations: Violation[] = [];
-    const suggestions: string[] = [];
+  private async checkContentFiltering(content: string): Promise<SafetyViolation[]> {
+    const violations: SafetyViolation[] = [];
+    const inappropriatePatterns = [
+      /inappropriate|offensive|harmful/i,
+      /hate|discrimination|racism/i,
+      /violence|threat|danger/i
+    ];
 
-    // Check if RCP is complete
-    if (!rcp.codeSelection || rcp.codeSelection.length === 0) {
-      violations.push({
-        id: 'missing-code-selection',
-        type: 'deterministic-pre-work',
-        message: 'Code selection is missing from RCP',
-        severity: 'error',
-        suggestion: 'Ensure code selection is properly generated',
-      });
-    }
-
-    // Check if guardrails are present
-    if (!rcp.guardrails || rcp.guardrails.rules.length === 0) {
-      violations.push({
-        id: 'missing-guardrails',
-        type: 'deterministic-pre-work',
-        message: 'Project guardrails are missing',
-        severity: 'warning',
-        suggestion: 'Add project guardrails to ensure compliance',
-      });
-    }
-
-    // Check if test signals are available
-    if (!rcp.testSignals || rcp.testSignals.coverage.overall === 0) {
-      violations.push({
-        id: 'missing-test-signals',
-        type: 'deterministic-pre-work',
-        message: 'Test signals are missing or incomplete',
-        severity: 'warning',
-        suggestion: 'Ensure test coverage data is available',
-      });
-    }
-
-    const passed = violations.filter(v => v.severity === 'error').length === 0;
-    const score = passed ? 100 : Math.max(0, 100 - violations.length * 20);
-
-    return {
-      passed,
-      score,
-      violations,
-      suggestions,
-      metadata: {
-        executionTime: Date.now() - startTime,
-        checksPerformed: 3,
-        confidence: score,
-        details: ['Code selection validation', 'Guardrails validation', 'Test signals validation'],
-      },
-    };
-  }
-
-  /**
-   * Validate guardrail compliance
-   */
-  private async validateGuardrailCompliance(
-    task: LLMTask,
-    rcp: RefactorContextPackage
-  ): Promise<GateResult> {
-    const startTime = Date.now();
-    const violations: Violation[] = [];
-    const suggestions: string[] = [];
-
-    // Check naming convention compliance
-    const namingConventions = rcp.repoContext.namingConventions;
-    if (namingConventions.length > 0) {
-      // This would analyze the actual code for naming compliance
-      // For now, we'll simulate the check
-      const hasNamingViolations = Math.random() < 0.1; // 10% chance of violation
-      if (hasNamingViolations) {
+    for (const pattern of inappropriatePatterns) {
+      if (pattern.test(content)) {
         violations.push({
-          id: 'naming-convention-violation',
-          type: 'guardrail-compliance',
-          message: 'Code does not follow project naming conventions',
-          severity: 'warning',
-          suggestion: 'Update variable/function names to match project conventions',
+          type: 'inappropriate',
+          severity: 'medium',
+          message: 'Potentially inappropriate content detected',
+          details: `Content matches pattern: ${pattern.source}`,
+          confidence: 0.8
         });
       }
     }
 
-    // Check banned changes
-    const bannedChanges = rcp.guardrails.bannedChanges;
-    for (const banned of bannedChanges) {
-      // This would check if the proposed changes match banned patterns
-      // For now, we'll simulate the check
-      const hasBannedPattern = Math.random() < 0.05; // 5% chance of banned pattern
-      if (hasBannedPattern) {
+    return violations;
+  }
+
+  /**
+   * Check security issues
+   */
+  private async checkSecurityIssues(content: string): Promise<SafetyViolation[]> {
+    const violations: SafetyViolation[] = [];
+    const securityPatterns = [
+      /password|secret|key|token/i,
+      /sql.*injection|script.*injection/i,
+      /eval\(|exec\(|system\(/i,
+      /dangerous|unsafe|vulnerable/i
+    ];
+
+    for (const pattern of securityPatterns) {
+      if (pattern.test(content)) {
         violations.push({
-          id: 'banned-change-detected',
-          type: 'guardrail-compliance',
-          message: `Proposed change matches banned pattern: ${banned.pattern}`,
-          severity: 'error',
-          suggestion: banned.alternatives.join(' or '),
+          type: 'security',
+          severity: 'high',
+          message: 'Potential security issue detected',
+          details: `Content matches security pattern: ${pattern.source}`,
+          confidence: 0.9
         });
       }
     }
 
-    const passed = violations.filter(v => v.severity === 'error').length === 0;
-    const score = passed ? 100 : Math.max(0, 100 - violations.length * 15);
+    return violations;
+  }
 
+  /**
+   * Check for bias
+   */
+  private async checkBias(content: string): Promise<SafetyViolation[]> {
+    const violations: SafetyViolation[] = [];
+    const biasPatterns = [
+      /stereotypical|biased|discriminatory/i,
+      /gender.*assumption|race.*assumption/i,
+      /unfair|prejudiced/i
+    ];
+
+    for (const pattern of biasPatterns) {
+      if (pattern.test(content)) {
+        violations.push({
+          type: 'bias',
+          severity: 'medium',
+          message: 'Potential bias detected',
+          details: `Content matches bias pattern: ${pattern.source}`,
+          confidence: 0.7
+        });
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check for harmful content
+   */
+  private async checkHarmfulContent(content: string): Promise<SafetyViolation[]> {
+    const violations: SafetyViolation[] = [];
+    const harmfulPatterns = [
+      /self.*harm|suicide|kill.*self/i,
+      /violence|weapon|danger/i,
+      /illegal|criminal|fraud/i
+    ];
+
+    for (const pattern of harmfulPatterns) {
+      if (pattern.test(content)) {
+        violations.push({
+          type: 'harmful',
+          severity: 'critical',
+          message: 'Potentially harmful content detected',
+          details: `Content matches harmful pattern: ${pattern.source}`,
+          confidence: 0.9
+        });
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check quality
+   */
+  private async checkQuality(content: string): Promise<SafetyWarning[]> {
+    const warnings: SafetyWarning[] = [];
+
+    // Check for code quality issues
+    if (content.includes('TODO') || content.includes('FIXME')) {
+      warnings.push({
+        type: 'quality',
+        message: 'Code contains TODO or FIXME comments',
+        suggestion: 'Consider addressing pending items before deployment',
+        confidence: 0.8
+      });
+    }
+
+    if (content.includes('console.log') || content.includes('debugger')) {
+      warnings.push({
+        type: 'quality',
+        message: 'Code contains debugging statements',
+        suggestion: 'Remove debugging statements before production',
+        confidence: 0.9
+      });
+    }
+
+    // Check for consistency
+    if (content.includes('var ') && content.includes('let ') && content.includes('const ')) {
+      warnings.push({
+        type: 'consistency',
+        message: 'Mixed variable declarations detected',
+        suggestion: 'Use consistent variable declaration style',
+        confidence: 0.7
+      });
+    }
+
+    return warnings;
+  }
+
+  /**
+   * Check custom rules
+   */
+  private async checkCustomRules(content: string, rules: string[]): Promise<SafetyViolation[]> {
+    const violations: SafetyViolation[] = [];
+
+    for (const rule of rules) {
+      try {
+        const pattern = new RegExp(rule, 'i');
+        if (pattern.test(content)) {
+          violations.push({
+            type: 'content',
+            severity: 'medium',
+            message: 'Content matches custom rule',
+            details: `Rule: ${rule}`,
+            confidence: 0.8
+          });
+        }
+      } catch (error) {
+        this.logger.warn('Invalid custom rule pattern', { rule, error });
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Calculate safety score
+   */
+  private calculateSafetyScore(violations: SafetyViolation[], warnings: SafetyWarning[]): number {
+    let score = 100;
+
+    // Deduct points for violations
+    for (const violation of violations) {
+      switch (violation.severity) {
+        case 'low':
+          score -= 5;
+          break;
+        case 'medium':
+          score -= 15;
+          break;
+        case 'high':
+          score -= 30;
+          break;
+        case 'critical':
+          score -= 50;
+          break;
+      }
+    }
+
+    // Deduct points for warnings
+    for (const warning of warnings) {
+      score -= 2;
+    }
+
+    return Math.max(0, score);
+  }
+
+  /**
+   * Determine if content passed safety gates
+   */
+  private determinePassed(
+    violations: SafetyViolation[],
+    warnings: SafetyWarning[],
+    strictMode?: boolean
+  ): boolean {
+    if (strictMode) {
+      return violations.length === 0 && warnings.length === 0;
+    }
+
+    // Allow low severity violations and warnings
+    const criticalViolations = violations.filter(v => v.severity === 'critical');
+    const highViolations = violations.filter(v => v.severity === 'high');
+
+    return criticalViolations.length === 0 && highViolations.length === 0;
+  }
+
+  /**
+   * Generate recommendations
+   */
+  private generateRecommendations(
+    violations: SafetyViolation[],
+    warnings: SafetyWarning[]
+  ): string[] {
+    const recommendations: string[] = [];
+
+    if (violations.length > 0) {
+      recommendations.push('Review and address all safety violations before proceeding');
+    }
+
+    if (warnings.length > 0) {
+      recommendations.push('Consider addressing quality warnings for better code quality');
+    }
+
+    if (violations.some(v => v.type === 'security')) {
+      recommendations.push('Conduct security review of the generated content');
+    }
+
+    if (violations.some(v => v.type === 'bias')) {
+      recommendations.push('Review content for potential bias and ensure fairness');
+    }
+
+    if (warnings.some(w => w.type === 'quality')) {
+      recommendations.push('Follow code quality best practices and standards');
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Get safety gate statistics
+   */
+  async getSafetyStats(): Promise<{
+    totalChecks: number;
+    passedChecks: number;
+    failedChecks: number;
+    averageScore: number;
+    violationTypes: Record<string, number>;
+    warningTypes: Record<string, number>;
+  }> {
     return {
-      passed,
-      score,
-      violations,
-      suggestions,
-      metadata: {
-        executionTime: Date.now() - startTime,
-        checksPerformed: 2,
-        confidence: score,
-        details: ['Naming convention check', 'Banned changes check'],
-      },
+      totalChecks: 0,
+      passedChecks: 0,
+      failedChecks: 0,
+      averageScore: 0,
+      violationTypes: {},
+      warningTypes: {}
     };
   }
 
   /**
-   * Validate behavior preservation
+   * Execute validation pipeline
    */
-  private async validateBehaviorPreservation(
-    task: LLMTask,
-    rcp: RefactorContextPackage
-  ): Promise<GateResult> {
-    const startTime = Date.now();
-    const violations: Violation[] = [];
-    const suggestions: string[] = [];
+  async executeValidationPipeline(
+    task: any,
+    contextPackage: any,
+    options: any = {}
+  ): Promise<any> {
+    const span = this.tracer.startAnalysisTrace('.', 'validation-pipeline');
 
-    // Check if test coverage is adequate
-    const coverage = rcp.testSignals.coverage.overall;
-    if (coverage < 80) {
-      violations.push({
-        id: 'insufficient-test-coverage',
-        type: 'behavior-preservation',
-        message: `Test coverage is ${coverage}%, below recommended 80%`,
-        severity: 'warning',
-        suggestion: 'Add more tests before refactoring to ensure behavior preservation',
-      });
+    try {
+      this.logger.info('Executing validation pipeline', { taskId: task.id });
+
+      // Run safety checks
+      const safetyResult = await this.checkSafety(task.content, options);
+      
+      // Run content validation
+      const contentResult = await this.validateContent(task.content, options);
+      
+      // Run security checks
+      const securityResult = await this.checkSecurityIssues(task.content);
+
+      const result = {
+        passed: safetyResult.passed && contentResult.passed && securityResult.length === 0,
+        safety: safetyResult,
+        content: contentResult,
+        security: securityResult,
+        taskId: task.id
+      };
+
+      this.tracer.recordSuccess(span, `Validation pipeline completed for task ${task.id}`);
+      return result;
+    } catch (error) {
+      this.tracer.recordError(span, error as Error, 'Validation pipeline failed');
+      throw error;
     }
+  }
 
-    // Check for semantic equivalence
-    // This would analyze the proposed changes for semantic equivalence
-    const hasSemanticIssues = Math.random() < 0.1; // 10% chance of semantic issues
-    if (hasSemanticIssues) {
-      violations.push({
-        id: 'semantic-equivalence-issue',
-        type: 'behavior-preservation',
-        message: 'Proposed changes may not preserve exact behavior',
-        severity: 'error',
-        suggestion: 'Review changes to ensure semantic equivalence',
-      });
-    }
-
-    const passed = violations.filter(v => v.severity === 'error').length === 0;
-    const score = passed ? 100 : Math.max(0, 100 - violations.length * 25);
-
+  private async validateContent(content: string, options: any): Promise<any> {
+    // Simple content validation - in real implementation would be more sophisticated
     return {
-      passed,
-      score,
-      violations,
-      suggestions,
-      metadata: {
-        executionTime: Date.now() - startTime,
-        checksPerformed: 2,
-        confidence: score,
-        details: ['Test coverage validation', 'Semantic equivalence check'],
-      },
+      passed: true,
+      score: 0.9,
+      issues: []
     };
   }
 
   /**
-   * Validate safety-first approach
+   * Check safety of content
    */
-  private async validateSafetyFirst(
-    task: LLMTask,
-    rcp: RefactorContextPackage
-  ): Promise<GateResult> {
-    const startTime = Date.now();
-    const violations: Violation[] = [];
-    const suggestions: string[] = [];
+  async checkSafety(content: string, options: any = {}): Promise<any> {
+    const span = this.tracer.startAnalysisTrace('.', 'safety-check');
 
-    // Check for potential security issues
-    const hasSecurityIssues = Math.random() < 0.05; // 5% chance of security issues
-    if (hasSecurityIssues) {
-      violations.push({
-        id: 'security-issue-detected',
-        type: 'safety-first',
-        message: 'Potential security issue detected in proposed changes',
-        severity: 'error',
-        suggestion: 'Review changes for security implications',
-      });
+    try {
+      // Simple safety check - in real implementation would be more sophisticated
+      const violations: string[] = [];
+      
+      // Check for harmful content
+      if (content.includes('harmful') || content.includes('dangerous')) {
+        violations.push('Potentially harmful content detected');
+      }
+      
+      return {
+        passed: violations.length === 0,
+        score: violations.length === 0 ? 1.0 : 0.5,
+        violations
+      };
+    } catch (error) {
+      this.tracer.recordError(span, error as Error, 'Safety check failed');
+      throw error;
     }
-
-    // Check for performance implications
-    const hasPerformanceIssues = Math.random() < 0.1; // 10% chance of performance issues
-    if (hasPerformanceIssues) {
-      violations.push({
-        id: 'performance-issue-detected',
-        type: 'safety-first',
-        message: 'Potential performance issue detected',
-        severity: 'warning',
-        suggestion: 'Consider performance implications of changes',
-      });
-    }
-
-    const passed = violations.filter(v => v.severity === 'error').length === 0;
-    const score = passed ? 100 : Math.max(0, 100 - violations.length * 20);
-
-    return {
-      passed,
-      score,
-      violations,
-      suggestions,
-      metadata: {
-        executionTime: Date.now() - startTime,
-        checksPerformed: 2,
-        confidence: score,
-        details: ['Security validation', 'Performance validation'],
-      },
-    };
   }
 
-  /**
-   * Validate style consistency
-   */
-  private async validateStyleConsistency(
-    task: LLMTask,
-    rcp: RefactorContextPackage
-  ): Promise<GateResult> {
-    const startTime = Date.now();
-    const violations: Violation[] = [];
-    const suggestions: string[] = [];
-
-    // Check code style compliance
-    const codeStyle = rcp.repoContext.codeStyle;
-    const hasStyleIssues = Math.random() < 0.2; // 20% chance of style issues
-    if (hasStyleIssues) {
-      violations.push({
-        id: 'style-inconsistency',
-        type: 'style-consistency',
-        message: 'Code does not match project style conventions',
-        severity: 'warning',
-        suggestion: 'Update code to match project style (indentation, quotes, etc.)',
-      });
-    }
-
-    const passed = violations.length === 0;
-    const score = passed ? 100 : Math.max(0, 100 - violations.length * 10);
-
-    return {
-      passed,
-      score,
-      violations,
-      suggestions,
-      metadata: {
-        executionTime: Date.now() - startTime,
-        checksPerformed: 1,
-        confidence: score,
-        details: ['Style consistency check'],
-      },
-    };
-  }
-
-  /**
-   * Validate test coverage
-   */
-  private async validateTestCoverage(
-    task: LLMTask,
-    rcp: RefactorContextPackage
-  ): Promise<GateResult> {
-    const startTime = Date.now();
-    const violations: Violation[] = [];
-    const suggestions: string[] = [];
-
-    // Check overall test coverage
-    const coverage = rcp.testSignals.coverage.overall;
-    if (coverage < 70) {
-      violations.push({
-        id: 'low-test-coverage',
-        type: 'test-coverage',
-        message: `Test coverage is ${coverage}%, below recommended 70%`,
-        severity: 'warning',
-        suggestion: 'Increase test coverage before refactoring',
-      });
-    }
-
-    // Check for coverage gaps
-    const gaps = rcp.testSignals.gaps;
-    if (gaps.length > 0) {
-      violations.push({
-        id: 'coverage-gaps-detected',
-        type: 'test-coverage',
-        message: `${gaps.length} coverage gaps detected`,
-        severity: 'info',
-        suggestion: 'Consider adding tests for uncovered code',
-      });
-    }
-
-    const passed = violations.filter(v => v.severity === 'error').length === 0;
-    const score = Math.max(0, coverage);
-
-    return {
-      passed,
-      score,
-      violations,
-      suggestions,
-      metadata: {
-        executionTime: Date.now() - startTime,
-        checksPerformed: 2,
-        confidence: score,
-        details: ['Overall coverage check', 'Coverage gaps analysis'],
-      },
-    };
-  }
-
-  // Helper methods for calculating pipeline metrics
-  private calculateQualityScore(pipeline: ValidationPipeline): number {
-    const totalGates = pipeline.gates.length;
-    const passedGates = pipeline.gates.filter(gate => {
-      // This would check actual gate results
-      return Math.random() > 0.1; // 90% pass rate for simulation
-    }).length;
-
-    return Math.floor((passedGates / totalGates) * 100);
-  }
-
-  private calculateSafetyScore(pipeline: ValidationPipeline): number {
-    const criticalGates = pipeline.gates.filter(gate => gate.severity === 'critical');
-    const passedCritical = criticalGates.filter(gate => {
-      // This would check actual gate results
-      return Math.random() > 0.05; // 95% pass rate for critical gates
-    }).length;
-
-    return Math.floor((passedCritical / criticalGates.length) * 100);
-  }
-
-  private calculateConfidence(pipeline: ValidationPipeline): number {
-    const totalChecks = pipeline.metadata.totalChecks;
-    const successfulChecks = Math.floor(totalChecks * 0.9); // 90% success rate
-
-    return Math.floor((successfulChecks / totalChecks) * 100);
+  async close(): Promise<void> {
+    this.logger.info('Closing LLM safety gates');
   }
 }

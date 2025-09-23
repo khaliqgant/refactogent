@@ -1,6 +1,8 @@
 import { Command } from 'commander';
 import { Logger } from '../utils/logger.js';
-import { RefactorContextPackageBuilder } from '../llm/refactor-context-package.js';
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
+import { RefactorContextPackage } from '../llm/refactor-context-package.js';
 import { LLMExecutionFlow } from '../llm/llm-execution-flow.js';
 import { LLMSafetyGates } from '../llm/llm-safety-gates.js';
 
@@ -46,9 +48,15 @@ export function createLLMRefactorCommand(): Command {
           dryRun: options.dryRun,
         });
 
-        // Step 1: Build Refactor Context Package (RCP)
+        // Step 1: Initialize services
+        logger.info('Initializing services...');
+        const metrics = new RefactoGentMetrics(logger);
+        const tracer = new RefactoGentTracer(logger);
+        const config = { repository: { language: ['typescript'] } } as any;
+
+        // Step 2: Build Refactor Context Package (RCP)
         logger.info('Building Refactor Context Package (RCP)...');
-        const rcpBuilder = new RefactorContextPackageBuilder(logger);
+        const rcpBuilder = new RefactorContextPackage(logger, metrics, tracer, config);
         const rcp = await rcpBuilder.buildRCP(options.target);
 
         logger.info('RCP built successfully', {
@@ -58,17 +66,25 @@ export function createLLMRefactorCommand(): Command {
           namingConventions: rcp.repoContext.namingConventions.length,
         });
 
-        // Step 2: Initialize LLM execution flow
+        // Step 3: Initialize LLM execution flow
         logger.info('Initializing LLM execution flow...');
-        const executionFlow = new LLMExecutionFlow(logger);
-        const safetyGates = new LLMSafetyGates(logger);
+        const executionFlow = new LLMExecutionFlow(logger, metrics, tracer, config);
+        const safetyGates = new LLMSafetyGates(logger, metrics, tracer, config);
 
         // Step 3: Execute LLM workflow
         logger.info('Executing LLM workflow...');
         const workflow = await executionFlow.executeWorkflow(
-          options.target,
-          options.target, // Would be actual target code
-          options.operation,
+          {
+            id: 'refactor-workflow',
+            steps: [
+              {
+                id: 'analyze',
+                type: 'analysis',
+                target: options.target,
+                operation: options.operation
+              }
+            ]
+          },
           {
             includeTestCreation: options.includeTests,
             includeValidationCritique: options.includeCritique,

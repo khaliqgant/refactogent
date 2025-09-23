@@ -13,6 +13,8 @@ import { IntelligentFixer } from './safety/intelligent-fixer.js';
 import { IndexCommand } from './commands/index.js';
 import { CodeGraphCommand } from './commands/code-graph.js';
 import { createRetrieveCommand } from './commands/retrieve.js';
+import { createPlannerCommand } from './commands/planner.js';
+import { createLLMAdvancedCommand } from './commands/llm-advanced.js';
 import { createRefactorSuggestCommand } from './commands/refactor-suggest.js';
 import { createLLMRefactorCommand } from './commands/llm-refactor.js';
 import { createLLMConfigCommand } from './commands/llm-config.js';
@@ -477,7 +479,7 @@ program
               `💰 Estimated Cost: $${((refactorerUsage.totalTokens * 0.00015) / 1000).toFixed(4)} (GPT-4o-mini pricing)`
             );
             console.log(`\n📋 Operations Breakdown:`);
-            refactorerUsage.operations.forEach((op, index) => {
+            refactorerUsage.operations.forEach((op: any, index: number) => {
               console.log(`  ${index + 1}. ${op.operation}`);
               console.log(`     - Tokens: ${op.tokens.toLocaleString()}`);
               console.log(`     - Model: ${op.model}`);
@@ -517,6 +519,12 @@ program.addCommand(createCompareCommand());
 
 // 6. Retrieve - Hybrid retrieval with grounding checks and context packing
 program.addCommand(createRetrieveCommand());
+
+// 7. Planner - Multi-tool agents with intent classification and plan generation
+program.addCommand(createPlannerCommand());
+
+// 8. LLM Advanced - Advanced LLM operations with multiple providers and safety gates
+program.addCommand(createLLMAdvancedCommand());
 
 // Phase 0: Stabilize & Instrument commands
 program

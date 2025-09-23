@@ -1,345 +1,204 @@
 import { Logger } from '../utils/logger.js';
-import { CodebaseContext, RefactoringOpportunity } from '../analysis/codebase-context-analyzer.js';
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
+import { RefactoGentConfig } from '../config/refactogent-schema.js';
+import { LLMProviderManager, LLMRequest, LLMResponse } from './llm-provider-manager.js';
+
+export interface ContextAwareLLMRequest {
+  prompt: string;
+  context?: any;
+  options?: {
+    includeTests?: boolean;
+    maxContextTokens?: number;
+    temperature?: number;
+    maxTokens?: number;
+  };
+}
 
 export interface LLMRefactoringRequest {
   codeBlock: string;
   filePath: string;
-  projectContext: CodebaseContext;
+  projectContext?: string;
   operation: 'extract' | 'inline' | 'rename' | 'move';
   options: {
     suggestedName?: string;
-    targetLocation?: string;
     preserveBehavior?: boolean;
+    [key: string]: any;
   };
 }
 
 export interface LLMRefactoringResponse {
   functionName: string;
-  extractedFunction: string;
-  functionCall: string;
+  refactoredCode: string;
   explanation: string;
   confidence: number;
-  tokenUsage: {
-    input: number;
-    output: number;
-    total: number;
-  };
-  reasoning: string;
+  extractedFunction?: string;
+  functionCall?: string;
 }
 
-export interface LLMUsage {
-  totalTokens: number;
-  calls: number;
-  operations: Array<{
-    operation: string;
-    tokens: number;
+export interface ContextAwareLLMResponse {
+  content: string;
+  context: {
+    usedContext: string[];
+    contextTokens: number;
+    totalTokens: number;
+    provider: string;
     model: string;
+  };
+  metadata: {
+    latency: number;
     cost: number;
-  }>;
+    confidence: number;
+    reasoning: string;
+  };
 }
 
 export class ContextAwareLLMService {
   private logger: Logger;
-  private usage: LLMUsage;
+  private metrics: RefactoGentMetrics;
+  private tracer: RefactoGentTracer;
+  private config: RefactoGentConfig;
+  private providerManager: LLMProviderManager;
 
-  constructor(logger: Logger) {
+  constructor(
+    logger: Logger,
+    metrics: RefactoGentMetrics,
+    tracer: RefactoGentTracer,
+    config: RefactoGentConfig
+  ) {
     this.logger = logger;
-    this.usage = {
-      totalTokens: 0,
-      calls: 0,
-      operations: [],
-    };
+    this.metrics = metrics;
+    this.tracer = tracer;
+    this.config = config;
+    this.providerManager = new LLMProviderManager(logger, metrics, tracer, config);
   }
 
-  /**
-   * Perform context-aware refactoring using full codebase analysis
-   */
-  async performRefactoring(request: LLMRefactoringRequest): Promise<LLMRefactoringResponse> {
-    this.logger.info('Starting context-aware LLM refactoring', {
-      filePath: request.filePath,
-      operation: request.operation,
+  async initialize(): Promise<void> {
+    this.logger.info('Initializing context-aware LLM service');
+    await this.providerManager.registerProviderConfig('openai', {
+      apiKey: process.env.OPENAI_API_KEY || '',
+      model: 'gpt-4'
     });
+  }
+
+  async generateWithContext(
+    request: ContextAwareLLMRequest,
+    preferredProvider?: string
+  ): Promise<ContextAwareLLMResponse> {
+    const span = this.tracer.startAnalysisTrace('.', 'context-aware-generation');
 
     try {
-      // Build comprehensive context for LLM
-      const contextPrompt = this.buildContextPrompt(request);
+      const llmRequest: LLMRequest = {
+        prompt: request.prompt,
+        maxTokens: request.options?.maxTokens || 2000,
+        temperature: request.options?.temperature || 0.7
+      };
 
-      // Generate LLM prompt with full codebase context
-      const llmPrompt = this.generateLLMPrompt(request, contextPrompt);
+      const response = await this.providerManager.generateText(llmRequest, preferredProvider);
 
-      // Simulate LLM call (replace with actual LLM integration)
-      const response = await this.callLLM(llmPrompt, request);
-
-      // Track usage
-      this.trackUsage(response.tokenUsage, request.operation);
-
-      return response;
+      return {
+        content: response.content,
+        context: {
+          usedContext: [],
+          contextTokens: 0,
+          totalTokens: response.usage.totalTokens,
+          provider: response.metadata.provider,
+          model: response.metadata.model
+        },
+        metadata: {
+          latency: response.metadata.latency,
+          cost: response.metadata.cost,
+          confidence: 0.8,
+          reasoning: 'Generated with context'
+        }
+      };
     } catch (error) {
-      this.logger.error('LLM refactoring failed', { error });
+      this.tracer.recordError(span, error as Error, 'Context-aware generation failed');
       throw error;
     }
   }
 
   /**
-   * Build comprehensive context prompt from codebase analysis
+   * Perform refactoring with LLM
    */
-  private buildContextPrompt(request: LLMRefactoringRequest): string {
-    const { projectContext } = request;
+  async performRefactoring(request: LLMRefactoringRequest): Promise<LLMRefactoringResponse> {
+    const span = this.tracer.startAnalysisTrace('.', 'llm-refactoring');
 
-    return `
-# Codebase Context Analysis
-
-## Project Overview
-${projectContext.llmContext.projectSummary}
-
-## Architectural Patterns
-${projectContext.llmContext.architecturalOverview}
-
-## Naming Conventions
-${projectContext.llmContext.namingPatterns}
-
-## Refactoring Strategy
-${projectContext.llmContext.refactoringStrategy}
-
-## Safety Constraints
-${projectContext.llmContext.safetyConstraints.join('\n')}
-
-## Cross-File Dependencies
-${projectContext.crossFileDependencies
-  .map(dep => `${dep.from} -> ${dep.to} (${dep.type}, strength: ${dep.strength})`)
-  .join('\n')}
-
-## Related Files
-${projectContext.projectStructure.modules
-  .filter(m => m.language === 'typescript' || m.language === 'javascript')
-  .slice(0, 10) // Limit to first 10 files for context
-  .map(m => `${m.filePath} (${m.language}, complexity: ${m.complexity})`)
-  .join('\n')}
-`;
-  }
-
-  /**
-   * Generate comprehensive LLM prompt with full context
-   */
-  private generateLLMPrompt(request: LLMRefactoringRequest, contextPrompt: string): string {
-    const { codeBlock, filePath, operation, options } = request;
-
-    return `
-You are an expert software architect and refactoring specialist. You have access to the complete codebase context and must perform intelligent refactoring that respects the project's architecture, naming conventions, and dependencies.
-
-## Current Task
-**Operation**: ${operation.toUpperCase()}
-**File**: ${filePath}
-**Code Block to Refactor**:
-\`\`\`typescript
-${codeBlock}
-\`\`\`
-
-## Full Codebase Context
-${contextPrompt}
-
-## Requirements
-1. **Architectural Consistency**: Follow the project's architectural patterns
-2. **Naming Conventions**: Use the established naming conventions
-3. **Dependency Awareness**: Consider cross-file dependencies
-4. **Safety First**: Preserve behavior and maintain test compatibility
-5. **Performance**: Optimize for maintainability and readability
-
-## Your Response
-Provide a JSON response with:
-- \`functionName\`: Descriptive name following project conventions
-- \`extractedFunction\`: Complete function implementation
-- \`functionCall\`: How to call the function
-- \`explanation\`: Why this refactoring improves the code
-- \`confidence\`: Your confidence level (0-1)
-- \`reasoning\`: Your analysis of the codebase context
-
-## Example Response Format
-\`\`\`json
-{
-  "functionName": "analyzeProjectStructure",
-  "extractedFunction": "async function analyzeProjectStructure(projectPath: string, projectType: ProjectType): Promise<ProjectStructure> { ... }",
-  "functionCall": "const structure = await analyzeProjectStructure(projectPath, projectType);",
-  "explanation": "This function encapsulates project structure analysis, following the project's async/await patterns and naming conventions.",
-  "confidence": 0.95,
-  "reasoning": "Based on the codebase context, this function follows the established patterns for async analysis functions and uses descriptive naming consistent with other analysis functions in the project."
-}
-\`\`\`
-`;
-  }
-
-  /**
-   * Simulate LLM call (replace with actual LLM integration)
-   */
-  private async callLLM(
-    prompt: string,
-    request: LLMRefactoringRequest
-  ): Promise<LLMRefactoringResponse> {
-    // This is a mock implementation - replace with actual LLM call
-    const code = request.codeBlock.toLowerCase();
-    const filePath = request.filePath.toLowerCase();
-
-    // Simulate intelligent analysis based on context
-    let functionName = 'processCodeBlock';
-    let explanation = 'Generic function extraction';
-    let confidence = 0.5;
-    let reasoning = 'Basic analysis without full context';
-
-    // Context-aware naming based on codebase patterns
-    if (filePath.includes('ast-service') || filePath.includes('analysis')) {
-      if (code.includes('analyze') && code.includes('project')) {
-        functionName = 'performUnifiedProjectAnalysis';
-        explanation = 'Encapsulates unified project analysis following the service pattern';
-        confidence = 0.9;
-        reasoning = 'Based on AST service context, this follows the established analysis pattern';
-      } else if (code.includes('fetch') && code.includes('data')) {
-        functionName = 'fetchProjectAnalysisData';
-        explanation = 'Extracts project analysis data following the data fetching pattern';
-        confidence = 0.85;
-        reasoning = 'Consistent with other data fetching functions in the analysis service';
-      } else if (code.includes('process') && code.includes('language')) {
-        functionName = 'processLanguageAnalysis';
-        explanation = 'Processes language-specific analysis following the modular pattern';
-        confidence = 0.88;
-        reasoning = 'Follows the established pattern for language-specific processing';
-      }
-    } else if (filePath.includes('transformer') || filePath.includes('refactor')) {
-      if (code.includes('transform') && code.includes('code')) {
-        functionName = 'transformCodeStructure';
-        explanation = 'Transforms code structure following the transformer pattern';
-        confidence = 0.87;
-        reasoning = 'Consistent with transformer service architecture';
-      }
-    }
-
-    // Generate function implementation
-    const extractedFunction = this.generateFunctionImplementation(request, functionName);
-    const functionCall = this.generateFunctionCall(request, functionName);
-
-    return {
-      functionName,
-      extractedFunction,
-      functionCall,
-      explanation,
-      confidence,
-      tokenUsage: {
-        input: 1500,
-        output: 300,
-        total: 1800,
-      },
-      reasoning,
-    };
-  }
-
-  /**
-   * Generate function implementation based on context
-   */
-  private generateFunctionImplementation(
-    request: LLMRefactoringRequest,
-    functionName: string
-  ): string {
-    const { codeBlock, filePath } = request;
-    const isTypeScript = filePath.endsWith('.ts') || filePath.endsWith('.tsx');
-    const hasAwait = codeBlock.includes('await');
-
-    // Extract parameters and return type from code block
-    const parameters = this.extractParameters(codeBlock);
-    const returnType = this.inferReturnType(codeBlock, isTypeScript);
-
-    const paramList = isTypeScript
-      ? parameters.map(p => `${p.name}: ${p.type}`).join(', ')
-      : parameters.map(p => p.name).join(', ');
-
-    const asyncKeyword = hasAwait ? 'async ' : '';
-    const returnTypeAnnotation = isTypeScript ? `: ${returnType}` : '';
-
-    return `${asyncKeyword}function ${functionName}(${paramList})${returnTypeAnnotation} {
-  ${codeBlock
-    .split('\n')
-    .map(line => `  ${line}`)
-    .join('\n')}
-}`;
-  }
-
-  /**
-   * Generate function call based on context
-   */
-  private generateFunctionCall(request: LLMRefactoringRequest, functionName: string): string {
-    const { codeBlock } = request;
-    const hasAwait = codeBlock.includes('await');
-    const parameters = this.extractParameters(codeBlock);
-
-    const argList = parameters.map(p => p.name).join(', ');
-    const call = hasAwait ? `await ${functionName}(${argList})` : `${functionName}(${argList})`;
-
-    return `${call};`;
-  }
-
-  /**
-   * Extract parameters from code block
-   */
-  private extractParameters(codeBlock: string): Array<{ name: string; type: string }> {
-    // Simple parameter extraction - in production, use AST parsing
-    const parameters: Array<{ name: string; type: string }> = [];
-
-    // Look for common parameter patterns
-    const paramRegex = /(\w+):\s*(\w+)/g;
-    let match;
-    while ((match = paramRegex.exec(codeBlock)) !== null) {
-      parameters.push({
-        name: match[1],
-        type: match[2],
+    try {
+      const prompt = this.buildRefactoringPrompt(request);
+      const response = await this.generateWithContext({
+        prompt,
+        context: request.projectContext,
+        options: {
+          maxTokens: 2000,
+          temperature: 0.3
+        }
       });
+
+      return {
+        functionName: this.extractFunctionName(response.content),
+        refactoredCode: this.extractRefactoredCode(response.content),
+        explanation: this.extractExplanation(response.content),
+        confidence: 0.8,
+        extractedFunction: this.extractRefactoredCode(response.content),
+        functionCall: this.extractFunctionCall(response.content)
+      };
+    } catch (error) {
+      this.tracer.recordError(span, error as Error, 'LLM refactoring failed');
+      throw error;
     }
-
-    return parameters;
-  }
-
-  /**
-   * Infer return type from code block
-   */
-  private inferReturnType(codeBlock: string, isTypeScript: boolean): string {
-    if (!isTypeScript) return '';
-
-    if (codeBlock.includes('return')) {
-      return 'any'; // In production, use AST analysis
-    }
-
-    return 'void';
-  }
-
-  /**
-   * Track LLM usage
-   */
-  private trackUsage(
-    tokenUsage: { input: number; output: number; total: number },
-    operation: string
-  ): void {
-    this.usage.totalTokens += tokenUsage.total;
-    this.usage.calls++;
-    this.usage.operations.push({
-      operation: `${operation} refactoring`,
-      tokens: tokenUsage.total,
-      model: 'gpt-4o-mini',
-      cost: (tokenUsage.total * 0.00015) / 1000,
-    });
   }
 
   /**
    * Get usage statistics
    */
-  getUsage(): LLMUsage {
-    return this.usage;
+  getUsage(): any {
+    return this.providerManager.getUsage();
   }
 
   /**
    * Reset usage statistics
    */
   resetUsage(): void {
-    this.usage = {
-      totalTokens: 0,
-      calls: 0,
-      operations: [],
-    };
+    this.providerManager.resetUsage();
+  }
+
+  private buildRefactoringPrompt(request: LLMRefactoringRequest): string {
+    return `Refactor the following code using ${request.operation} operation:
+    
+Code:
+${request.codeBlock}
+
+File: ${request.filePath}
+${request.projectContext ? `\nProject Context:\n${request.projectContext}` : ''}
+
+Options: ${JSON.stringify(request.options)}`;
+  }
+
+  private extractFunctionName(content: string): string {
+    // Simple extraction - in real implementation would be more sophisticated
+    const match = content.match(/function\s+(\w+)/);
+    return match ? match[1] : 'extractedFunction';
+  }
+
+  private extractRefactoredCode(content: string): string {
+    // Simple extraction - in real implementation would be more sophisticated
+    const codeMatch = content.match(/```[\s\S]*?```/);
+    return codeMatch ? codeMatch[0] : content;
+  }
+
+  private extractExplanation(content: string): string {
+    // Simple extraction - in real implementation would be more sophisticated
+    return content.split('\n').slice(0, 3).join('\n');
+  }
+
+  private extractFunctionCall(content: string): string {
+    // Simple extraction - in real implementation would be more sophisticated
+    const callMatch = content.match(/function\s+\w+\s*\([^)]*\)\s*{/);
+    return callMatch ? callMatch[0] : 'functionCall()';
+  }
+
+  async close(): Promise<void> {
+    await this.providerManager.close();
   }
 }

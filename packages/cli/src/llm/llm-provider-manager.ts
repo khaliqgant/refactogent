@@ -1,393 +1,578 @@
 import { Logger } from '../utils/logger.js';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-
-export interface LLMProviderConfig {
-  name: string;
-  apiKey: string;
-  baseUrl?: string;
-  model: string;
-  maxTokens: number;
-  temperature: number;
-  enabled: boolean;
-}
-
-export interface LLMProviderResponse {
-  content: string;
-  tokensUsed: number;
-  processingTime: number;
-  model: string;
-  provider: string;
-}
-
-export interface LLMProviderManager {
-  getProvider(name: string): LLMProvider | null;
-  listProviders(): string[];
-  addProvider(config: LLMProviderConfig): void;
-  removeProvider(name: string): void;
-  callLLM(provider: string, prompt: string, options?: any): Promise<LLMProviderResponse>;
-}
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
+import { RefactoGentConfig } from '../config/refactogent-schema.js';
 
 export interface LLMProvider {
   name: string;
-  call(prompt: string, options?: any): Promise<LLMProviderResponse>;
-  validate(): Promise<boolean>;
+  version: string;
+  capabilities: string[];
+  maxTokens: number;
+  costPerToken: number;
+  latency: number;
+  reliability: number;
   getConfig(): LLMProviderConfig;
+  validate(): Promise<boolean>;
+}
+
+export class LLMProviderImpl implements LLMProvider {
+  name: string;
+  version: string;
+  capabilities: string[];
+  maxTokens: number;
+  costPerToken: number;
+  latency: number;
+  reliability: number;
+  private config: LLMProviderConfig;
+
+  constructor(name: string, config: LLMProviderConfig) {
+    this.name = name;
+    this.version = '1.0.0';
+    this.capabilities = ['text-generation', 'completion'];
+    this.maxTokens = 4000;
+    this.costPerToken = 0.00002;
+    this.latency = 200;
+    this.reliability = 0.95;
+    this.config = config;
+  }
+
+  getConfig(): LLMProviderConfig {
+    return this.config;
+  }
+
+  async validate(): Promise<boolean> {
+    // Simple validation - check if API key is provided
+    return !!this.config.apiKey;
+  }
+}
+
+export interface LLMRequest {
+  prompt: string;
+  context?: string;
+  systemMessage?: string;
+  maxTokens?: number;
+  temperature?: number;
+  topP?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
+  stop?: string[];
+  stream?: boolean;
+}
+
+export interface LLMResponse {
+  content: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  metadata: {
+    provider: string;
+    model: string;
+    latency: number;
+    cost: number;
+    finishReason: string;
+  };
+  tokensUsed?: number;
+  processingTime?: number;
+}
+
+export interface LLMProviderConfig {
+  apiKey: string;
+  baseUrl?: string;
+  model?: string;
+  timeout?: number;
+  retries?: number;
+  fallback?: string;
+  maxTokens?: number;
+  temperature?: number;
+}
+
+export interface LLMProviderManagerOptions {
+  defaultProvider?: string;
+  fallbackChain?: string[];
+  enableCaching?: boolean;
+  cacheTimeout?: number;
+  enableMetrics?: boolean;
+  enableTracing?: boolean;
 }
 
 /**
- * LLM Provider Manager
- * Handles API key management, provider configuration, and LLM calls
- * Supports OpenAI, Anthropic, and local LLM providers
+ * Manages multiple LLM providers with fallback and load balancing
  */
 export class LLMProviderManager {
   private logger: Logger;
-  private providers: Map<string, LLMProvider>;
-  private configPath: string;
+  private metrics: RefactoGentMetrics;
+  private tracer: RefactoGentTracer;
+  private config: RefactoGentConfig;
+  private providers: Map<string, LLMProvider> = new Map();
+  private providerConfigs: Map<string, LLMProviderConfig> = new Map();
+  private options: LLMProviderManagerOptions;
+  private cache: Map<string, LLMResponse> = new Map();
 
-  constructor(logger: Logger) {
+  constructor(
+    logger: Logger,
+    metrics: RefactoGentMetrics,
+    tracer: RefactoGentTracer,
+    config: RefactoGentConfig,
+    options: LLMProviderManagerOptions = {}
+  ) {
     this.logger = logger;
-    this.providers = new Map();
-    this.configPath = this.getConfigPath();
-    this.loadProviders();
+    this.metrics = metrics;
+    this.tracer = tracer;
+    this.config = config;
+    this.options = {
+      defaultProvider: 'openai',
+      fallbackChain: ['openai', 'anthropic', 'cohere'],
+      enableCaching: true,
+      cacheTimeout: 300000, // 5 minutes
+      enableMetrics: true,
+      enableTracing: true,
+      ...options
+    };
   }
 
   /**
-   * Get provider configuration path
-   * Uses standard locations: ~/.refactogent/llm-config.json or .refactor-agent.yaml
+   * Register an LLM provider
    */
-  private getConfigPath(): string {
-    const homeDir = os.homedir();
-    const refactogentDir = path.join(homeDir, '.refactogent');
-
-    // Ensure directory exists
-    if (!fs.existsSync(refactogentDir)) {
-      fs.mkdirSync(refactogentDir, { recursive: true });
-    }
-
-    return path.join(refactogentDir, 'llm-config.json');
+  async registerProvider(
+    name: string,
+    provider: LLMProvider,
+    providerConfig: LLMProviderConfig
+  ): Promise<void> {
+    this.logger.info('Registering LLM provider', { name, capabilities: provider.capabilities });
+    
+    this.providers.set(name, provider);
+    this.providerConfigs.set(name, providerConfig);
+    
+    this.metrics.recordLLM(0, 0, 0, 0, true); // Provider registration
   }
 
   /**
-   * Load providers from configuration
+   * Register a provider with config only
    */
-  private loadProviders(): void {
-    this.logger.info('Loading LLM providers from configuration');
-
-    try {
-      // Try to load from dedicated LLM config file
-      if (fs.existsSync(this.configPath)) {
-        const config = JSON.parse(fs.readFileSync(this.configPath, 'utf-8'));
-        this.loadProvidersFromConfig(config);
-        return;
-      }
-
-      // Try to load from .refactor-agent.yaml
-      const yamlPath = '.refactor-agent.yaml';
-      if (fs.existsSync(yamlPath)) {
-        const yamlConfig = this.loadFromYaml(yamlPath);
-        if (yamlConfig.llm?.providers) {
-          this.loadProvidersFromConfig(yamlConfig.llm.providers);
-          return;
-        }
-      }
-
-      // Load from environment variables as fallback
-      this.loadProvidersFromEnv();
-    } catch (error) {
-      this.logger.warn('Failed to load LLM providers from configuration', { error });
-      this.loadProvidersFromEnv();
-    }
+  async registerProviderConfig(
+    name: string,
+    config: LLMProviderConfig
+  ): Promise<void> {
+    const provider = new LLMProviderImpl(name, config);
+    this.providers.set(name, provider);
+    this.providerConfigs.set(name, config);
+    
+    this.metrics.recordLLM(0, 0, 0, 0, true); // Provider registration
   }
 
   /**
-   * Load providers from configuration object
+   * Initialize provider manager
    */
-  private loadProvidersFromConfig(config: any): void {
-    if (Array.isArray(config)) {
-      config.forEach(providerConfig => {
-        this.addProvider(providerConfig);
-      });
-    } else if (config.providers && Array.isArray(config.providers)) {
-      config.providers.forEach((providerConfig: any) => {
-        this.addProvider(providerConfig);
-      });
-    }
+  async initialize(): Promise<void> {
+    this.logger.info('Initializing LLM provider manager');
+    // Initialize default providers if needed
   }
 
   /**
-   * Load providers from environment variables
+   * Get available providers
    */
-  private loadProvidersFromEnv(): void {
-    this.logger.info('Loading LLM providers from environment variables');
-
-    // OpenAI
-    if (process.env.OPENAI_API_KEY) {
-      this.addProvider({
-        name: 'openai',
-        apiKey: process.env.OPENAI_API_KEY,
-        baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-        model: process.env.OPENAI_MODEL || 'gpt-4',
-        maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '4000'),
-        temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.1'),
-        enabled: true,
-      });
-    }
-
-    // Anthropic Claude
-    if (process.env.ANTHROPIC_API_KEY) {
-      this.addProvider({
-        name: 'anthropic',
-        apiKey: process.env.ANTHROPIC_API_KEY,
-        baseUrl: process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
-        model: process.env.ANTHROPIC_MODEL || 'claude-3-sonnet-20240229',
-        maxTokens: parseInt(process.env.ANTHROPIC_MAX_TOKENS || '4000'),
-        temperature: parseFloat(process.env.ANTHROPIC_TEMPERATURE || '0.1'),
-        enabled: true,
-      });
-    }
-
-    // Local LLM (Ollama)
-    if (process.env.OLLAMA_BASE_URL) {
-      this.addProvider({
-        name: 'ollama',
-        apiKey: '', // No API key needed for local
-        baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-        model: process.env.OLLAMA_MODEL || 'llama2',
-        maxTokens: parseInt(process.env.OLLAMA_MAX_TOKENS || '4000'),
-        temperature: parseFloat(process.env.OLLAMA_TEMPERATURE || '0.1'),
-        enabled: true,
-      });
-    }
+  getProviders(): LLMProvider[] {
+    return Array.from(this.providers.values());
   }
 
   /**
-   * Load configuration from YAML file
+   * List providers (alias for getProviders)
    */
-  private loadFromYaml(filePath: string): any {
-    try {
-      const yaml = require('js-yaml');
-      const content = fs.readFileSync(filePath, 'utf-8');
-      return yaml.load(content);
-    } catch (error) {
-      this.logger.warn('Failed to load YAML configuration', { filePath, error });
-      return {};
-    }
+  listProviders(): LLMProvider[] {
+    return this.getProviders();
   }
 
   /**
-   * Add a new LLM provider
+   * Add provider
    */
-  addProvider(config: LLMProviderConfig): void {
-    this.logger.info('Adding LLM provider', { name: config.name, model: config.model });
-
-    const provider = this.createProvider(config);
-    this.providers.set(config.name, provider);
-
-    // Save configuration
-    this.saveProviders();
-  }
-
-  /**
-   * Create provider instance based on configuration
-   */
-  private createProvider(config: LLMProviderConfig): LLMProvider {
-    switch (config.name.toLowerCase()) {
-      case 'openai':
-        return new OpenAIProvider(config, this.logger);
-      case 'anthropic':
-        return new AnthropicProvider(config, this.logger);
-      case 'ollama':
-        return new OllamaProvider(config, this.logger);
-      default:
-        throw new Error(`Unsupported LLM provider: ${config.name}`);
-    }
-  }
-
-  /**
-   * Get provider by name
-   */
-  getProvider(name: string): LLMProvider | null {
-    return this.providers.get(name) || null;
-  }
-
-  /**
-   * List all available providers
-   */
-  listProviders(): string[] {
-    return Array.from(this.providers.keys());
+  addProvider(provider: LLMProvider): void {
+    this.providers.set(provider.name, provider);
+    this.logger.info('Added LLM provider', { name: provider.name });
   }
 
   /**
    * Remove provider
    */
-  removeProvider(name: string): void {
-    this.logger.info('Removing LLM provider', { name });
-    this.providers.delete(name);
-    this.saveProviders();
+  removeProvider(name: string): boolean {
+    const removed = this.providers.delete(name);
+    if (removed) {
+      this.logger.info('Removed LLM provider', { name });
+    }
+    return removed;
   }
 
   /**
-   * Call LLM with specified provider
+   * Call LLM with specific provider
    */
-  async callLLM(provider: string, prompt: string, options?: any): Promise<LLMProviderResponse> {
-    const llmProvider = this.getProvider(provider);
-    if (!llmProvider) {
-      throw new Error(`LLM provider not found: ${provider}`);
+  async callLLM(providerName: string, request: LLMRequest): Promise<LLMResponse> {
+    const provider = this.getProvider(providerName);
+    if (!provider) {
+      throw new Error(`Provider ${providerName} not found`);
     }
+    
+    // This would be implemented by the actual provider
+    throw new Error('callLLM not implemented');
+  }
 
-    this.logger.info('Calling LLM', { provider, promptLength: prompt.length });
+
+  /**
+   * Get default provider
+   */
+  private getDefaultProvider(): LLMProvider | undefined {
+    return this.providers.values().next().value;
+  }
+
+  /**
+   * Get usage statistics
+   */
+  getUsage(): any {
+    return {
+      totalCalls: 0,
+      totalTokens: 0,
+      totalCost: 0
+    };
+  }
+
+  /**
+   * Reset usage statistics
+   */
+  resetUsage(): void {
+    // Reset usage tracking
+  }
+
+
+  /**
+   * Get provider by name
+   */
+  getProvider(name: string): LLMProvider | undefined {
+    return this.providers.get(name);
+  }
+
+  /**
+   * Check if provider is available
+   */
+  isProviderAvailable(name: string): boolean {
+    const provider = this.providers.get(name);
+    const providerConfig = this.providerConfigs.get(name);
+    return !!(provider && providerConfig && providerConfig.apiKey);
+  }
+
+  /**
+   * Generate text using the best available provider
+   */
+  async generateText(
+    request: LLMRequest,
+    preferredProvider?: string
+  ): Promise<LLMResponse> {
+    const span = this.tracer.startAnalysisTrace('.', 'llm-generation');
+    const startTime = Date.now();
 
     try {
-      const response = await llmProvider.call(prompt, options);
-      this.logger.info('LLM call completed', {
-        provider,
-        tokensUsed: response.tokensUsed,
-        processingTime: response.processingTime,
+      // Check cache first
+      if (this.options.enableCaching) {
+        const cacheKey = this.generateCacheKey(request);
+        const cached = this.cache.get(cacheKey);
+        if (cached && this.isCacheValid(cached)) {
+          this.logger.debug('Using cached LLM response', { cacheKey });
+          return cached;
+        }
+      }
+
+      // Select provider
+      const provider = await this.selectProvider(preferredProvider);
+      if (!provider) {
+        throw new Error('No available LLM providers');
+      }
+
+      this.logger.info('Generating text with LLM', {
+        provider: provider.name,
+        promptLength: request.prompt.length,
+        maxTokens: request.maxTokens
       });
+
+      // Generate text
+      const response = await this.callProvider(provider.name, request);
+      
+      // Cache response
+      if (this.options.enableCaching) {
+        const cacheKey = this.generateCacheKey(request);
+        this.cache.set(cacheKey, response);
+      }
+
+      // Record metrics
+      if (this.options.enableMetrics) {
+        this.metrics.recordLLM(
+          1, // calls
+          response.usage.totalTokens,
+          response.metadata.cost,
+          response.metadata.latency,
+          true
+        );
+      }
+
+      this.tracer.recordSuccess(
+        span,
+        `Generated text: ${response.usage.totalTokens} tokens, ${response.metadata.latency}ms`
+      );
 
       return response;
     } catch (error) {
-      this.logger.error('LLM call failed', { provider, error });
+      this.tracer.recordError(span, error as Error, 'LLM generation failed');
+      
+      // Try fallback providers
+      if (this.options.fallbackChain && this.options.fallbackChain.length > 0) {
+        return await this.tryFallbackProviders(request);
+      }
+      
       throw error;
     }
   }
 
   /**
-   * Save providers to configuration file
+   * Generate text with streaming
    */
-  private saveProviders(): void {
-    try {
-      const config = {
-        providers: Array.from(this.providers.values()).map(provider => provider.getConfig()),
-        lastUpdated: new Date().toISOString(),
-      };
+  async generateTextStream(
+    request: LLMRequest,
+    onChunk: (chunk: string) => void,
+    preferredProvider?: string
+  ): Promise<LLMResponse> {
+    const span = this.tracer.startAnalysisTrace('.', 'llm-streaming');
+    const startTime = Date.now();
 
-      fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
-      this.logger.info('LLM providers configuration saved', { path: this.configPath });
+    try {
+      const provider = await this.selectProvider(preferredProvider);
+      if (!provider) {
+        throw new Error('No available LLM providers');
+      }
+
+      this.logger.info('Generating streaming text with LLM', {
+        provider: provider.name,
+        promptLength: request.prompt.length
+      });
+
+      const response = await this.callProviderStream(provider.name, request, onChunk);
+
+      this.tracer.recordSuccess(
+        span,
+        `Streamed text: ${response.usage.totalTokens} tokens`
+      );
+
+      return response;
     } catch (error) {
-      this.logger.error('Failed to save LLM providers configuration', { error });
+      this.tracer.recordError(span, error as Error, 'LLM streaming failed');
+      throw error;
     }
   }
-}
 
-/**
- * OpenAI Provider Implementation
- */
-class OpenAIProvider implements LLMProvider {
-  public name: string;
-  private config: LLMProviderConfig;
-  private logger: Logger;
+  /**
+   * Select the best available provider
+   */
+  private async selectProvider(preferredProvider?: string): Promise<LLMProvider | null> {
+    // Try preferred provider first
+    if (preferredProvider && this.isProviderAvailable(preferredProvider)) {
+      return this.providers.get(preferredProvider)!;
+    }
 
-  constructor(config: LLMProviderConfig, logger: Logger) {
-    this.name = config.name;
-    this.config = config;
-    this.logger = logger;
+    // Try default provider
+    if (this.options.defaultProvider && this.isProviderAvailable(this.options.defaultProvider)) {
+      return this.providers.get(this.options.defaultProvider)!;
+    }
+
+    // Try fallback chain
+    if (this.options.fallbackChain) {
+      for (const providerName of this.options.fallbackChain) {
+        if (this.isProviderAvailable(providerName)) {
+          return this.providers.get(providerName)!;
+        }
+      }
+    }
+
+    // Try any available provider
+    for (const [name, provider] of this.providers) {
+      if (this.isProviderAvailable(name)) {
+        return provider;
+      }
+    }
+
+    return null;
   }
 
-  async call(prompt: string, options?: any): Promise<LLMProviderResponse> {
+  /**
+   * Call a specific provider
+   */
+  private async callProvider(providerName: string, request: LLMRequest): Promise<LLMResponse> {
+    const provider = this.providers.get(providerName);
+    const providerConfig = this.providerConfigs.get(providerName);
+    
+    if (!provider || !providerConfig) {
+      throw new Error(`Provider ${providerName} not found`);
+    }
+
+    // Simulate provider call (in real implementation, this would call actual APIs)
     const startTime = Date.now();
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
+    
+    const latency = Date.now() - startTime;
+    const promptTokens = Math.ceil(request.prompt.length / 4); // Rough estimation
+    const completionTokens = Math.ceil((request.maxTokens || 1000) * 0.8);
+    const totalTokens = promptTokens + completionTokens;
+    const cost = totalTokens * provider.costPerToken;
 
-    // This would integrate with actual OpenAI API
-    // For now, return mock response
-    const mockResponse = {
-      content: `OpenAI response for: ${prompt.substring(0, 100)}...`,
-      tokensUsed: Math.floor(Math.random() * 1000) + 500,
-      processingTime: Date.now() - startTime,
-      model: this.config.model,
-      provider: this.config.name,
+    return {
+      content: `Generated response from ${providerName}: ${request.prompt.substring(0, 100)}...`,
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens
+      },
+      metadata: {
+        provider: providerName,
+        model: providerConfig.model || 'default',
+        latency,
+        cost,
+        finishReason: 'stop'
+      }
     };
-
-    return mockResponse;
   }
 
-  async validate(): Promise<boolean> {
-    // This would validate the API key with OpenAI
-    return this.config.apiKey.length > 0;
-  }
+  /**
+   * Call a specific provider with streaming
+   */
+  private async callProviderStream(
+    providerName: string,
+    request: LLMRequest,
+    onChunk: (chunk: string) => void
+  ): Promise<LLMResponse> {
+    const provider = this.providers.get(providerName);
+    const providerConfig = this.providerConfigs.get(providerName);
+    
+    if (!provider || !providerConfig) {
+      throw new Error(`Provider ${providerName} not found`);
+    }
 
-  getConfig(): LLMProviderConfig {
-    return { ...this.config };
-  }
-}
-
-/**
- * Anthropic Claude Provider Implementation
- */
-class AnthropicProvider implements LLMProvider {
-  public name: string;
-  private config: LLMProviderConfig;
-  private logger: Logger;
-
-  constructor(config: LLMProviderConfig, logger: Logger) {
-    this.name = config.name;
-    this.config = config;
-    this.logger = logger;
-  }
-
-  async call(prompt: string, options?: any): Promise<LLMProviderResponse> {
     const startTime = Date.now();
+    const content = `Generated streaming response from ${providerName}: ${request.prompt.substring(0, 100)}...`;
+    
+    // Simulate streaming
+    const words = content.split(' ');
+    for (let i = 0; i < words.length; i++) {
+      onChunk(words[i] + ' ');
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
 
-    // This would integrate with actual Anthropic API
-    // For now, return mock response
-    const mockResponse = {
-      content: `Anthropic Claude response for: ${prompt.substring(0, 100)}...`,
-      tokensUsed: Math.floor(Math.random() * 1000) + 500,
-      processingTime: Date.now() - startTime,
-      model: this.config.model,
-      provider: this.config.name,
+    const latency = Date.now() - startTime;
+    const promptTokens = Math.ceil(request.prompt.length / 4);
+    const completionTokens = Math.ceil(content.length / 4);
+    const totalTokens = promptTokens + completionTokens;
+    const cost = totalTokens * provider.costPerToken;
+
+    return {
+      content,
+      usage: {
+        promptTokens,
+        completionTokens,
+        totalTokens
+      },
+      metadata: {
+        provider: providerName,
+        model: providerConfig.model || 'default',
+        latency,
+        cost,
+        finishReason: 'stop'
+      }
     };
-
-    return mockResponse;
   }
 
-  async validate(): Promise<boolean> {
-    // This would validate the API key with Anthropic
-    return this.config.apiKey.length > 0;
+  /**
+   * Try fallback providers
+   */
+  private async tryFallbackProviders(request: LLMRequest): Promise<LLMResponse> {
+    if (!this.options.fallbackChain) {
+      throw new Error('No fallback providers available');
+    }
+
+    for (const providerName of this.options.fallbackChain) {
+      if (this.isProviderAvailable(providerName)) {
+        try {
+          this.logger.info('Trying fallback provider', { provider: providerName });
+          return await this.callProvider(providerName, request);
+        } catch (error) {
+          this.logger.warn('Fallback provider failed', {
+            provider: providerName,
+            error: error instanceof Error ? error.message : String(error)
+          });
+          continue;
+        }
+      }
+    }
+
+    throw new Error('All fallback providers failed');
   }
 
-  getConfig(): LLMProviderConfig {
-    return { ...this.config };
-  }
-}
-
-/**
- * Ollama Local LLM Provider Implementation
- */
-class OllamaProvider implements LLMProvider {
-  public name: string;
-  private config: LLMProviderConfig;
-  private logger: Logger;
-
-  constructor(config: LLMProviderConfig, logger: Logger) {
-    this.name = config.name;
-    this.config = config;
-    this.logger = logger;
+  /**
+   * Generate cache key for request
+   */
+  private generateCacheKey(request: LLMRequest): string {
+    const key = JSON.stringify({
+      prompt: request.prompt,
+      context: request.context,
+      systemMessage: request.systemMessage,
+      maxTokens: request.maxTokens,
+      temperature: request.temperature
+    });
+    return Buffer.from(key).toString('base64');
   }
 
-  async call(prompt: string, options?: any): Promise<LLMProviderResponse> {
-    const startTime = Date.now();
+  /**
+   * Check if cache entry is valid
+   */
+  private isCacheValid(response: LLMResponse): boolean {
+    const age = Date.now() - response.metadata.latency; // Using latency as timestamp proxy
+    return age < (this.options.cacheTimeout || 300000);
+  }
 
-    // This would integrate with actual Ollama API
-    // For now, return mock response
-    const mockResponse = {
-      content: `Ollama local LLM response for: ${prompt.substring(0, 100)}...`,
-      tokensUsed: Math.floor(Math.random() * 1000) + 500,
-      processingTime: Date.now() - startTime,
-      model: this.config.model,
-      provider: this.config.name,
+  /**
+   * Get provider statistics
+   */
+  async getProviderStats(): Promise<{
+    totalProviders: number;
+    availableProviders: number;
+    totalRequests: number;
+    averageLatency: number;
+    totalCost: number;
+    cacheHitRate: number;
+  }> {
+    const availableProviders = Array.from(this.providers.keys())
+      .filter(name => this.isProviderAvailable(name)).length;
+
+    return {
+      totalProviders: this.providers.size,
+      availableProviders,
+      totalRequests: 0, // Would be tracked in real implementation
+      averageLatency: 0,
+      totalCost: 0,
+      cacheHitRate: 0
     };
-
-    return mockResponse;
   }
 
-  async validate(): Promise<boolean> {
-    // This would validate connection to Ollama
-    return true; // Local provider is always available
+  /**
+   * Clear cache
+   */
+  clearCache(): void {
+    this.cache.clear();
+    this.logger.info('LLM cache cleared');
   }
 
-  getConfig(): LLMProviderConfig {
-    return { ...this.config };
+  /**
+   * Close the provider manager
+   */
+  async close(): Promise<void> {
+    this.logger.info('Closing LLM provider manager');
+    this.cache.clear();
+    // Cleanup resources if needed
   }
 }
