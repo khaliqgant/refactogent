@@ -159,7 +159,11 @@ async function executeRefactorSuggest(
   try {
     projectAST = await astService.analyzeProject(resolvedPath, projectType);
   } catch (error) {
-    logger.error('Failed to analyze project structure', { error });
+    if (options.format !== 'json') {
+      logger.error('Failed to analyze project structure', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
     throw new Error(
       `AST analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );

@@ -55,14 +55,33 @@ export class ASTService {
     projectPath: string,
     projectType: ProjectType
   ): Promise<UnifiedProjectAnalysis> {
-    const allSymbols: CodeSymbol[] = [];
-    const files: string[] = [];
-    const symbols: CodeSymbol[] = [];
-    const error: any = null;
+    const languages = this.detectLanguages(projectType);
     const astByLanguage = new Map<string, ProjectAST>();
-    const languages: string[] = [];
+    const allSymbols: CodeSymbol[] = [];
 
-    await performUnifiedProjectAnalysis(allSymbols, files, symbols, error);
+    // Analyze each detected language
+    for (const language of languages) {
+      try {
+        const analyzer = this.getAnalyzer(language, projectPath);
+        const ast = await analyzer.analyzeProject();
+        astByLanguage.set(language, ast);
+
+        // Extract symbols from all modules
+        for (const module of ast.modules) {
+          const symbols = await analyzer.extractSymbols(module.filePath);
+          allSymbols.push(...symbols);
+        }
+
+        this.logger.info(`Completed ${language} analysis`, {
+          files: ast.modules.length,
+          symbols: allSymbols.length,
+        });
+      } catch (error) {
+        this.logger.error(`Failed to analyze ${language}`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
 
     // Build cross-language dependency graph
     const crossLanguageDependencies = this.buildCrossLanguageDependencies(astByLanguage);
