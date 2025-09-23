@@ -96,7 +96,7 @@ export class APISurfaceDetector {
     const publicSymbols: CodeSymbol[] = [];
     const httpRoutes: any[] = [];
     const cliCommands: any[] = [];
-    
+
     const exportedFunctions: CodeSymbol[] = [];
     const exportedClasses: CodeSymbol[] = [];
 
@@ -502,6 +502,6 @@ function processCodeBlock(
     endpoints: endpoints.length,
     publicSymbols: publicSymbols.length,
     httpRoutes: httpRoutes.length,
-    cliCommands: cliCommands.length
+    cliCommands: cliCommands.length,
   });
 }
