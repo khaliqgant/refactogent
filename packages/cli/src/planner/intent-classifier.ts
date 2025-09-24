@@ -101,10 +101,112 @@ export class IntentClassifier {
     options: IntentClassifierOptions = {}
   ): Promise<IntentClassification> {
     const normalizedInput = input.toLowerCase().trim();
-    const fullContext = context ? `${context} ${input}` : input;
 
-    // Intent patterns and keywords
-    const intentPatterns = this.getIntentPatterns();
+    // Use specific keyword matching instead of generic patterns
+    const keywordMap: Record<string, IntentType> = {
+      'refactor': 'refactor',
+      'restructure': 'refactor',
+      'improve': 'refactor',
+      'clean up': 'refactor',
+      'simplify': 'refactor',
+      'extract function': 'refactor',
+      'inline function': 'refactor',
+      'rename': 'refactor',
+      'move': 'refactor',
+      'split': 'refactor',
+      'merge': 'refactor',
+      'edit': 'edit',
+      'modify': 'edit',
+      'change': 'edit',
+      'update': 'edit',
+      'fix': 'edit',
+      'add code': 'edit',
+      'remove code': 'edit',
+      'delete code': 'edit',
+      'insert code': 'edit',
+      'replace code': 'edit',
+      'explain': 'explain',
+      'describe': 'explain',
+      'what does': 'explain',
+      'how does': 'explain',
+      'why': 'explain',
+      'clarify': 'explain',
+      'understand': 'explain',
+      'break down': 'explain',
+      'generate tests': 'test-gen',
+      'create unit tests': 'test-gen',
+      'write test cases': 'test-gen',
+      'add test coverage': 'test-gen',
+      'test this function': 'test-gen',
+      'write test': 'test-gen',
+      'create test': 'test-gen',
+      'add test': 'test-gen',
+      'unit test for': 'test-gen',
+      'integration test': 'test-gen',
+      'test case for': 'test-gen',
+      'testing this': 'test-gen',
+      'test coverage': 'test-gen',
+      'test suite': 'test-gen',
+      'document this code': 'doc-gen',
+      'add documentation': 'doc-gen',
+      'write comments': 'doc-gen',
+      'create API docs': 'doc-gen',
+      'generate README': 'doc-gen',
+      'document this': 'doc-gen',
+      'write docs': 'doc-gen',
+      'comment this': 'doc-gen',
+      'api documentation': 'doc-gen',
+      'readme for': 'doc-gen',
+      'manual for': 'doc-gen',
+      'guide for': 'doc-gen',
+      'document': 'doc-gen',
+      'migrate': 'migration',
+      'upgrade': 'migration',
+      'convert': 'migration',
+      'port': 'migration',
+      'transform': 'migration',
+      'translate': 'migration',
+      'legacy': 'migration',
+      'deprecated': 'migration',
+      'version': 'migration',
+      'breaking change': 'migration',
+      'optimize performance': 'optimize',
+      'improve speed': 'optimize',
+      'reduce memory usage': 'optimize',
+      'fix bottleneck': 'optimize',
+      'make it faster': 'optimize',
+      'make faster': 'optimize',
+      'speed up': 'optimize',
+      'improve performance': 'optimize',
+      'memory optimization': 'optimize',
+      'cpu optimization': 'optimize',
+      'bottleneck': 'optimize',
+      'profiling': 'optimize',
+      'debug': 'debug',
+      'bug': 'debug',
+      'error': 'debug',
+      'issue': 'debug',
+      'problem': 'debug',
+      'troubleshoot': 'debug',
+      'investigate': 'debug',
+      'trace': 'debug',
+      'log': 'debug',
+      'exception': 'debug',
+      'crash': 'debug',
+      'analyze the code': 'analyze',
+      'get metrics': 'analyze',
+      'generate report': 'analyze',
+      'check complexity': 'analyze',
+      'review architecture': 'analyze',
+      'analyze code': 'analyze',
+      'code analysis': 'analyze',
+      'review code': 'analyze',
+      'audit code': 'analyze',
+      'inspect code': 'analyze',
+      'examine code': 'analyze',
+      'metrics for': 'analyze',
+      'statistics for': 'analyze',
+    };
 
     let bestMatch: { intent: IntentType; confidence: number; reasoning: string } = {
       intent: 'unknown',
@@ -112,11 +214,33 @@ export class IntentClassifier {
       reasoning: 'No clear intent pattern matched',
     };
 
-    // Check each intent pattern
-    for (const [intent, patterns] of intentPatterns) {
-      const match = this.matchPatterns(normalizedInput, fullContext, patterns);
-      if (match.confidence > bestMatch.confidence) {
-        bestMatch = { intent, ...match };
+    // Check for exact phrase matches first
+    for (const [phrase, intent] of Object.entries(keywordMap)) {
+      if (normalizedInput.includes(phrase)) {
+        bestMatch = {
+          intent,
+          confidence: 1.0,
+          reasoning: `Matched exact phrase: ${phrase}`
+        };
+        break;
+      }
+    }
+
+    // If no exact match, check for word matches
+    if (bestMatch.confidence === 0) {
+      const words = normalizedInput.split(/\s+/);
+      for (const word of words) {
+        for (const [phrase, intent] of Object.entries(keywordMap)) {
+          if (phrase.includes(word) && word.length > 2) {
+            bestMatch = {
+              intent,
+              confidence: 0.8,
+              reasoning: `Matched word: ${word} in phrase: ${phrase}`
+            };
+            break;
+          }
+        }
+        if (bestMatch.confidence > 0) break;
       }
     }
 
@@ -161,22 +285,6 @@ export class IntentClassifier {
   private getIntentPatterns(): Map<IntentType, string[]> {
     return new Map([
       [
-        'refactor',
-        [
-          'refactor',
-          'restructure',
-          'improve',
-          'clean up',
-          'simplify',
-          'extract function',
-          'inline function',
-          'rename',
-          'move',
-          'split',
-          'merge',
-        ],
-      ],
-      [
         'edit',
         [
           'edit this file',
@@ -197,6 +305,27 @@ export class IntentClassifier {
         ],
       ],
       [
+        'refactor',
+        [
+          'refactor',
+          'restructure',
+          'improve',
+          'clean up',
+          'simplify',
+          'extract function',
+          'inline function',
+          'rename',
+          'move',
+          'split',
+          'merge',
+          'refactor this function',
+          'extract function from complex code',
+          'restructure the code',
+          'clean up the implementation',
+          'simplify this method',
+        ],
+      ],
+      [
         'explain',
         [
           'explain',
@@ -209,6 +338,11 @@ export class IntentClassifier {
           'clarify',
           'understand',
           'break down',
+          'explain this code',
+          'what does this function do',
+          'describe the implementation',
+          'how does this work',
+          'clarify the logic',
         ],
       ],
       [
@@ -333,18 +467,21 @@ export class IntentClassifier {
 
     for (const pattern of patterns) {
       const patternLower = pattern.toLowerCase();
-
-      // Check for exact word matches
-      if (inputLower.includes(patternLower) || contextLower.includes(patternLower)) {
-        confidence += 0.3;
+      
+      // Check for exact phrase matches (highest priority)
+      if (inputLower.includes(patternLower)) {
+        confidence += 1.0;
         matchedPatterns.push(pattern);
       }
-
-      // Check for partial matches
+      
+      // Check for word boundary matches
       const words = inputLower.split(/\s+/);
       for (const word of words) {
-        if (patternLower.includes(word) || word.includes(patternLower)) {
-          confidence += 0.1;
+        if (word === patternLower) {
+          confidence += 0.8;
+          matchedPatterns.push(pattern);
+        } else if (patternLower.includes(word) && word.length > 2) {
+          confidence += 0.5;
           matchedPatterns.push(pattern);
         }
       }
@@ -356,7 +493,7 @@ export class IntentClassifier {
         inputLower === pattern.toLowerCase() ||
         inputLower.startsWith(pattern.toLowerCase() + ' ')
       ) {
-        confidence += 0.4;
+        confidence += 0.7;
         break;
       }
     }
