@@ -104,34 +104,34 @@ export class IntentClassifier {
 
     // Use specific keyword matching instead of generic patterns
     const keywordMap: Record<string, IntentType> = {
-      'refactor': 'refactor',
-      'restructure': 'refactor',
-      'improve': 'refactor',
+      refactor: 'refactor',
+      restructure: 'refactor',
+      improve: 'refactor',
       'clean up': 'refactor',
-      'simplify': 'refactor',
+      simplify: 'refactor',
       'extract function': 'refactor',
       'inline function': 'refactor',
-      'rename': 'refactor',
-      'move': 'refactor',
-      'split': 'refactor',
-      'merge': 'refactor',
-      'edit': 'edit',
-      'modify': 'edit',
-      'change': 'edit',
-      'update': 'edit',
-      'fix': 'edit',
+      rename: 'refactor',
+      move: 'refactor',
+      split: 'refactor',
+      merge: 'refactor',
+      edit: 'edit',
+      modify: 'edit',
+      change: 'edit',
+      update: 'edit',
+      fix: 'edit',
       'add code': 'edit',
       'remove code': 'edit',
       'delete code': 'edit',
       'insert code': 'edit',
       'replace code': 'edit',
-      'explain': 'explain',
-      'describe': 'explain',
+      explain: 'explain',
+      describe: 'explain',
       'what does': 'explain',
       'how does': 'explain',
-      'why': 'explain',
-      'clarify': 'explain',
-      'understand': 'explain',
+      why: 'explain',
+      clarify: 'explain',
+      understand: 'explain',
       'break down': 'explain',
       'generate tests': 'test-gen',
       'create unit tests': 'test-gen',
@@ -159,16 +159,16 @@ export class IntentClassifier {
       'readme for': 'doc-gen',
       'manual for': 'doc-gen',
       'guide for': 'doc-gen',
-      'document': 'doc-gen',
-      'migrate': 'migration',
-      'upgrade': 'migration',
-      'convert': 'migration',
-      'port': 'migration',
-      'transform': 'migration',
-      'translate': 'migration',
-      'legacy': 'migration',
-      'deprecated': 'migration',
-      'version': 'migration',
+      document: 'doc-gen',
+      migrate: 'migration',
+      upgrade: 'migration',
+      convert: 'migration',
+      port: 'migration',
+      transform: 'migration',
+      translate: 'migration',
+      legacy: 'migration',
+      deprecated: 'migration',
+      version: 'migration',
       'breaking change': 'migration',
       'optimize performance': 'optimize',
       'improve speed': 'optimize',
@@ -180,19 +180,19 @@ export class IntentClassifier {
       'improve performance': 'optimize',
       'memory optimization': 'optimize',
       'cpu optimization': 'optimize',
-      'bottleneck': 'optimize',
-      'profiling': 'optimize',
-      'debug': 'debug',
-      'bug': 'debug',
-      'error': 'debug',
-      'issue': 'debug',
-      'problem': 'debug',
-      'troubleshoot': 'debug',
-      'investigate': 'debug',
-      'trace': 'debug',
-      'log': 'debug',
-      'exception': 'debug',
-      'crash': 'debug',
+      bottleneck: 'optimize',
+      profiling: 'optimize',
+      debug: 'debug',
+      bug: 'debug',
+      error: 'debug',
+      issue: 'debug',
+      problem: 'debug',
+      troubleshoot: 'debug',
+      investigate: 'debug',
+      trace: 'debug',
+      log: 'debug',
+      exception: 'debug',
+      crash: 'debug',
       'analyze the code': 'analyze',
       'get metrics': 'analyze',
       'generate report': 'analyze',
@@ -220,7 +220,7 @@ export class IntentClassifier {
         bestMatch = {
           intent,
           confidence: 1.0,
-          reasoning: `Matched exact phrase: ${phrase}`
+          reasoning: `Matched exact phrase: ${phrase}`,
         };
         break;
       }
@@ -235,7 +235,7 @@ export class IntentClassifier {
             bestMatch = {
               intent,
               confidence: 0.8,
-              reasoning: `Matched word: ${word} in phrase: ${phrase}`
+              reasoning: `Matched word: ${word} in phrase: ${phrase}`,
             };
             break;
           }
@@ -467,13 +467,13 @@ export class IntentClassifier {
 
     for (const pattern of patterns) {
       const patternLower = pattern.toLowerCase();
-      
+
       // Check for exact phrase matches (highest priority)
       if (inputLower.includes(patternLower)) {
         confidence += 1.0;
         matchedPatterns.push(pattern);
       }
-      
+
       // Check for word boundary matches
       const words = inputLower.split(/\s+/);
       for (const word of words) {
