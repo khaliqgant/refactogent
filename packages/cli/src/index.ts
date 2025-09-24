@@ -15,6 +15,9 @@ import { CodeGraphCommand } from './commands/code-graph.js';
 import { createRetrieveCommand } from './commands/retrieve.js';
 import { createPlannerCommand } from './commands/planner.js';
 import { createLLMAdvancedCommand } from './commands/llm-advanced.js';
+import { createTUICommand } from './commands/tui.js';
+import { createPlanCommand } from './commands/plan.js';
+import { createContextCommand } from './commands/context.js';
 import { createRefactorSuggestCommand } from './commands/refactor-suggest.js';
 import { createLLMRefactorCommand } from './commands/llm-refactor.js';
 import { createLLMConfigCommand } from './commands/llm-config.js';
@@ -525,6 +528,15 @@ program.addCommand(createPlannerCommand());
 
 // 8. LLM Advanced - Advanced LLM operations with multiple providers and safety gates
 program.addCommand(createLLMAdvancedCommand());
+
+// 9. TUI - Interactive terminal user interface
+program.addCommand(createTUICommand());
+
+// 10. Plan - Generate and preview refactoring plans
+program.addCommand(createPlanCommand());
+
+// 11. Context - Preview context sent to LLM
+program.addCommand(createContextCommand());
 
 // Phase 0: Stabilize & Instrument commands
 program

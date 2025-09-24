@@ -1,189 +1,137 @@
-import { BaseCommand } from './base.js';
-import { CommandResult, RefactoringMode } from '../types/index.js';
+import { Command } from 'commander';
+import { Logger } from '../utils/logger.js';
+import { RefactoGentMetrics } from '../observability/metrics.js';
+import { RefactoGentTracer } from '../observability/tracing.js';
+import { ConfigLoader } from '../config/config-loader.js';
+import { InteractiveFeatures, InteractiveOptions } from '../ux/interactive-features.js';
 
-interface PlanOptions {
-  mode: RefactoringMode;
+export interface PlanOptions {
+  query: string;
+  projectPath?: string;
+  dryRun?: boolean;
+  showSteps?: boolean;
+  showRisk?: boolean;
+  showDependencies?: boolean;
+  format?: 'text' | 'json' | 'yaml';
+  output?: string;
 }
 
-export class PlanCommand extends BaseCommand {
-  async execute(options: PlanOptions): Promise<CommandResult> {
-    this.validateContext();
+export function createPlanCommand(): Command {
+  const planCommand = new Command('plan')
+    .description('Generate and preview refactoring plan (dry-run)')
+    .requiredOption('-q, --query <query>', 'Query to generate plan for')
+    .option('--project-path <path>', 'Project path', process.cwd())
+    .option('--dry-run', 'Show plan without executing', true)
+    .option('--show-steps', 'Show detailed steps', true)
+    .option('--show-risk', 'Show risk assessment', true)
+    .option('--show-dependencies', 'Show step dependencies', true)
+    .option('-f, --format <format>', 'Output format (text, json, yaml)', 'text')
+    .option('-o, --output <file>', 'Output file path')
+    .action(async (options: PlanOptions) => {
+      const logger = new Logger();
+      const metrics = new RefactoGentMetrics(logger);
+      const tracer = new RefactoGentTracer(logger);
+      const configLoader = new ConfigLoader(logger);
 
-    this.logger.info('Generating refactoring plan', { mode: options.mode });
+      try {
+        // Load configuration
+        const config = await configLoader.loadConfig(options.projectPath || process.cwd());
 
-    // Validate mode is allowed
-    if (!this.context!.config.modesAllowed.includes(options.mode)) {
-      return this.failure(
-        `Refactoring mode '${options.mode}' is not allowed by project configuration`
-      );
-    }
+        // Initialize interactive features
+        const interactiveFeatures = new InteractiveFeatures(logger, metrics, tracer, config);
 
-    // Generate plan based on mode and project analysis
-    const plan = this.generateRefactoringPlan(options.mode);
-    const planPath = this.writeOutput('refactoring-plan.json', JSON.stringify(plan, null, 2));
+        // Generate plan preview
+        logger.info('Generating plan preview', {
+          query: options.query,
+          projectPath: options.projectPath,
+        });
 
-    // Generate human-readable summary
-    const summary = this.generatePlanSummary(plan);
-    const summaryPath = this.writeOutput('plan-summary.md', summary);
+        const interactiveOptions: InteractiveOptions = {
+          enableCitations: true,
+          enableHover: true,
+          enableReGround: true,
+          enablePlanPreview: true,
+          maxCitations: 10,
+          hoverDelay: 500,
+        };
 
-    this.logger.success(`Generated ${options.mode} refactoring plan`);
+        const plan = await interactiveFeatures.generatePlanPreview(
+          options.query,
+          options.projectPath || process.cwd(),
+          interactiveOptions
+        );
 
-    return this.success(
-      `Refactoring plan generated for mode: ${options.mode}`,
-      [planPath, summaryPath],
-      { mode: options.mode, operationCount: plan.operations.length }
-    );
-  }
+        // Format output based on format option
+        let output: string;
+        switch (options.format) {
+          case 'json':
+            output = JSON.stringify(plan, null, 2);
+            break;
+          case 'yaml':
+            const yaml = await import('js-yaml');
+            output = yaml.dump(plan);
+            break;
+          case 'text':
+          default:
+            output = interactiveFeatures.formatPlanPreview(plan);
+            break;
+        }
 
-  private generateRefactoringPlan(mode: RefactoringMode) {
-    const { projectInfo, config } = this.context!;
+        // Output to file or console
+        if (options.output) {
+          const fs = await import('fs/promises');
+          await fs.writeFile(options.output, output);
+          logger.info('Plan saved to file', { file: options.output });
+        } else {
+          console.log(output);
+        }
 
-    const plan = {
-      mode,
-      projectType: projectInfo.type,
-      timestamp: new Date().toISOString(),
-      configuration: {
-        maxPrLoc: config.maxPrLoc,
-        branchPrefix: config.branchPrefix,
-        protectedPaths: config.protectedPaths,
-      },
-      operations: this.generateOperationsForMode(mode),
-      safetyChecks: {
-        characterizationTests: config.gates.requireCharacterizationTests,
-        buildValidation: config.gates.requireGreenCi,
-        coverageValidation: true,
-        policyValidation: true,
-      },
-      estimatedImpact: {
-        filesAffected: 0, // Will be calculated during execution
-        linesChanged: 0, // Will be calculated during execution
-        riskLevel: this.calculateRiskLevel(mode),
-      },
-    };
+        // Show additional information if requested
+        if (options.showSteps) {
+          console.log('\n📝 Detailed Steps:');
+          console.log('='.repeat(50));
+          plan.steps.forEach((step, index) => {
+            console.log(`${index + 1}. ${step.name}`);
+            console.log(`   Description: ${step.description}`);
+            console.log(`   Type: ${step.type}`);
+            console.log(`   Estimated Time: ${step.estimatedTime} minutes`);
+            console.log(`   Risk Level: ${step.riskLevel}`);
+            if (step.dependencies.length > 0) {
+              console.log(`   Dependencies: ${step.dependencies.join(', ')}`);
+            }
+            if (step.rollbackPlan) {
+              console.log(`   Rollback Plan: ${step.rollbackPlan}`);
+            }
+            console.log();
+          });
+        }
 
-    return plan;
-  }
+        if (options.showRisk) {
+          console.log('\n⚠️ Risk Assessment:');
+          console.log('='.repeat(50));
+          console.log(`Overall Risk: ${plan.riskLevel.toUpperCase()}`);
+          console.log(`Rollback Points: ${plan.rollbackPoints.length}`);
+          console.log(`Dependencies: ${plan.dependencies.length}`);
+          console.log();
+        }
 
-  private generateOperationsForMode(mode: RefactoringMode) {
-    const { projectInfo } = this.context!;
+        if (options.showDependencies) {
+          console.log('\n🔗 Dependencies:');
+          console.log('='.repeat(50));
+          plan.dependencies.forEach((dep, index) => {
+            console.log(`${index + 1}. ${dep}`);
+          });
+          console.log();
+        }
 
-    switch (mode) {
-      case 'organize-only':
-        return [
-          {
-            type: 'file-organization',
-            description: 'Reorganize files and directories for better structure',
-            target: 'project-structure',
-            safety: 'low-risk',
-          },
-          {
-            type: 'import-cleanup',
-            description: 'Clean up and organize import statements',
-            target: 'import-statements',
-            safety: 'low-risk',
-          },
-        ];
+        logger.info('Plan preview completed successfully');
+      } catch (error) {
+        logger.error('Plan command failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        process.exit(1);
+      }
+    });
 
-      case 'name-hygiene':
-        return [
-          {
-            type: 'variable-naming',
-            description: 'Improve variable and function naming consistency',
-            target: 'identifiers',
-            safety: 'medium-risk',
-          },
-          {
-            type: 'constant-extraction',
-            description: 'Extract magic numbers and strings to named constants',
-            target: 'literals',
-            safety: 'low-risk',
-          },
-        ];
-
-      case 'tests-first':
-        return [
-          {
-            type: 'test-generation',
-            description: 'Generate missing unit tests',
-            target: 'untested-functions',
-            safety: 'no-risk',
-          },
-          {
-            type: 'test-improvement',
-            description: 'Improve existing test coverage and quality',
-            target: 'existing-tests',
-            safety: 'no-risk',
-          },
-        ];
-
-      case 'micro-simplify':
-        return [
-          {
-            type: 'conditional-simplification',
-            description: 'Simplify complex conditional expressions',
-            target: 'conditionals',
-            safety: 'medium-risk',
-          },
-          {
-            type: 'function-extraction',
-            description: 'Extract small, reusable functions',
-            target: 'code-blocks',
-            safety: 'medium-risk',
-          },
-        ];
-
-      default:
-        return [];
-    }
-  }
-
-  private calculateRiskLevel(mode: RefactoringMode): 'low' | 'medium' | 'high' {
-    switch (mode) {
-      case 'tests-first':
-        return 'low';
-      case 'organize-only':
-        return 'low';
-      case 'name-hygiene':
-        return 'medium';
-      case 'micro-simplify':
-        return 'medium';
-      default:
-        return 'medium';
-    }
-  }
-
-  private generatePlanSummary(plan: any): string {
-    return `# Refactoring Plan Summary
-
-## Overview
-- **Mode**: ${plan.mode}
-- **Project Type**: ${plan.projectType}
-- **Risk Level**: ${plan.estimatedImpact.riskLevel}
-- **Operations**: ${plan.operations.length}
-
-## Planned Operations
-${plan.operations
-  .map((op: any, index: number) => `${index + 1}. **${op.type}**: ${op.description} (${op.safety})`)
-  .join('\n')}
-
-## Safety Measures
-- ✅ Characterization tests: ${plan.safetyChecks.characterizationTests ? 'Required' : 'Optional'}
-- ✅ Build validation: ${plan.safetyChecks.buildValidation ? 'Required' : 'Optional'}
-- ✅ Coverage validation: ${plan.safetyChecks.coverageValidation ? 'Required' : 'Optional'}
-- ✅ Policy validation: ${plan.safetyChecks.policyValidation ? 'Required' : 'Optional'}
-
-## Configuration
-- **Max PR Size**: ${plan.configuration.maxPrLoc} lines
-- **Branch Prefix**: ${plan.configuration.branchPrefix}
-- **Protected Paths**: ${plan.configuration.protectedPaths.length} patterns
-
-## Next Steps
-1. Review this plan carefully
-2. Run \`refactogent apply\` to execute the plan
-3. Monitor safety checks during execution
-4. Review generated changes before committing
-
-Generated at: ${plan.timestamp}
-`;
-  }
+  return planCommand;
 }
