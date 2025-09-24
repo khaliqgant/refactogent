@@ -98,8 +98,8 @@ export function createTUICommand(): Command {
                   showCitations: options.showCitations,
                   showPlan: options.showPlan,
                   interactive: options.interactive,
-              width: parseInt(options.width?.toString() || '80'),
-              height: parseInt(options.height?.toString() || '24'),
+                  width: parseInt(options.width?.toString() || '80'),
+                  height: parseInt(options.height?.toString() || '24'),
                 }
               );
             }
