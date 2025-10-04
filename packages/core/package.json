@@ -10,6 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:integration": "jest tests/cli-integration.test.ts",
+    "test:performance": "jest tests/performance.test.ts",
+    "test:all": "npm run test && npm run test:integration && npm run test:performance",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
@@ -48,6 +51,7 @@
     "LICENSE"
   ],
   "dependencies": {
+    "glob": "^10.3.10",
     "js-yaml": "^4.1.0",
     "ts-morph": "^20.0.0"
   },
@@ -56,6 +60,7 @@
     "@types/jest": "^29.5.12",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.11.30",
+    "@types/glob": "^8.1.0",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",
     "eslint": "^8.57.0",
