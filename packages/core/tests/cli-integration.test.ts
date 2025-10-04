@@ -39,7 +39,7 @@ describe('CLI Integration Tests', () => {
         expect(output).toContain('🚀 RefactoGent: Complete AI-Powered Refactoring Workflow');
         expect(output).toContain('🔍 Starting codebase indexing...');
         expect(output).toContain('✅ Successfully indexed');
-        expect(output).toContain('📋 Sample refactorable files:');
+        expect(output).toContain('📁 Sample refactorable files:');
         done();
       });
     }, 30000);

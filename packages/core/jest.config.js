@@ -22,7 +22,7 @@ export default {
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   testTimeout: 30000,
-  maxWorkers: 1, // Run tests serially to avoid file system conflicts
+  maxWorkers: 1,
   clearMocks: true,
   restoreMocks: true,
   extensionsToTreatAsEsm: ['.ts'],
