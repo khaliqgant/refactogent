@@ -16,7 +16,6 @@ program
   .option('-o, --output <dir>', 'Output directory', '.refactogent/out')
   .option('-p, --project <path>', 'Project path', process.cwd());
 
-
 program
   .command('refactor')
   .description('Complete refactoring workflow: analyze + suggest + apply AI-powered changes')
@@ -49,19 +48,23 @@ program
       logger.debug('Indexer configuration', {
         rootPath: path,
         includeTests: options.includeTests || false,
-        verbose: globalOpts.verbose
+        verbose: globalOpts.verbose,
       });
 
       const indexer = new CodebaseIndexer({
         rootPath: path,
-        includeTests: options.includeTests || false
+        includeTests: options.includeTests || false,
       });
 
       const refactorableFiles: RefactorableFile[] = await indexer.indexCodebase();
       const stats = indexer.getIndexingStats(refactorableFiles);
 
       // Display success message
-      logger.log(OutputFormatter.success(`Successfully indexed ${stats.totalFiles} files with ${stats.totalSymbols} symbols`));
+      logger.log(
+        OutputFormatter.success(
+          `Successfully indexed ${stats.totalFiles} files with ${stats.totalSymbols} symbols`
+        )
+      );
 
       // Display statistics
       logger.log(OutputFormatter.stats(stats));
@@ -71,7 +74,6 @@ program
 
       // TODO: Step 2 - Abstract types from implementations
       // TODO: Step 3 - Fix unused variables and function arguments
-
     } catch (error) {
       // Display error message
       logger.log(OutputFormatter.error('Refactoring workflow failed'));
@@ -84,8 +86,6 @@ program
       process.exit(1);
     }
   });
-
-
 
 // Configure help
 program.configureHelp({

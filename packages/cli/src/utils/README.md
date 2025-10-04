@@ -1,41 +1,51 @@
 # CLI Utilities Architecture
 
-This directory contains the utility classes for the RefactoGent CLI, following a clean separation of concerns.
+This directory contains the utility classes for the RefactoGent CLI, following a
+clean separation of concerns.
 
 ## Architecture Overview
 
 ### Logger (`logger.ts`)
+
 **Purpose**: Simple, dumb logging utility that handles the mechanics of logging.
 
 **Responsibilities**:
+
 - Format log entries with timestamps and levels
 - Control verbose vs non-verbose output
 - Provide basic logging methods (debug, info, warn, error)
 - Simple `log()` method for direct output
 
 **What it does NOT do**:
+
 - Format pretty output
 - Handle business logic about what to log
 - Make decisions about when to show information
 
 ### OutputFormatter (`output-formatter.ts`)
+
 **Purpose**: Pure formatting utility that creates pretty output strings.
 
 **Responsibilities**:
+
 - Format headers, info, success, error messages
 - Create statistics displays
 - Format file lists and help text
 - Generate progress indicators
 
 **What it does NOT do**:
+
 - Actually output anything (just returns formatted strings)
 - Handle logging logic
 - Make decisions about what to display
 
 ### CLI (`index.ts`)
-**Purpose**: Orchestrates the application flow and makes decisions about what to log and when.
+
+**Purpose**: Orchestrates the application flow and makes decisions about what to
+log and when.
 
 **Responsibilities**:
+
 - Decide what information to show to the user
 - Choose when to use verbose vs regular logging
 - Coordinate between Logger and OutputFormatter
@@ -70,4 +80,5 @@ logger.log(formatter.stats(statistics));
 logger.log(formatter.fileList(files));
 ```
 
-This separation makes the code more maintainable and follows the principle that utilities should be simple and focused.
+This separation makes the code more maintainable and follows the principle that
+utilities should be simple and focused.

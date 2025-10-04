@@ -37,14 +37,14 @@ export class OutputFormatter {
     output += `   • Total symbols: ${stats.totalSymbols}\n`;
     output += `   • Test files: ${stats.testFiles}\n`;
     output += `   • Average complexity: ${stats.averageComplexity.toFixed(2)}\n`;
-    
+
     if (Object.keys(stats.languageBreakdown).length > 0) {
       output += `   • Languages:\n`;
       Object.entries(stats.languageBreakdown).forEach(([lang, count]) => {
         output += `     - ${lang}: ${count} files\n`;
       });
     }
-    
+
     return output;
   }
 
@@ -59,11 +59,11 @@ export class OutputFormatter {
       const complexity = file.complexity;
       output += `   • ${file.relativePath} (${file.language}, ${symbolCount} symbols, complexity: ${complexity})\n`;
     });
-    
+
     if (files.length > maxFiles) {
       output += `   ... and ${files.length - maxFiles} more files\n`;
     }
-    
+
     return output;
   }
 
@@ -93,7 +93,8 @@ Examples:
 
   static progress(message: string, current: number, total: number): string {
     const percentage = Math.round((current / total) * 100);
-    const progressBar = '█'.repeat(Math.floor(percentage / 5)) + '░'.repeat(20 - Math.floor(percentage / 5));
+    const progressBar =
+      '█'.repeat(Math.floor(percentage / 5)) + '░'.repeat(20 - Math.floor(percentage / 5));
     return `\r🔄 ${message} [${progressBar}] ${percentage}% (${current}/${total})`;
   }
 
