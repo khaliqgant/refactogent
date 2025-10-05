@@ -443,7 +443,7 @@ export class CodebaseIndexer {
         
       case 'python':
         // Extract import statements
-        const pythonImportRegex = /^(?:from\s+([^\s]+)\s+)?import\s+([^\s,]+)/gm;
+        const pythonImportRegex = /^\s*(?:from\s+([^\s]+)\s+)?import\s+([^\s,]+)/gm;
         while ((match = pythonImportRegex.exec(content)) !== null) {
           if (match[1]) {
             dependencies.push(match[1]);
@@ -455,9 +455,17 @@ export class CodebaseIndexer {
         
       case 'go':
         // Extract import statements
-        const goImportRegex = /import\s+['"]([^'"]+)['"]/g;
-        while ((match = goImportRegex.exec(content)) !== null) {
-          dependencies.push(match[1]);
+        // Handle both single line: import "fmt"
+        // and multiline: import ( "fmt" "strings" )
+        const goImportRegex = /['"]([^'"]+)['"]/g;
+        const importSection = content.match(/import\s*\([\s\S]*?\)|import\s+['"][^'"]+['"]/g);
+        if (importSection) {
+          importSection.forEach(section => {
+            let importMatch: RegExpExecArray | null;
+            while ((importMatch = goImportRegex.exec(section)) !== null) {
+              dependencies.push(importMatch[1]);
+            }
+          });
         }
         break;
     }

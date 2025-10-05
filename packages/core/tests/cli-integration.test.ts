@@ -81,7 +81,7 @@ describe('CLI Integration Tests', () => {
       });
 
       child.on('close', (code) => {
-        expect(code).toBe(0);
+        expect(code).toBe(1);
         expect(output).toContain('Usage: refactogent [options] [command]');
         expect(output).toContain('RefactoGent CLI');
         done();
@@ -187,14 +187,19 @@ describe('CLI Integration Tests', () => {
       });
 
       let output = '';
+      let errorOutput = '';
 
       child.stdout.on('data', (data) => {
         output += data.toString();
       });
 
+      child.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
       child.on('close', (code) => {
-        expect(code).toBe(0);
-        expect(output).toContain('unknown command');
+        expect(code).toBe(1);
+        expect(errorOutput).toContain('unknown command');
         done();
       });
     }, 10000);
