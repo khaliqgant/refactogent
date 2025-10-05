@@ -25,7 +25,7 @@ export default {
   clearMocks: true,
   restoreMocks: true,
   extensionsToTreatAsEsm: ['.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1'
   }
 };
