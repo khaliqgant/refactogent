@@ -3,7 +3,7 @@
 import { Command } from 'commander';
 import { Logger } from './utils/logger.js';
 import { OutputFormatter } from './utils/output-formatter.js';
-import { CodebaseIndexer, RefactorableFile } from '@refactogent/core';
+import { CodebaseIndexer, RefactorableFile, TypeAbstraction } from '@refactogent/core';
 
 const program = new Command();
 
@@ -26,6 +26,8 @@ program
   .option('--include-critique', 'Include validation critique in workflow')
   .option('--dry-run', 'Analyze without making changes')
   .option('--debug', 'Enable detailed debugging output showing LLM interactions')
+  .option('--skip-type-abstraction', 'Skip type abstraction step')
+  .option('--types-path <path>', 'Custom path for centralized types', 'src/types')
   .action(async (path, options, command) => {
     const globalOpts = command.parent.opts();
     const logger = new Logger(globalOpts.verbose);
@@ -72,7 +74,94 @@ program
       // Display sample files
       logger.log(OutputFormatter.fileList(refactorableFiles));
 
-      // TODO: Step 2 - Abstract types from implementations
+      // Step 2: Type abstraction (if not skipped)
+      if (!options.skipTypeAbstraction) {
+        logger.log(OutputFormatter.info('Starting type abstraction analysis...'));
+        
+        try {
+          const typeAbstraction = new TypeAbstraction({
+            rootPath: path,
+            typesPath: options.typesPath,
+            verbose: globalOpts.verbose
+          } as any);
+
+          // Analyze for type abstraction opportunities
+          logger.debug('Analyzing type abstraction opportunities', {
+            rootPath: path,
+            typesPath: options.typesPath,
+            totalFiles: refactorableFiles.length
+          });
+
+          const abstractionResults = await typeAbstraction.analyzeAbstractions(refactorableFiles);
+          
+          if (abstractionResults.centralized.length > 0 || abstractionResults.local.length > 0) {
+            logger.log(OutputFormatter.success(
+              `Found ${abstractionResults.centralized.length + abstractionResults.local.length} type abstraction opportunities`
+            ));
+            
+            // Log detailed results if verbose
+            if (globalOpts.verbose) {
+              logger.debug('Type abstraction results', {
+                centralized: abstractionResults.centralized.length,
+                local: abstractionResults.local.length,
+                details: {
+                  centralized: abstractionResults.centralized.map((r: any) => ({
+                    type: r.typeName,
+                    file: r.sourceFile,
+                    targetFile: r.targetFile
+                  })),
+                  local: abstractionResults.local.map((r: any) => ({
+                    type: r.typeName,
+                    file: r.sourceFile,
+                    targetFile: r.targetFile
+                  }))
+                }
+              });
+            }
+
+            // Apply abstractions if not in dry-run mode
+            if (!options.dryRun) {
+              logger.log(OutputFormatter.info('Applying type abstractions...'));
+              try {
+                await typeAbstraction.applyAbstractions(abstractionResults);
+                logger.log(OutputFormatter.success(
+                  `Successfully applied ${abstractionResults.centralized.length + abstractionResults.local.length} type abstractions`
+                ));
+              } catch (error) {
+                logger.log(OutputFormatter.error('Failed to apply type abstractions'));
+                logger.error('Type abstraction error', {
+                  error: error instanceof Error ? error.message : String(error),
+                  stack: error instanceof Error ? error.stack : undefined,
+                  context: {
+                    centralizedCount: abstractionResults.centralized.length,
+                    localCount: abstractionResults.local.length,
+                    rootPath: path,
+                    typesPath: options.typesPath
+                  }
+                });
+              }
+            } else {
+              logger.log(OutputFormatter.info('Dry run mode: Type abstractions not applied'));
+            }
+          } else {
+            logger.log(OutputFormatter.info('No type abstraction opportunities found'));
+          }
+        } catch (error) {
+          logger.log(OutputFormatter.error('Type abstraction analysis failed'));
+          logger.error('Type abstraction analysis error', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            context: {
+              rootPath: path,
+              typesPath: options.typesPath,
+              totalFiles: refactorableFiles.length
+            }
+          });
+        }
+      } else {
+        logger.log(OutputFormatter.info('Skipping type abstraction (--skip-type-abstraction flag)'));
+      }
+
       // TODO: Step 3 - Fix unused variables and function arguments
     } catch (error) {
       // Display error message
