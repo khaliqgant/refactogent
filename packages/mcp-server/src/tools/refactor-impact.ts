@@ -28,7 +28,7 @@ export class RefactorImpactTool {
       const files = await indexer.indexCodebase();
 
       // Find the target file
-      const target = files.find((f) => f.path === absolutePath);
+      const target = files.find((f: any) => f.path === absolutePath);
       if (!target) {
         throw new Error(`Could not analyze file: ${targetFile}`);
       }

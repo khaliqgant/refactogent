@@ -51,7 +51,7 @@ export class RefactorContextTool {
         relativePath: f.relativePath,
         language: f.language,
         size: f.size,
-        symbols: f.symbols.map((s) => ({
+        symbols: f.symbols.map((s: any) => ({
           name: s.name,
           type: s.type,
           startLine: s.startLine,
@@ -59,8 +59,8 @@ export class RefactorContextTool {
           isExported: s.isExported,
           complexity: undefined, // TODO: Calculate complexity per symbol
         })),
-        exports: f.symbols.filter((s) => s.isExported).map((s) => s.name),
-        imports: f.dependencies.map((dep) => ({
+        exports: f.symbols.filter((s: any) => s.isExported).map((s: any) => s.name),
+        imports: f.dependencies.map((dep: any) => ({
           source: dep,
           symbols: [], // TODO: Extract imported symbols
           isTypeOnly: false,

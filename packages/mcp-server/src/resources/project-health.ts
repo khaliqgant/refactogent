@@ -16,14 +16,14 @@ export class ProjectHealthResource {
 
       // Calculate metrics
       const totalFiles = files.length;
-      const totalLines = files.reduce((acc, f) => acc + (f.size || 0), 0);
-      const complexities = files.map((f) => f.complexity);
+      const totalLines = files.reduce((acc: number, f: any) => acc + (f.size || 0), 0);
+      const complexities = files.map((f: any) => f.complexity);
       const averageComplexity =
-        complexities.reduce((a, b) => a + b, 0) / complexities.length || 0;
+        complexities.reduce((a: number, b: number) => a + b, 0) / complexities.length || 0;
 
       // Estimate test coverage (simple heuristic)
-      const testFiles = files.filter((f) => f.isTestFile).length;
-      const sourceFiles = files.filter((f) => !f.isTestFile).length;
+      const testFiles = files.filter((f: any) => f.isTestFile).length;
+      const sourceFiles = files.filter((f: any) => !f.isTestFile).length;
       const testCoverage = sourceFiles > 0 ? (testFiles / sourceFiles) * 100 : 0;
 
       // Identify opportunities

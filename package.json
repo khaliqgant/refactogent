@@ -8,7 +8,7 @@
     "refactogent": "packages/cli/dist/index.js"
   },
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspace=packages/core && npm run build --workspaces",
     "test": "npm run test --workspaces",
     "dev": "npm run dev --workspaces",
     "lint": "npm run lint --workspaces",

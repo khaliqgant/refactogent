@@ -23,8 +23,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,json,md}\"",
-    "clean": "rm -rf build",
-    "prepare": "npm run build"
+    "clean": "rm -rf build"
   },
   "keywords": [
     "mcp",
