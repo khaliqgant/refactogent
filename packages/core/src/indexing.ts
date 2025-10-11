@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { glob } from 'glob';
-import * as ts from 'typescript';
+// import * as ts from 'typescript';
 import { Project } from 'ts-morph';
 
 /**
@@ -433,15 +433,16 @@ export class CodebaseIndexer {
     
     switch (language) {
       case 'typescript':
-      case 'javascript':
+      case 'javascript': {
         // Extract import statements
         const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
         while ((match = importRegex.exec(content)) !== null) {
           dependencies.push(match[1]);
         }
         break;
-        
-      case 'python':
+      }
+
+      case 'python': {
         // Extract import statements
         const pythonImportRegex = /^\s*(?:from\s+([^\s]+)\s+)?import\s+([^\s,]+)/gm;
         while ((match = pythonImportRegex.exec(content)) !== null) {
@@ -452,8 +453,9 @@ export class CodebaseIndexer {
           }
         }
         break;
-        
-      case 'go':
+      }
+
+      case 'go': {
         // Extract import statements
         // Handle both single line: import "fmt"
         // and multiline: import ( "fmt" "strings" )
@@ -468,6 +470,7 @@ export class CodebaseIndexer {
           });
         }
         break;
+      }
     }
     
     return dependencies;
@@ -493,7 +496,7 @@ export class CodebaseIndexer {
   /**
    * Calculate basic complexity metrics for a file
    */
-  private calculateComplexity(content: string, language: string): number {
+  private calculateComplexity(content: string, _language: string): number {
     let complexity = 0;
     const lines = content.split('\n');
     

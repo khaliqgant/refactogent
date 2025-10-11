@@ -181,7 +181,7 @@ export class RefactorImpactTool {
     const testPatterns = [
       targetPath.replace(/\.(ts|js)$/, ".test.$1"),
       targetPath.replace(/\.(ts|js)$/, ".spec.$1"),
-      targetPath.replace(/\/([^\/]+)\.(ts|js)$/, "/__tests__/$1.test.$1"),
+      targetPath.replace(/\/([^/]+)\.(ts|js)$/, "/__tests__/$1.test.$1"),
     ];
 
     for (const pattern of testPatterns) {

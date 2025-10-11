@@ -308,7 +308,7 @@ export class TypeAbstraction {
    * Note: This is a simplified implementation that only checks local usage.
    * Cross-file type detection requires full project indexing.
    */
-  private async isTypeUsedElsewhere(typeName: string, sourceFile: string): Promise<boolean> {
+  private async isTypeUsedElsewhere(_typeName: string, _sourceFile: string): Promise<boolean> {
     // Currently not implemented - always returns false
     // Future enhancement: integrate with indexing system to search all project files
     return false;

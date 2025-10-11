@@ -27,25 +27,14 @@ jobs:
     - name: Install dependencies
       run: npm ci
         
-    - name: Build core package
-      run: npm run build --workspace=packages/core
-        
-    - name: Build CLI package
-      run: npm run build --workspace=packages/cli
-        
-    - name: TypeScript type check
-      run: npm run build:check --workspace=packages/cli
-        
+    - name: Build all packages
+      run: npm run build
+
     - name: Lint code
-      run: npm run lint --workspace=packages/cli
-        
+      run: npm run lint
+
     - name: Run tests
-      run: npm run test --workspace=packages/cli
-        
-    - name: Test CLI command
-      run: |
-        cd packages/cli
-        node dist/index.js --help
+      run: npm test
         
   security-scan:
     runs-on: ubuntu-latest

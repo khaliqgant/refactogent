@@ -74,7 +74,6 @@ export class ProjectHealthResource {
     complexFunctions: number;
   } {
     let typeAbstractions = 0;
-    let duplicateCode = 0;
     let complexFunctions = 0;
 
     for (const file of files) {
