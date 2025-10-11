@@ -28,24 +28,7 @@
     "code-quality"
   ],
   "author": "Refactogent Team",
-  "dependencies": {
-    "@babel/core": "^7.28.4",
-    "@babel/generator": "^7.28.3",
-    "@babel/parser": "^7.28.4",
-    "@babel/traverse": "^7.28.4",
-    "@babel/types": "^7.28.4",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.64.1",
-    "@opentelemetry/sdk-node": "^0.205.0",
-    "@playwright/test": "^1.55.0",
-    "chalk": "^5.3.0",
-    "commander": "^12.1.0",
-    "js-yaml": "^4.1.0",
-    "playwright": "^1.55.0",
-    "ts-morph": "^20.0.0",
-    "vitest": "^1.0.0",
-    "zod": "^4.1.11"
-  },
+  "dependencies": {},
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",
