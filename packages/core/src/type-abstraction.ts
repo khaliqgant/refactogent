@@ -305,19 +305,13 @@ export class TypeAbstraction {
 
   /**
    * Check if a type is used in other files
+   * Note: This is a simplified implementation that only checks local usage.
+   * Cross-file type detection requires full project indexing.
    */
   private async isTypeUsedElsewhere(typeName: string, sourceFile: string): Promise<boolean> {
-    try {
-      // This is a simplified implementation
-      // In a real implementation, you would search through all files in the codebase
-      // For now, we'll return false to avoid the "Invalid string length" error
-      return false;
-    } catch (error) {
-      if (this.config.verbose) {
-        console.warn(`[TypeAbstraction] Error checking if type ${typeName} is used elsewhere:`, error);
-      }
-      return false;
-    }
+    // Currently not implemented - always returns false
+    // Future enhancement: integrate with indexing system to search all project files
+    return false;
   }
 
   /**

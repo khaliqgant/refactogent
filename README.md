@@ -1,50 +1,96 @@
 # Refactogent
 
-Safe, incremental code refactoring tools and platform.
+> AI-powered refactoring with safety guardrails for Claude Code
+
+Transform how you refactor code with intelligent analysis, safety checkpoints, and structured workflows designed for AI-assisted development.
+
+## 🎯 What is Refactogent?
+
+Refactogent provides Claude with powerful tools for **safe, intelligent refactoring** through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It doesn't try to replace Claude's intelligence—it enhances it with:
+
+- 🔍 **Deep codebase analysis** with dependency mapping
+- 🛡️ **Safety checkpoints** with automatic rollback
+- 🧪 **Validation workflows** (tests, linting, type checking)
+- 📊 **Impact analysis** showing blast radius of changes
+- 🤖 **AI-powered suggestions** using Claude's intelligence
 
 ## 🚀 Quick Start
 
+### Option 1: MCP Server (Recommended for Claude Code)
+
 ```bash
-# Install the CLI
+# Install globally
+npm install -g @refactogent/mcp-server
+
+# Configure with Claude Code
+claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
+```
+
+See [MCP Server documentation](./packages/mcp-server/README.md) for detailed setup.
+
+### Option 2: CLI Tool
+
+```bash
+# Install CLI
 npm install -g refactogent
 
 # Analyze your project
-refactogent refactor-suggest
-
-# Get comprehensive analysis
-refactogent analyze
+refactogent refactor ./src
 ```
+
+See [CLI documentation](./packages/cli/README.md) for all commands.
 
 ## 📦 Packages
 
-This is a monorepo containing multiple packages:
+This monorepo contains three packages:
+
+### [@refactogent/mcp-server](./packages/mcp-server)
+Model Context Protocol server providing Claude with refactoring tools and safety guardrails.
+
+**Status**: ✅ Production Ready
 
 ### [refactogent](./packages/cli)
-Command-line interface for refactoring analysis and suggestions.
+Command-line interface for standalone refactoring analysis.
 
-```bash
-npm install -g refactogent
-```
+**Status**: ✅ Production Ready
 
-### [@refactogent/core](./packages/core) *(Coming Soon)*
-Core analysis engine and shared utilities.
+### [@refactogent/core](./packages/core)
+Core analysis engine with AST parsing, indexing, and type abstraction.
 
-```bash
-npm install @refactogent/core
-```
+**Status**: ✅ Production Ready
 
-## 🏗️ Project Structure
+## 🏗️ Architecture
 
 ```
-refactogent/
-├── packages/
-│   ├── cli/                 # @refactogent/cli - Command line tool
-│   ├── core/                # @refactogent/core - Shared analysis engine
-│   ├── github-app/          # @refactogent/github-app (planned)
-│   └── cloud/               # @refactogent/cloud (planned)
-├── apps/
-│   └── web/                 # Web dashboard (planned)
-└── tools/                   # Build tools and scripts
+┌─────────────────────────────────────────────────────────────┐
+│                         Claude Code                          │
+│          (AI-powered development environment)                │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         │ MCP Protocol
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                  @refactogent/mcp-server                     │
+│                                                               │
+│  Tools:                          Resources:                  │
+│  • refactor_context              • project-health           │
+│  • refactor_checkpoint                                       │
+│  • refactor_validate                                         │
+│  • refactor_impact                                           │
+│  • refactor_suggest                                          │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         │ Uses
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                    @refactogent/core                         │
+│                                                               │
+│  • AST Analysis & Parsing                                    │
+│  • Project Indexing                                          │
+│  • Dependency Mapping                                        │
+│  • Type Abstraction                                          │
+│  • Complexity Analysis                                       │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ## 🛠️ Development
@@ -59,86 +105,167 @@ npm run build
 # Test all packages
 npm run test
 
-# Run CLI in development
-npm run dev:cli
+# Lint all packages
+npm run lint
 
-# Publish CLI package
-npm run publish:cli
+# Format code
+npm run format
+
+# Clean build artifacts
+npm run clean
 ```
 
-## 📋 Features
+### Working on Individual Packages
 
-- **Safe Refactoring**: AI-powered analysis ensures safe code transformations
-- **Multi-language Support**: TypeScript, JavaScript, Python, Go, and more
-- **Incremental Approach**: Small, manageable changes with clear impact assessment
-- **Test Coverage Analysis**: Understand test coverage before refactoring
-- **Safety Scoring**: Risk assessment for each suggested change
-- **AST Analysis**: Deep code structure understanding
-- **Project Health Reports**: Comprehensive codebase analysis
+```bash
+# MCP Server
+cd packages/mcp-server
+npm run build
+npm run test:inspector  # Test with MCP Inspector
+
+# CLI
+cd packages/cli
+npm run dev
+
+# Core
+cd packages/core
+npm test
+```
+
+## 📋 Key Features
+
+### For Claude Code (MCP Server)
+
+- **refactor_context**: Deep codebase analysis with dependency graphs
+- **refactor_checkpoint**: Git-based safety checkpoints with rollback
+- **refactor_validate**: Automated testing, linting, and type checking
+- **refactor_impact**: Blast radius analysis for proposed changes
+- **refactor_suggest**: AI-powered refactoring suggestions
+- **project-health**: Comprehensive project health metrics
+
+### For Standalone Use (CLI)
+
+- **Type Abstraction**: Extract and centralize duplicate types
+- **Project Indexing**: Fast symbol extraction and dependency mapping
+- **Multi-language Support**: TypeScript, JavaScript, Python, Go
+- **Complexity Analysis**: Cyclomatic complexity for functions
+- **Test File Detection**: Automatic test file identification
 
 ## 🎯 Use Cases
 
-- **Legacy Code Modernization**: Safely update old codebases
-- **Code Quality Improvement**: Identify and fix code smells
-- **Performance Optimization**: Find performance improvement opportunities
-- **Technical Debt Reduction**: Systematic approach to reducing technical debt
-- **Team Onboarding**: Help new developers understand codebase structure
+### Safe Refactoring with Claude
 
-## 🔧 Commands
+```
+User: "Extract types from src/components/UserProfile.tsx"
 
-### `refactor-suggest`
-Generate intelligent refactoring suggestions for your codebase.
-
-```bash
-refactogent refactor-suggest --format json --max-suggestions 5
+Claude:
+1. Uses refactor_context to analyze the file
+2. Uses refactor_checkpoint to create a safety point
+3. Extracts types to a separate file
+4. Updates imports
+5. Uses refactor_validate to run tests
+6. If tests fail, auto-rolls back to checkpoint
 ```
 
-### `analyze`
-Comprehensive project analysis and health report.
+### Impact Analysis Before Changes
 
-```bash
-refactogent analyze --format html --output ./reports
+```
+User: "What's the impact of changing the UserService class?"
+
+Claude:
+1. Uses refactor_impact to analyze dependencies
+2. Reports: "47 files depend on this. High risk (82/100)"
+3. Suggests breaking the refactor into smaller steps
 ```
 
-### `safety-analyze`
-Analyze project safety for refactoring operations.
+### AI-Powered Suggestions
 
-```bash
-refactogent safety-analyze --threshold 0.8
+```
+User: "Improve code quality in src/services"
+
+Claude:
+1. Uses refactor_suggest on each file
+2. Prioritizes high-impact, low-risk suggestions
+3. Applies refactorings incrementally with validation
 ```
 
-## 🚀 Publishing
+## 🚦 Roadmap
 
-### CLI Package
+### Phase 1: Core MCP Server ✅ (Complete - Q1 2025)
+- [x] MCP server implementation with 5 core tools
+- [x] Git-based safety checkpoints
+- [x] Impact analysis and dependency mapping
+- [x] AI-powered refactoring suggestions
+- [x] Project health metrics
+- [x] CLI tool for standalone usage
+- [x] TypeScript/JavaScript/Python/Go support
 
-```bash
-# Build and test
-cd packages/cli
-npm run ci
+### Phase 2: Enhanced Intelligence (Q2 2025)
+- [ ] Multi-file refactoring workflows
+- [ ] Custom refactoring patterns and templates
+- [ ] Learning from refactoring outcomes
+- [ ] Team-wide refactoring standards enforcement
+- [ ] Enhanced Python/Go AST analysis
+- [ ] Real test coverage calculation (vs. placeholder)
+- [ ] Duplicate code detection implementation
+- [ ] Cross-file type usage detection
 
-# Publish to npm
-npm publish
-```
+### Phase 3: Enterprise Features (Q3 2025)
+- [ ] Web dashboard for refactoring history
+- [ ] Team collaboration features
+- [ ] Refactoring analytics and reporting
+- [ ] CI/CD integration hooks
+- [ ] Custom validation rules
+- [ ] Slack/Teams notifications
+- [ ] SSO and team management
 
-### Core Package (When Ready)
+### Phase 4: GitHub Integration (Q4 2025)
+- [ ] GitHub App for automated PR suggestions
+- [ ] Code review integration
+- [ ] Technical debt tracking dashboard
+- [ ] Automated refactoring PRs
+- [ ] Commit-based refactoring suggestions
+- [ ] Repository health badges
 
-```bash
-# Build and test
-cd packages/core
-npm run ci
+### Phase 5: AI Enhancements (2026)
+- [ ] Fine-tuned models for specific refactoring patterns
+- [ ] Learning from accepted/rejected suggestions
+- [ ] Context-aware suggestions based on team conventions
+- [ ] Predictive technical debt alerts
+- [ ] Automated migration path generation
+- [ ] Multi-repository refactoring coordination
 
-# Publish to npm
-npm publish
-```
+### Long-term Vision
+- **Self-improving system**: Learn from user feedback to improve suggestions
+- **Proactive refactoring**: Detect issues before they become problems
+- **Migration assistant**: Automated framework/library upgrades
+- **IDE plugins**: VSCode, JetBrains, and other IDE integrations
+- **Language expansion**: Ruby, Java, C#, Rust, and more
+- **Refactoring marketplace**: Share and discover custom patterns
+
+## 🤝 Contributing
+
+Contributions are welcome! Areas where we need help:
+
+- **Language support**: Improve Python/Go parsing, add new languages
+- **Test coverage**: Integration tests for MCP tools
+- **Documentation**: Examples, tutorials, and guides
+- **Bug reports**: Test with your projects and report issues
+- **Feature requests**: Share your use cases and needs
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
 ## 📄 License
 
 MIT - see [LICENSE](./LICENSE) for details.
 
-## 🤝 Contributing
+## 💬 Support
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
+- 🐛 [Report issues](https://github.com/khaliqgant/refactogent/issues)
+- 💡 [Feature requests](https://github.com/khaliqgant/refactogent/discussions)
+- 📖 [Documentation](https://github.com/khaliqgant/refactogent#readme)
+- 🔐 [Security policy](./SECURITY.md)
 
-## 🔒 Security
+---
 
-See [SECURITY.md](./SECURITY.md) for security policy and reporting vulnerabilities.
+**Built with ❤️ for the Claude Code community**

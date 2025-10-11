@@ -13,16 +13,8 @@ export class OutputFormatter {
     return `✅ ${message}`;
   }
 
-  static warning(message: string): string {
-    return `⚠️  ${message}`;
-  }
-
   static error(message: string): string {
     return `❌ ${message}`;
-  }
-
-  static section(message: string): string {
-    return `\n📋 ${message}`;
   }
 
   static stats(stats: {
@@ -89,16 +81,5 @@ Examples:
   refactogent refactor ./src --verbose    # Analyze src directory with verbose output
   refactogent refactor --include-tests    # Include test files in analysis
 `;
-  }
-
-  static progress(message: string, current: number, total: number): string {
-    const percentage = Math.round((current / total) * 100);
-    const progressBar =
-      '█'.repeat(Math.floor(percentage / 5)) + '░'.repeat(20 - Math.floor(percentage / 5));
-    return `\r🔄 ${message} [${progressBar}] ${percentage}% (${current}/${total})`;
-  }
-
-  static complete(message: string): string {
-    return `\r✅ ${message} completed!`;
   }
 }

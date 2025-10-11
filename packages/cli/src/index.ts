@@ -77,28 +77,30 @@ program
       // Step 2: Type abstraction (if not skipped)
       if (!options.skipTypeAbstraction) {
         logger.log(OutputFormatter.info('Starting type abstraction analysis...'));
-        
+
         try {
           const typeAbstraction = new TypeAbstraction({
             rootPath: path,
             typesPath: options.typesPath,
-            verbose: globalOpts.verbose
+            verbose: globalOpts.verbose,
           } as any);
 
           // Analyze for type abstraction opportunities
           logger.debug('Analyzing type abstraction opportunities', {
             rootPath: path,
             typesPath: options.typesPath,
-            totalFiles: refactorableFiles.length
+            totalFiles: refactorableFiles.length,
           });
 
           const abstractionResults = await typeAbstraction.analyzeAbstractions(refactorableFiles);
-          
+
           if (abstractionResults.centralized.length > 0 || abstractionResults.local.length > 0) {
-            logger.log(OutputFormatter.success(
-              `Found ${abstractionResults.centralized.length + abstractionResults.local.length} type abstraction opportunities`
-            ));
-            
+            logger.log(
+              OutputFormatter.success(
+                `Found ${abstractionResults.centralized.length + abstractionResults.local.length} type abstraction opportunities`
+              )
+            );
+
             // Log detailed results if verbose
             if (globalOpts.verbose) {
               logger.debug('Type abstraction results', {
@@ -108,14 +110,14 @@ program
                   centralized: abstractionResults.centralized.map((r: any) => ({
                     type: r.typeName,
                     file: r.sourceFile,
-                    targetFile: r.targetFile
+                    targetFile: r.targetFile,
                   })),
                   local: abstractionResults.local.map((r: any) => ({
                     type: r.typeName,
                     file: r.sourceFile,
-                    targetFile: r.targetFile
-                  }))
-                }
+                    targetFile: r.targetFile,
+                  })),
+                },
               });
             }
 
@@ -124,9 +126,11 @@ program
               logger.log(OutputFormatter.info('Applying type abstractions...'));
               try {
                 await typeAbstraction.applyAbstractions(abstractionResults);
-                logger.log(OutputFormatter.success(
-                  `Successfully applied ${abstractionResults.centralized.length + abstractionResults.local.length} type abstractions`
-                ));
+                logger.log(
+                  OutputFormatter.success(
+                    `Successfully applied ${abstractionResults.centralized.length + abstractionResults.local.length} type abstractions`
+                  )
+                );
               } catch (error) {
                 logger.log(OutputFormatter.error('Failed to apply type abstractions'));
                 logger.error('Type abstraction error', {
@@ -136,8 +140,8 @@ program
                     centralizedCount: abstractionResults.centralized.length,
                     localCount: abstractionResults.local.length,
                     rootPath: path,
-                    typesPath: options.typesPath
-                  }
+                    typesPath: options.typesPath,
+                  },
                 });
               }
             } else {
@@ -154,12 +158,14 @@ program
             context: {
               rootPath: path,
               typesPath: options.typesPath,
-              totalFiles: refactorableFiles.length
-            }
+              totalFiles: refactorableFiles.length,
+            },
           });
         }
       } else {
-        logger.log(OutputFormatter.info('Skipping type abstraction (--skip-type-abstraction flag)'));
+        logger.log(
+          OutputFormatter.info('Skipping type abstraction (--skip-type-abstraction flag)')
+        );
       }
 
       // TODO: Step 3 - Fix unused variables and function arguments

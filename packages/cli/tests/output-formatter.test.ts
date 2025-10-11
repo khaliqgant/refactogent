@@ -18,19 +18,9 @@ describe('OutputFormatter', () => {
       expect(result).toBe('✅ Test Success');
     });
 
-    it('should format warning messages', () => {
-      const result = OutputFormatter.warning('Test Warning');
-      expect(result).toBe('⚠️  Test Warning');
-    });
-
     it('should format error messages', () => {
       const result = OutputFormatter.error('Test Error');
       expect(result).toBe('❌ Test Error');
-    });
-
-    it('should format section messages', () => {
-      const result = OutputFormatter.section('Test Section');
-      expect(result).toBe('\n📋 Test Section');
     });
   });
 
@@ -132,47 +122,13 @@ describe('OutputFormatter', () => {
   describe('Help formatting', () => {
     it('should format help text', () => {
       const result = OutputFormatter.help();
-      
+
       expect(result).toContain('🚀 RefactoGent CLI');
       expect(result).toContain('Usage: refactogent [options] [command]');
       expect(result).toContain('Commands:');
       expect(result).toContain('refactor [options] [path]');
       expect(result).toContain('Options:');
       expect(result).toContain('Examples:');
-    });
-  });
-
-  describe('Progress formatting', () => {
-    it('should format progress correctly', () => {
-      const result = OutputFormatter.progress('Processing', 5, 10);
-      
-      expect(result).toContain('🔄 Processing');
-      expect(result).toContain('50%');
-      expect(result).toContain('(5/10)');
-      expect(result).toContain('██████████░░░░░░░░░░');
-    });
-
-    it('should handle 100% progress', () => {
-      const result = OutputFormatter.progress('Complete', 10, 10);
-      
-      expect(result).toContain('100%');
-      expect(result).toContain('(10/10)');
-      expect(result).toContain('████████████████████');
-    });
-
-    it('should handle 0% progress', () => {
-      const result = OutputFormatter.progress('Starting', 0, 10);
-      
-      expect(result).toContain('0%');
-      expect(result).toContain('(0/10)');
-      expect(result).toContain('░░░░░░░░░░░░░░░░░░░░');
-    });
-  });
-
-  describe('Complete formatting', () => {
-    it('should format completion message', () => {
-      const result = OutputFormatter.complete('Task');
-      expect(result).toBe('\r✅ Task completed!');
     });
   });
 });
