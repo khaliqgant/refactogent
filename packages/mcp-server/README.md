@@ -59,6 +59,19 @@ The API key is **only required** for the `refactor_suggest` tool. All other tool
 
 ## 🛠️ Available Tools
 
+All 8 tools for comprehensive refactoring workflows:
+
+| Tool | Purpose | Requires API Key |
+|------|---------|-----------------|
+| `refactor_context` | Analyze codebase structure and dependencies | No |
+| `refactor_checkpoint` | Create safety rollback points (git stash) | No |
+| `refactor_validate` | Run tests, linting, type checking | No |
+| `refactor_impact` | Analyze blast radius of changes | No |
+| `refactor_suggest` | AI-powered refactoring suggestions | Yes ✅ |
+| `refactor_execute_safe` | Safely execute changes with auto-rollback | No |
+| `refactor_dependency_trace` | Trace import/dependency chains | No |
+| `refactor_test_coverage` | Analyze real test coverage | No |
+
 ### 1. `refactor_context` - Analyze Codebase
 
 Get a comprehensive understanding of your codebase structure.
@@ -194,6 +207,265 @@ Claude uses refactor_suggest:
 
 ---
 
+### 6. `refactor_execute_safe` - Safely Execute Refactoring
+
+Execute refactoring changes with automatic checkpoint creation, validation, and rollback on failure. This is the AI's best friend for applying code changes safely.
+
+**Use when**: You need to apply multiple file changes with built-in safety guarantees.
+
+```typescript
+User: "Rename UserService to UserManager across the codebase"
+
+Claude uses refactor_execute_safe:
+{
+  "changes": [
+    {
+      "filePath": "src/services/UserService.ts",
+      "operation": "update",
+      "newContent": "export class UserManager { ... }"
+    },
+    {
+      "filePath": "src/index.ts",
+      "operation": "update",
+      "newContent": "import { UserManager } from './services/UserService';"
+    }
+  ],
+  "description": "Rename UserService to UserManager",
+  "autoRollback": true
+}
+
+// Automatically:
+// 1. Creates a checkpoint
+// 2. Applies all changes
+// 3. Runs tests, linting, type checking
+// 4. Rolls back if any validation fails
+```
+
+**Parameters**:
+- `changes` - Array of file operations (update, create, delete)
+- `description` - Human-readable description of the refactoring
+- `skipValidation` - Skip validation after applying changes (default: false)
+- `autoRollback` - Auto-rollback on validation failure (default: true)
+- `skipTests`, `skipLint`, `skipTypeCheck` - Fine-tune validation steps
+
+**Operations**:
+- `update` - Modify an existing file
+- `create` - Create a new file
+- `delete` - Delete a file
+
+**Returns**:
+- Success status
+- Checkpoint ID
+- Number of applied changes
+- Validation results
+- Rollback status if failed
+
+**Safety Features**:
+- ✅ Automatic checkpoint before changes
+- ✅ Atomic operations (all or nothing)
+- ✅ Full validation suite
+- ✅ Auto-rollback on failure
+- ✅ Clear error messages
+
+---
+
+### 7. `refactor_dependency_trace` - Trace Dependencies
+
+Trace forward and backward dependencies for a file. Shows import chains, what depends on this file, circular dependencies, and unused imports/exports. Essential for understanding impact.
+
+**Use when**: You need to understand the full dependency tree before making changes.
+
+```typescript
+User: "Show me everything that depends on UserService.ts"
+
+Claude uses refactor_dependency_trace:
+{
+  "targetFile": "src/services/UserService.ts",
+  "direction": "backward",
+  "maxDepth": 3,
+  "includeUnused": true
+}
+
+// Returns complete dependency chains
+```
+
+**Parameters**:
+- `targetFile` - File to trace dependencies for
+- `direction` - "forward" (imports), "backward" (dependents), or "both" (default: "both")
+- `maxDepth` - Maximum depth to trace (default: 3)
+- `includeUnused` - Include unused imports/exports analysis (default: true)
+
+**Direction Options**:
+- `forward` - What this file imports (dependencies)
+- `backward` - What imports this file (dependents)
+- `both` - Complete picture of all relationships
+
+**Returns**:
+- **Forward Dependencies**: Files and symbols this file imports
+  - Full import chains with depth tracking
+  - Imported symbols at each level
+  - Transitive dependencies
+
+- **Backward Dependencies**: Files that import this file
+  - Direct dependents
+  - Transitive dependents (files that depend on your dependents)
+  - Complete impact tree
+
+- **Circular Dependencies**: Detected cycles with severity levels
+  - Low: Simple 2-file cycles
+  - Medium: 3-4 file cycles
+  - High: Complex 5+ file cycles
+
+- **Unused Analysis** (when enabled):
+  - Unused imports (imported but never used)
+  - Unused exports (exported but never imported elsewhere)
+  - Cleanup recommendations
+
+- **Summary**:
+  - Total files affected
+  - Risk assessment
+  - Refactoring recommendations
+
+**Example Output**:
+```
+# Dependency Trace: UserService.ts
+
+Direction: both
+Total Files Affected: 23
+
+This file has 5 forward dependencies and 18 backward dependencies.
+This file is heavily depended upon - refactor with caution.
+
+## Forward Dependencies (What This File Imports)
+  - DatabaseService (query, transaction)
+    - ConnectionPool (getConnection)
+      - ConfigService (getDatabaseConfig)
+
+## Backward Dependencies (What Imports This File)
+  - UserController
+    - AuthController
+      - AppRouter
+  - UserRepository
+  - AdminService
+  ... and 15 more
+
+## ⚠️ Circular Dependencies Found
+- [medium] UserService → RoleService → PermissionService → UserService
+
+## Unused Imports
+- lodash.debounce from 'lodash/debounce'
+- OldHelper from './helpers/old'
+```
+
+---
+
+### 8. `refactor_test_coverage` - Analyze Test Coverage
+
+Analyze REAL test coverage using actual coverage tools (Jest, c8, etc). Shows line/branch/function coverage, uncovered regions, test-to-code ratio, and specific recommendations.
+
+**Use when**: You need to verify test coverage before or after refactoring changes.
+
+```typescript
+User: "What's the test coverage for the services directory?"
+
+Claude uses refactor_test_coverage:
+{
+  "targetPath": "src/services",
+  "generateReport": false,
+  "threshold": 80
+}
+
+// Runs coverage tools and analyzes results
+```
+
+**Parameters**:
+- `targetPath` - Specific file or directory to analyze (default: project root)
+- `generateReport` - Generate detailed HTML coverage report (default: false)
+- `threshold` - Minimum coverage percentage required for validation (optional)
+
+**How It Works**:
+1. Detects available coverage tools (Jest, c8, nyc, etc.)
+2. Runs coverage analysis using `npm run test:coverage` or similar
+3. Parses coverage reports (Istanbul/NYC JSON format)
+4. Analyzes coverage data by file
+5. Generates actionable recommendations
+
+**Fallback Mode**:
+If no coverage tools are detected, provides:
+- Heuristic analysis based on test file count
+- Setup instructions for Jest/c8
+- Quick start guide
+
+**Returns**:
+- **Overall Coverage**: Average coverage percentage
+- **Line Coverage**: Percentage of lines covered by tests
+- **Branch Coverage**: Percentage of branches (if/else) covered
+- **Function Coverage**: Percentage of functions covered
+- **Test-to-Code Ratio**: Ratio of test files to source files
+  - \> 0.5 = Good
+  - 0.2-0.5 = Fair
+  - < 0.2 = Needs improvement
+
+**Per-File Breakdown**:
+- Coverage percentage per file
+- Uncovered regions (line ranges not covered)
+- Specific recommendations for each file
+
+**Threshold Validation**:
+When threshold is specified:
+- `meetsThreshold: true/false` - Whether coverage meets requirement
+- Useful for validation gates in refactoring workflows
+
+**Recommendations**:
+- Files with < 50% coverage (prioritized)
+- Files with zero coverage (critical)
+- Specific line ranges needing tests
+- Overall testing strategy suggestions
+
+**Example Output**:
+```
+# Test Coverage Report ✅
+
+Target: src/services
+Overall Coverage: 78.5%
+Meets Threshold: ❌ No (requires 80%)
+
+## Coverage Metrics
+- Line Coverage: 78.5%
+- Branch Coverage: 72.3%
+- Function Coverage: 85.2%
+- Test-to-Code Ratio: 0.65 (Good)
+
+## Files Analyzed (8)
+❌ UserService.ts: 45.2% (15 uncovered regions)
+⚠️ AuthService.ts: 68.9% (5 uncovered regions)
+✅ DatabaseService.ts: 92.1%
+✅ CacheService.ts: 88.7%
+... and 4 more files
+
+## Recommendations
+- UserService.ts has less than 50% coverage. Prioritize adding tests.
+- 2 file(s) need more branch coverage for edge cases.
+- Consider testing error paths in AuthService.ts lines 45-67.
+```
+
+**Integration Example**:
+```typescript
+// Use with refactor_execute_safe for coverage-gated refactoring:
+{
+  "changes": [...],
+  "description": "Refactor UserService",
+  "skipTests": false  // Will run coverage as part of validation
+}
+
+// Or run standalone before refactoring:
+1. refactor_test_coverage to get baseline
+2. Make changes
+3. refactor_test_coverage again to verify coverage maintained
+```
+
+---
+
 ## 📊 Available Resources
 
 ### `refactogent://project-health` - Project Health Report
@@ -263,6 +535,51 @@ Claude:
 3. Prioritizes high-impact, low-risk suggestions
 4. Applies refactorings incrementally
 5. Validates continuously
+```
+
+### Safe Multi-File Refactoring
+
+```
+User: "Rename UserService to UserManager everywhere"
+
+Claude:
+1. Uses refactor_dependency_trace to find all dependent files
+2. Reports: "Found 15 files that import UserService"
+3. Uses refactor_execute_safe to:
+   - Create automatic checkpoint
+   - Update all 15 files
+   - Run full test suite
+   - Auto-rollback if anything fails
+4. Success! All changes applied safely
+```
+
+### Coverage-Gated Refactoring
+
+```
+User: "Refactor the payment processing code but maintain 80% coverage"
+
+Claude:
+1. Uses refactor_test_coverage with threshold=80 (baseline)
+2. Reports: "Current coverage: 82.3%"
+3. Uses refactor_execute_safe to apply refactoring
+4. Validation runs tests with coverage
+5. If coverage drops below 80%, auto-rolls back
+6. Reports: "Refactoring complete. Coverage: 83.1%"
+```
+
+### Circular Dependency Cleanup
+
+```
+User: "Find and fix circular dependencies in src/"
+
+Claude:
+1. Uses refactor_dependency_trace on each file
+2. Reports: "Found 3 circular dependency chains"
+3. Visualizes the cycles
+4. Uses refactor_suggest for resolution strategies
+5. Applies fixes using refactor_execute_safe
+6. Validates with refactor_dependency_trace again
+7. Reports: "All circular dependencies resolved"
 ```
 
 ---

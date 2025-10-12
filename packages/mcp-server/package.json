@@ -17,7 +17,10 @@
     "build:check": "tsc --noEmit",
     "dev": "tsc && node build/index.js",
     "watch": "tsc --watch",
-    "test": "echo \"No tests yet\" && exit 0",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:verbose": "jest --verbose",
     "test:inspector": "npm run build && npx @modelcontextprotocol/inspector build/index.js",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
@@ -58,12 +61,15 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.19.21",
     "@typescript-eslint/eslint-plugin": "^7.3.1",
     "@typescript-eslint/parser": "^7.3.1",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "prettier": "^3.3.3",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.9.3"
   }
 }
