@@ -41,7 +41,11 @@ const refactorContext = new RefactorContextTool();
 const refactorCheckpoint = new RefactorCheckpointTool();
 const refactorValidate = new RefactorValidateTool();
 const refactorImpact = new RefactorImpactTool();
-const refactorSuggest = new RefactorSuggestTool(process.env.ANTHROPIC_API_KEY);
+
+// AI provider configuration (supports multiple providers)
+const aiApiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY;
+const refactorSuggest = new RefactorSuggestTool(aiApiKey);
+
 const refactorExecuteSafe = new RefactorExecuteSafeTool();
 const refactorDependencyTrace = new RefactorDependencyTraceTool();
 const refactorTestCoverage = new RefactorTestCoverageTool();
@@ -154,7 +158,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "refactor_suggest",
         description:
-          "Use Claude AI to analyze code and suggest intelligent refactoring improvements. Returns prioritized suggestions with risk scores and reasoning.",
+          "Use AI to analyze code and suggest intelligent refactoring improvements. Supports Claude (Anthropic) and GPT (OpenAI). Returns prioritized suggestions with risk scores and reasoning.",
         inputSchema: {
           type: "object",
           properties: {
