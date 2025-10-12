@@ -60,11 +60,9 @@ export class Logger {
     }
   }
 
-  success(message: string, context?: Record<string, any>): void {
-    if (this.verbose) {
-      const entry = this.createLogEntry('info', `✅ ${message}`, context);
-      console.log(this.formatMessage(entry));
-    }
+  // Simple output methods - no logic, just output
+  log(message: string): void {
+    console.log(message);
   }
 
   setVerbose(verbose: boolean): void {
