@@ -7,12 +7,75 @@ import {
   RefactorSuggestion,
 } from "../types/index.js";
 
+interface AIProvider {
+  name: string;
+  generateSuggestions(prompt: string): Promise<string>;
+}
+
+class AnthropicProvider implements AIProvider {
+  name = "anthropic";
+  private client: Anthropic;
+
+  constructor(apiKey: string) {
+    this.client = new Anthropic({ apiKey });
+  }
+
+  async generateSuggestions(prompt: string): Promise<string> {
+    const response = await this.client.messages.create({
+      model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    });
+    return response.content[0].type === "text" ? response.content[0].text : "";
+  }
+}
+
+class OpenAIProvider implements AIProvider {
+  name = "openai";
+  private apiKey: string;
+  private model: string;
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+    this.model = process.env.OPENAI_MODEL || "gpt-4-turbo-preview";
+  }
+
+  async generateSuggestions(prompt: string): Promise<string> {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 4096,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || "";
+  }
+}
+
 export class RefactorSuggestTool {
-  private anthropic: Anthropic | null = null;
+  private provider: AIProvider | null = null;
 
   constructor(apiKey?: string) {
     if (apiKey) {
-      this.anthropic = new Anthropic({ apiKey });
+      // Determine provider from environment or default to Anthropic for backwards compatibility
+      const providerType = process.env.AI_PROVIDER?.toLowerCase() || "anthropic";
+
+      if (providerType === "openai") {
+        this.provider = new OpenAIProvider(apiKey);
+      } else {
+        this.provider = new AnthropicProvider(apiKey);
+      }
     }
   }
 
@@ -23,10 +86,10 @@ export class RefactorSuggestTool {
     try {
       console.error(`[refactor_suggest] Analyzing ${file} for ${focus} improvements...`);
 
-      // Check if API key is configured
-      if (!this.anthropic) {
+      // Check if AI provider is configured
+      if (!this.provider) {
         throw new Error(
-          "ANTHROPIC_API_KEY not configured. This tool requires an Anthropic API key to generate AI-powered suggestions."
+          "AI provider not configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY with AI_PROVIDER environment variable."
         );
       }
 
@@ -39,28 +102,16 @@ export class RefactorSuggestTool {
       const fileContent = fs.readFileSync(absolutePath, "utf-8");
       const lineCount = fileContent.split("\n").length;
 
-      console.error(`[refactor_suggest] File has ${lineCount} lines, sending to Claude...`);
+      console.error(`[refactor_suggest] File has ${lineCount} lines, sending to ${this.provider.name} AI...`);
 
       // Generate prompt based on focus area
       const prompt = this.buildPrompt(file, fileContent, focus, maxSuggestions);
 
-      // Call Claude API
-      const response = await this.anthropic.messages.create({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 4096,
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-      });
+      // Call AI provider
+      const responseText = await this.provider.generateSuggestions(prompt);
 
       // Parse the response
-      const suggestions = this.parseResponse(
-        response.content[0].type === "text" ? response.content[0].text : "",
-        file
-      );
+      const suggestions = this.parseResponse(responseText, file);
 
       const output: RefactorSuggestOutput = {
         file,
@@ -175,7 +226,7 @@ Important: Only return the JSON, no additional text.`;
         priority: s.priority || "medium",
       }));
     } catch (error) {
-      console.error("[refactor_suggest] Failed to parse Claude response:", error);
+      console.error("[refactor_suggest] Failed to parse AI response:", error);
       console.error("Response text:", responseText);
 
       // Return a fallback suggestion

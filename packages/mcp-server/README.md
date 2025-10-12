@@ -2,19 +2,19 @@
 
 > Model Context Protocol server for AI-powered refactoring with safety guardrails
 
-Transform how you refactor code with Claude! This MCP server provides Claude with powerful tools for **safe, intelligent refactoring** of your codebase.
+Transform how you refactor code with AI! This MCP server provides AI assistants (Claude, GPT, etc.) with powerful tools for **safe, intelligent refactoring** of your codebase.
 
 ## 🎯 What is this?
 
-This is an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that gives Claude Code superpowers for refactoring:
+This is an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that gives AI assistants superpowers for refactoring:
 
 - 🔍 **Deep codebase analysis** with dependency mapping
 - 🛡️ **Safety checkpoints** with automatic rollback
 - 🧪 **Validation workflows** (tests, linting, type checking)
 - 📊 **Impact analysis** showing blast radius of changes
-- 🤖 **AI-powered suggestions** using Claude's intelligence
+- 🤖 **AI-powered suggestions** using Claude (Anthropic) or GPT (OpenAI)
 
-**The key insight**: Claude is already amazing at understanding and modifying code. This MCP server provides the **safety guardrails** and **structured workflows** to make refactoring risk-free.
+**The key insight**: Modern AI is already amazing at understanding and modifying code. This MCP server provides the **safety guardrails** and **structured workflows** to make refactoring risk-free.
 
 ## 🚀 Quick Start
 
@@ -24,16 +24,11 @@ This is an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) serve
 npm install -g @refactogent/mcp-server
 ```
 
-### Configure with Claude Code
+### Configuration
 
-Add to your Claude Code configuration:
+#### Option 1: Claude (Anthropic)
 
-```bash
-# Using the CLI
-claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
-
-# Or manually edit ~/.config/claude/mcp.json
-```
+Add to your Claude Code configuration (`~/.config/claude/mcp.json`):
 
 ```json
 {
@@ -42,17 +37,60 @@ claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
       "command": "npx",
       "args": ["-y", "@refactogent/mcp-server"],
       "env": {
-        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}"
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+        "AI_PROVIDER": "anthropic"
       }
     }
   }
 }
 ```
 
+#### Option 2: OpenAI (GPT)
+
+```json
+{
+  "mcpServers": {
+    "refactogent": {
+      "command": "npx",
+      "args": ["-y", "@refactogent/mcp-server"],
+      "env": {
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+        "AI_PROVIDER": "openai"
+      }
+    }
+  }
+}
+```
+
+#### Option 3: Without AI Suggestions (7/8 tools still work)
+
+```json
+{
+  "mcpServers": {
+    "refactogent": {
+      "command": "npx",
+      "args": ["-y", "@refactogent/mcp-server"]
+    }
+  }
+}
+```
+
+> **Note**: Only the `refactor_suggest` tool requires an AI API key. The other 7 tools work independently.
+
 ### Set API Key (Optional, for AI suggestions)
 
+For Anthropic/Claude:
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
+export AI_PROVIDER="anthropic"  # Optional, default
+export ANTHROPIC_MODEL="claude-3-5-sonnet-20241022"  # Optional, default
+```
+
+For OpenAI/GPT:
+```bash
+export OPENAI_API_KEY="sk-..."
+export AI_PROVIDER="openai"
+export OPENAI_MODEL="gpt-4-turbo-preview"  # Optional, default
 ```
 
 The API key is **only required** for the `refactor_suggest` tool. All other tools work without it.
@@ -79,10 +117,10 @@ Get a comprehensive understanding of your codebase structure.
 **Use when**: You need to understand dependencies, complexity, or test coverage before refactoring.
 
 ```typescript
-// Example Claude interaction:
+// Example AI interaction:
 User: "Analyze the src/components directory"
 
-Claude uses refactor_context:
+AI uses refactor_context:
 {
   "path": "src/components",
   "includeTests": true,
@@ -110,7 +148,7 @@ Create a git stash checkpoint before making changes.
 ```typescript
 User: "Create a checkpoint before I refactor the auth system"
 
-Claude uses refactor_checkpoint:
+AI uses refactor_checkpoint:
 {
   "message": "Before refactoring auth system"
 }
@@ -132,7 +170,7 @@ Execute tests, linting, and type checking after changes.
 ```typescript
 User: "Run tests and rollback if they fail"
 
-Claude uses refactor_validate:
+AI uses refactor_validate:
 {
   "checkpointId": "refactogent-checkpoint-1234567890",
   "autoRollback": true
@@ -155,7 +193,7 @@ Understand what will be affected by changing a file or symbol.
 ```typescript
 User: "What's the impact of changing UserService?"
 
-Claude uses refactor_impact:
+AI uses refactor_impact:
 {
   "targetFile": "src/services/UserService.ts",
   "targetSymbol": "UserService"
@@ -176,23 +214,23 @@ Claude uses refactor_impact:
 
 ### 5. `refactor_suggest` - AI-Powered Suggestions
 
-Use Claude AI to analyze code and suggest intelligent refactorings.
+Use AI (Claude or GPT) to analyze code and suggest intelligent refactorings.
 
 **Use when**: You want AI-generated refactoring suggestions for a file.
 
-**Requires**: `ANTHROPIC_API_KEY` environment variable
+**Requires**: `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` environment variable
 
 ```typescript
 User: "Suggest refactorings for this file focused on types"
 
-Claude uses refactor_suggest:
+AI uses refactor_suggest:
 {
   "file": "src/utils/helpers.ts",
   "focus": "types",
   "maxSuggestions": 5
 }
 
-// Claude analyzes the file and returns prioritized suggestions
+// AI analyzes the file and returns prioritized suggestions
 ```
 
 **Focus areas**:
@@ -216,7 +254,7 @@ Execute refactoring changes with automatic checkpoint creation, validation, and 
 ```typescript
 User: "Rename UserService to UserManager across the codebase"
 
-Claude uses refactor_execute_safe:
+AI uses refactor_execute_safe:
 {
   "changes": [
     {
@@ -278,7 +316,7 @@ Trace forward and backward dependencies for a file. Shows import chains, what de
 ```typescript
 User: "Show me everything that depends on UserService.ts"
 
-Claude uses refactor_dependency_trace:
+AI uses refactor_dependency_trace:
 {
   "targetFile": "src/services/UserService.ts",
   "direction": "backward",
@@ -368,7 +406,7 @@ Analyze REAL test coverage using actual coverage tools (Jest, c8, etc). Shows li
 ```typescript
 User: "What's the test coverage for the services directory?"
 
-Claude uses refactor_test_coverage:
+AI uses refactor_test_coverage:
 {
   "targetPath": "src/services",
   "generateReport": false,
@@ -501,7 +539,7 @@ Get a comprehensive health score for your entire project.
 ```
 User: "Extract types from src/components/UserProfile.tsx"
 
-Claude:
+AI:
 1. Uses refactor_context to analyze the file
 2. Uses refactor_checkpoint to create a safety point
 3. Extracts types to a separate file
@@ -515,7 +553,7 @@ Claude:
 ```
 User: "I want to refactor the authentication system"
 
-Claude:
+AI:
 1. Uses refactor_impact to see what depends on auth files
 2. Reports: "This affects 47 files. High risk (score: 82/100)"
 3. Uses refactor_suggest to get AI recommendations
@@ -529,7 +567,7 @@ Claude:
 ```
 User: "Improve code quality in src/services"
 
-Claude:
+AI:
 1. Reads refactogent://project-health resource
 2. Uses refactor_suggest with focus='all' on each file
 3. Prioritizes high-impact, low-risk suggestions
@@ -542,7 +580,7 @@ Claude:
 ```
 User: "Rename UserService to UserManager everywhere"
 
-Claude:
+AI:
 1. Uses refactor_dependency_trace to find all dependent files
 2. Reports: "Found 15 files that import UserService"
 3. Uses refactor_execute_safe to:
@@ -558,7 +596,7 @@ Claude:
 ```
 User: "Refactor the payment processing code but maintain 80% coverage"
 
-Claude:
+AI:
 1. Uses refactor_test_coverage with threshold=80 (baseline)
 2. Reports: "Current coverage: 82.3%"
 3. Uses refactor_execute_safe to apply refactoring
@@ -572,7 +610,7 @@ Claude:
 ```
 User: "Find and fix circular dependencies in src/"
 
-Claude:
+AI:
 1. Uses refactor_dependency_trace on each file
 2. Reports: "Found 3 circular dependency chains"
 3. Visualizes the cycles
@@ -591,8 +629,12 @@ Claude:
 Create a `.env` file or export these variables:
 
 ```bash
-# Required for refactor_suggest tool
-ANTHROPIC_API_KEY=sk-ant-...
+# AI Provider Configuration (Optional - only for refactor_suggest tool)
+AI_PROVIDER=anthropic              # or "openai"
+ANTHROPIC_API_KEY=sk-ant-...       # If using Anthropic/Claude
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022  # Optional, default shown
+OPENAI_API_KEY=sk-...              # If using OpenAI/GPT
+OPENAI_MODEL=gpt-4-turbo-preview   # Optional, default shown
 
 # Optional limits
 MAX_SUGGESTIONS=10
@@ -603,7 +645,9 @@ AUTO_ROLLBACK=true
 REQUIRE_TESTS=true
 ```
 
-### Claude Desktop Configuration
+### MCP Client Configuration Examples
+
+#### Claude Desktop
 
 For Claude Desktop app, edit:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -616,12 +660,17 @@ For Claude Desktop app, edit:
       "command": "npx",
       "args": ["-y", "@refactogent/mcp-server"],
       "env": {
-        "ANTHROPIC_API_KEY": "sk-ant-..."
+        "ANTHROPIC_API_KEY": "sk-ant-...",
+        "AI_PROVIDER": "anthropic"
       }
     }
   }
 }
 ```
+
+#### Other MCP Clients
+
+The same configuration works with any MCP-compatible client. Just ensure the `AI_PROVIDER` and corresponding API key are set.
 
 ---
 
@@ -631,7 +680,8 @@ For Claude Desktop app, edit:
 
 ```
 ┌─────────────┐
-│   Claude    │  ← User asks for refactoring help
+│  AI Client  │  ← User asks for refactoring help
+│ (Claude/GPT)│     (Claude, GPT, or any MCP client)
 └──────┬──────┘
        │
        ├─────────────────────────────────────┐
@@ -646,8 +696,13 @@ For Claude Desktop app, edit:
        ├─ refactor_checkpoint            │
        ├─ refactor_validate              │
        ├─ refactor_impact                │
-       └─ refactor_suggest               │
-              │                          │
+       └─ refactor_suggest ───┐          │
+              │                │         │
+              │                ▼         │
+              │         ┌──────────────┐ │
+              │         │  AI Provider │ │
+              │         │ Claude / GPT │ │
+              │         └──────────────┘ │
               ▼                          ▼
        ┌─────────────────────────────────────┐
        │     @refactogent/core               │
@@ -656,10 +711,10 @@ For Claude Desktop app, edit:
 ```
 
 **Key Principle**: Refactogent doesn't try to do refactoring itself. Instead, it:
-1. **Provides context** to Claude about the codebase
+1. **Provides context** to AI assistants about the codebase
 2. **Enforces safety** through checkpoints and validation
 3. **Structures workflows** with clear steps and gates
-4. **Augments intelligence** by calling Claude API for suggestions
+4. **Augments intelligence** by calling AI providers (Claude/GPT) for suggestions
 
 ---
 
@@ -667,15 +722,15 @@ For Claude Desktop app, edit:
 
 Traditional refactoring tools try to be smart about *what* to refactor. This MCP server does something different:
 
-**Claude is already smart.** It understands code better than any static analysis tool.
+**Modern AI is already smart.** LLMs like Claude and GPT understand code better than any static analysis tool.
 
-What Claude needs is:
+What AI assistants need is:
 - ✅ Deep context about the codebase
 - ✅ Safety mechanisms (checkpoints, validation)
 - ✅ Structured workflows (analyze → plan → validate → rollback)
 - ✅ Impact analysis (what breaks if I change this?)
 
-That's what this MCP server provides. Think of it as **training wheels for refactoring** - not because Claude isn't smart enough, but because refactoring should be **safe and structured**.
+That's what this MCP server provides. Think of it as **training wheels for refactoring** - not because AI isn't smart enough, but because refactoring should be **safe and structured**.
 
 ---
 
