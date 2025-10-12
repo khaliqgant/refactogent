@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { writeFileSync, readFileSync } from "fs";
+import { writeFileSync } from "fs";
 import {
   RefactorExecuteSafeSchema,
   RefactorExecuteSafeOutput,
@@ -22,7 +22,7 @@ export class RefactorExecuteSafeTool {
     } = validated;
 
     let checkpointId: string | undefined;
-    let appliedChanges: FileChange[] = [];
+    const appliedChanges: FileChange[] = [];
     let validationResult: any = null;
 
     try {

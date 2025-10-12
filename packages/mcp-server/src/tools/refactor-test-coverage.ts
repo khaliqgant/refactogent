@@ -84,7 +84,7 @@ export class RefactorTestCoverageTool {
     return !!(scripts["test:coverage"] || scripts["coverage"] || scripts["test"] || packageJson.jest);
   }
 
-  private async runCoverage(generateReport: boolean = false): Promise<string> {
+  private async runCoverage(_generateReport: boolean = false): Promise<string> {
     try {
       // Try different coverage commands
       const commands = [
@@ -121,7 +121,7 @@ export class RefactorTestCoverageTool {
     }
   }
 
-  private parseCoverageData(coverageData: string, targetPath?: string): FileCoverage[] {
+  private parseCoverageData(coverageData: string, _targetPath?: string): FileCoverage[] {
     const files: FileCoverage[] = [];
 
     try {
@@ -137,8 +137,6 @@ export class RefactorTestCoverageTool {
 
           const coverage = data as any;
           const statementMap = coverage.statementMap || {};
-          const fnMap = coverage.fnMap || {};
-          const branchMap = coverage.branchMap || {};
 
           const uncoveredLines = Object.entries(coverage.s || {})
             .filter(([, count]) => count === 0)
@@ -181,7 +179,7 @@ export class RefactorTestCoverageTool {
         /(.+?)\s+\|\s+([\d.]+)\s+\|\s+([\d.]+)\s+\|\s+([\d.]+)\s+\|\s+([\d.]+)/
       );
       if (match) {
-        const [, filePath, stmts, branch, funcs, lines] = match;
+        const [, filePath, stmts] = match;
         files.push({
           path: filePath.trim(),
           coveredLines: 0, // Would need detailed parsing
@@ -236,15 +234,15 @@ export class RefactorTestCoverageTool {
     return this.calculateOverallCoverage(files);
   }
 
-  private findUncoveredFiles(targetPath?: string): string[] {
+  private findUncoveredFiles(_targetPath?: string): string[] {
     // Find source files that don't appear in coverage report
     // This is a simplified implementation
     return [];
   }
 
-  private async calculateTestRatio(targetPath?: string): Promise<number> {
+  private async calculateTestRatio(_targetPath?: string): Promise<number> {
     try {
-      const basePath = targetPath || process.cwd();
+      const basePath = _targetPath || process.cwd();
 
       // Count source files (excluding tests)
       const sourceFiles = execSync(

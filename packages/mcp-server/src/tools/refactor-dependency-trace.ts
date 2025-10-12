@@ -1,5 +1,4 @@
-import { execSync } from "child_process";
-import { existsSync, readFileSync } from "fs";
+import { existsSync } from "fs";
 import * as path from "path";
 import { Project } from "ts-morph";
 import {
@@ -298,7 +297,7 @@ export class RefactorDependencyTraceTool {
   private resolveImport(fromPath: string, importSpecifier: string): string | null {
     try {
       const dir = path.dirname(fromPath);
-      let resolved = path.resolve(dir, importSpecifier);
+      const resolved = path.resolve(dir, importSpecifier);
 
       // Try different extensions
       const extensions = [".ts", ".tsx", ".js", ".jsx", "/index.ts", "/index.js"];
