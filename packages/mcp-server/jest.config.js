@@ -7,6 +7,10 @@ export default {
     '**/__tests__/**/*.ts',
     '**/?(*.)+(spec|test).ts'
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/fixtures/'
+  ],
   transform: {
     '^.+\\.ts$': ['ts-jest', {
       useESM: true
