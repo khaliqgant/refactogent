@@ -14,6 +14,9 @@ import { RefactorCheckpointTool } from "./tools/refactor-checkpoint.js";
 import { RefactorValidateTool } from "./tools/refactor-validate.js";
 import { RefactorImpactTool } from "./tools/refactor-impact.js";
 import { RefactorSuggestTool } from "./tools/refactor-suggest.js";
+import { RefactorExecuteSafeTool } from "./tools/refactor-execute-safe.js";
+import { RefactorDependencyTraceTool } from "./tools/refactor-dependency-trace.js";
+import { RefactorTestCoverageTool } from "./tools/refactor-test-coverage.js";
 import { ProjectHealthResource } from "./resources/project-health.js";
 
 // Load environment variables
@@ -39,6 +42,9 @@ const refactorCheckpoint = new RefactorCheckpointTool();
 const refactorValidate = new RefactorValidateTool();
 const refactorImpact = new RefactorImpactTool();
 const refactorSuggest = new RefactorSuggestTool(process.env.ANTHROPIC_API_KEY);
+const refactorExecuteSafe = new RefactorExecuteSafeTool();
+const refactorDependencyTrace = new RefactorDependencyTraceTool();
+const refactorTestCoverage = new RefactorTestCoverageTool();
 
 // Initialize resources
 const projectHealth = new ProjectHealthResource();
@@ -171,6 +177,120 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["file"],
         },
       },
+      {
+        name: "refactor_execute_safe",
+        description:
+          "Safely execute refactoring changes with automatic checkpoint creation, validation, and rollback on failure. The AI's best friend for applying code changes.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            changes: {
+              type: "array",
+              description: "Array of file changes to apply",
+              items: {
+                type: "object",
+                properties: {
+                  filePath: {
+                    type: "string",
+                    description: "Path to the file to change",
+                  },
+                  operation: {
+                    type: "string",
+                    enum: ["update", "create", "delete"],
+                    description: "Type of operation",
+                  },
+                  newContent: {
+                    type: "string",
+                    description: "New file content (required for update/create)",
+                  },
+                },
+                required: ["filePath", "operation"],
+              },
+            },
+            description: {
+              type: "string",
+              description: "Description of what this refactoring does",
+            },
+            skipValidation: {
+              type: "boolean",
+              description: "Skip validation after applying changes",
+              default: false,
+            },
+            autoRollback: {
+              type: "boolean",
+              description: "Auto-rollback on validation failure",
+              default: true,
+            },
+            skipTests: {
+              type: "boolean",
+              description: "Skip running tests during validation",
+            },
+            skipLint: {
+              type: "boolean",
+              description: "Skip linting during validation",
+            },
+            skipTypeCheck: {
+              type: "boolean",
+              description: "Skip type checking during validation",
+            },
+          },
+          required: ["changes", "description"],
+        },
+      },
+      {
+        name: "refactor_dependency_trace",
+        description:
+          "Trace forward and backward dependencies for a file. Shows import chains, what depends on this file, circular dependencies, and unused imports/exports. Essential for understanding impact.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            targetFile: {
+              type: "string",
+              description: "File to trace dependencies for",
+            },
+            direction: {
+              type: "string",
+              enum: ["forward", "backward", "both"],
+              description: "Direction to trace dependencies",
+              default: "both",
+            },
+            maxDepth: {
+              type: "number",
+              description: "Maximum depth to trace",
+              default: 3,
+            },
+            includeUnused: {
+              type: "boolean",
+              description: "Include unused imports/exports analysis",
+              default: true,
+            },
+          },
+          required: ["targetFile"],
+        },
+      },
+      {
+        name: "refactor_test_coverage",
+        description:
+          "Analyze REAL test coverage using actual coverage tools (Jest, c8, etc). Shows line/branch/function coverage, uncovered regions, test-to-code ratio, and specific recommendations.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            targetPath: {
+              type: "string",
+              description: "Specific file or directory to analyze (default: project root)",
+            },
+            generateReport: {
+              type: "boolean",
+              description: "Generate detailed HTML coverage report",
+              default: false,
+            },
+            threshold: {
+              type: "number",
+              description: "Minimum coverage percentage required (for validation)",
+            },
+          },
+        },
+      },
     ],
   };
 });
@@ -199,6 +319,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "refactor_suggest":
         return await refactorSuggest.execute(args);
+
+      case "refactor_execute_safe":
+        return await refactorExecuteSafe.execute(args);
+
+      case "refactor_dependency_trace":
+        return await refactorDependencyTrace.execute(args);
+
+      case "refactor_test_coverage":
+        return await refactorTestCoverage.execute(args);
 
       default:
         throw new Error(`Unknown tool: ${name}`);

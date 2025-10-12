@@ -34,6 +34,33 @@ export const RefactorSuggestSchema = z.object({
   maxSuggestions: z.number().default(5).describe("Maximum suggestions to return"),
 });
 
+export const RefactorExecuteSafeSchema = z.object({
+  changes: z.array(z.object({
+    filePath: z.string().describe("Path to the file to change"),
+    operation: z.enum(["update", "create", "delete"]).describe("Type of operation"),
+    newContent: z.string().optional().describe("New file content (required for update/create)"),
+  })).describe("Array of file changes to apply"),
+  description: z.string().describe("Description of what this refactoring does"),
+  skipValidation: z.boolean().default(false).describe("Skip validation after applying changes"),
+  autoRollback: z.boolean().default(true).describe("Auto-rollback on validation failure"),
+  skipTests: z.boolean().optional().describe("Skip running tests during validation"),
+  skipLint: z.boolean().optional().describe("Skip linting during validation"),
+  skipTypeCheck: z.boolean().optional().describe("Skip type checking during validation"),
+});
+
+export const RefactorDependencyTraceSchema = z.object({
+  targetFile: z.string().describe("File to trace dependencies for"),
+  direction: z.enum(["forward", "backward", "both"]).default("both").describe("Direction to trace"),
+  maxDepth: z.number().default(3).describe("Maximum depth to trace"),
+  includeUnused: z.boolean().default(true).describe("Include unused imports/exports analysis"),
+});
+
+export const RefactorTestCoverageSchema = z.object({
+  targetPath: z.string().optional().describe("Specific file or directory to analyze (default: project root)"),
+  generateReport: z.boolean().default(false).describe("Generate detailed HTML coverage report"),
+  threshold: z.number().optional().describe("Minimum coverage percentage required (for validation)"),
+});
+
 // Tool output types
 export interface RefactorContextOutput {
   files: FileInfo[];
@@ -163,5 +190,73 @@ export interface ProjectHealth {
     duplicateCode: number;
     complexFunctions: number;
   };
+  recommendations: string[];
+}
+
+// New tool types
+export interface FileChange {
+  filePath: string;
+  operation: "update" | "create" | "delete";
+  newContent?: string;
+}
+
+export interface RefactorExecuteSafeOutput {
+  success: boolean;
+  checkpointId?: string;
+  appliedChanges: number;
+  validationPassed: boolean;
+  rolledBack: boolean;
+  error?: string;
+  validationResults?: string;
+}
+
+export interface DependencyChain {
+  path: string[];
+  symbols: string[];
+  depth: number;
+}
+
+export interface CircularDependency {
+  files: string[];
+  severity: "low" | "medium" | "high";
+}
+
+export interface RefactorDependencyTraceOutput {
+  targetFile: string;
+  direction: "forward" | "backward" | "both";
+  forwardDependencies: DependencyChain[];
+  backwardDependencies: DependencyChain[];
+  totalFilesAffected: number;
+  circularDependencies: CircularDependency[];
+  unusedImports?: string[];
+  unusedExports?: string[];
+  summary: string;
+}
+
+export interface FileCoverage {
+  path: string;
+  coveredLines: number;
+  totalLines: number;
+  coveragePercentage: number;
+  uncoveredRegions: UncoveredRegion[];
+  hasMissingTests: boolean;
+}
+
+export interface UncoveredRegion {
+  startLine: number;
+  endLine: number;
+  type: "statement" | "branch" | "function";
+}
+
+export interface RefactorTestCoverageOutput {
+  targetPath: string;
+  overallCoverage: number;
+  lineCoverage: number;
+  branchCoverage: number;
+  functionCoverage: number;
+  files: FileCoverage[];
+  uncoveredFiles: string[];
+  testToCodeRatio: number;
+  meetsThreshold?: boolean;
   recommendations: string[];
 }
