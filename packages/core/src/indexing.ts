@@ -98,7 +98,99 @@ export class CodebaseIndexer {
   private project?: Project;
 
   constructor(config: Partial<IndexerConfig> = {}) {
+    // Merge default config with user config
     this.config = { ...DEFAULT_CONFIG, ...config };
+
+    // If user provided custom excludePatterns, merge them with defaults
+    if (config.excludePatterns) {
+      this.config.excludePatterns = [
+        ...DEFAULT_CONFIG.excludePatterns,
+        ...config.excludePatterns
+      ];
+    }
+
+    // Then merge .gitignore patterns with everything
+    this.config.excludePatterns = this.mergeGitignorePatterns(
+      this.config.rootPath,
+      this.config.excludePatterns
+    );
+  }
+
+  /**
+   * Find the git root by searching upward for .git directory
+   */
+  private findGitRoot(startPath: string): string | null {
+    let currentPath = path.resolve(startPath);
+    const root = path.parse(currentPath).root;
+
+    while (currentPath !== root) {
+      const gitPath = path.join(currentPath, '.git');
+      if (fs.existsSync(gitPath)) {
+        return currentPath;
+      }
+      currentPath = path.dirname(currentPath);
+    }
+
+    return null;
+  }
+
+  /**
+   * Parse .gitignore and merge patterns with existing excludePatterns
+   */
+  private mergeGitignorePatterns(rootPath: string, excludePatterns: string[]): string[] {
+    try {
+      // Find git root by searching upward
+      const gitRoot = this.findGitRoot(rootPath);
+
+      if (!gitRoot) {
+        // No git repo found, just use provided patterns
+        return excludePatterns;
+      }
+
+      const gitignorePath = path.join(gitRoot, '.gitignore');
+
+      if (!fs.existsSync(gitignorePath)) {
+        return excludePatterns;
+      }
+
+      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+      const gitignorePatterns = gitignoreContent
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => {
+          // Filter out empty lines and comments
+          return line.length > 0 && !line.startsWith('#');
+        })
+        .map(pattern => {
+          // Convert gitignore patterns to glob patterns
+          // Remove leading slash (gitignore uses / for root, glob uses **)
+          if (pattern.startsWith('/')) {
+            pattern = pattern.slice(1);
+          }
+
+          // If pattern doesn't already have **, add it for deep matching
+          if (!pattern.includes('**')) {
+            // If it ends with /, it's a directory
+            if (pattern.endsWith('/')) {
+              pattern = `**/${pattern}**`;
+            } else {
+              // Could be a file or directory, match both
+              pattern = `**/${pattern}`;
+            }
+          }
+
+          return pattern;
+        });
+
+      // Merge with existing patterns, removing duplicates
+      const merged = [...new Set([...excludePatterns, ...gitignorePatterns])];
+
+      return merged;
+    } catch (error) {
+      // If we can't read .gitignore, just use the provided patterns
+      console.warn(`⚠️  Could not read .gitignore: ${error}`);
+      return excludePatterns;
+    }
   }
 
   /**
@@ -106,7 +198,15 @@ export class CodebaseIndexer {
    */
   async indexCodebase(): Promise<RefactorableFile[]> {
     console.log('🔍 Starting codebase indexing...');
-    
+
+    if (process.env.DEBUG || process.env.VERBOSE) {
+      console.log(`📋 Exclude patterns (${this.config.excludePatterns.length} total):`);
+      this.config.excludePatterns.slice(0, 10).forEach(p => console.log(`   - ${p}`));
+      if (this.config.excludePatterns.length > 10) {
+        console.log(`   ... and ${this.config.excludePatterns.length - 10} more`);
+      }
+    }
+
     const files = await this.discoverFiles();
     console.log(`📁 Discovered ${files.length} files`);
     
