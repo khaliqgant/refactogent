@@ -1,8 +1,8 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { glob } from 'glob';
+import * as fs from "fs";
+import * as path from "path";
+import { glob } from "glob";
 // import * as ts from 'typescript';
-import { Project } from 'ts-morph';
+import { Project } from "ts-morph";
 
 /**
  * Represents a file that can be refactored
@@ -10,7 +10,7 @@ import { Project } from 'ts-morph';
 export interface RefactorableFile {
   path: string;
   relativePath: string;
-  language: 'typescript' | 'javascript' | 'python' | 'go' | 'other';
+  language: "typescript" | "javascript" | "python" | "go" | "other";
   size: number;
   lastModified: Date;
   symbols: SymbolInfo[];
@@ -24,7 +24,14 @@ export interface RefactorableFile {
  */
 export interface SymbolInfo {
   name: string;
-  type: 'function' | 'class' | 'interface' | 'type' | 'variable' | 'enum' | 'namespace';
+  type:
+    | "function"
+    | "class"
+    | "interface"
+    | "type"
+    | "variable"
+    | "enum"
+    | "namespace";
   startLine: number;
   endLine: number;
   startColumn: number;
@@ -56,38 +63,38 @@ export interface IndexerConfig {
 const DEFAULT_CONFIG: IndexerConfig = {
   rootPath: process.cwd(),
   includePatterns: [
-    '**/*.ts',
-    '**/*.tsx',
-    '**/*.js',
-    '**/*.jsx',
-    '**/*.py',
-    '**/*.go',
-    '**/*.java',
-    '**/*.cpp',
-    '**/*.c',
-    '**/*.cs',
-    '**/*.php',
-    '**/*.rb',
-    '**/*.rs'
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.py",
+    "**/*.go",
+    "**/*.java",
+    "**/*.cpp",
+    "**/*.c",
+    "**/*.cs",
+    "**/*.php",
+    "**/*.rb",
+    "**/*.rs",
   ],
   excludePatterns: [
-    '**/node_modules/**',
-    '**/dist/**',
-    '**/build/**',
-    '**/.git/**',
-    '**/coverage/**',
-    '**/.next/**',
-    '**/.nuxt/**',
-    '**/vendor/**',
-    '**/__pycache__/**',
-    '**/*.min.js',
-    '**/*.bundle.js'
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.git/**",
+    "**/coverage/**",
+    "**/.next/**",
+    "**/.nuxt/**",
+    "**/vendor/**",
+    "**/__pycache__/**",
+    "**/*.min.js",
+    "**/*.bundle.js",
   ],
   maxFileSize: 1024 * 1024, // 1MB
   maxFiles: 10000,
   includeTests: true,
   includeNodeModules: false,
-  languages: ['typescript', 'javascript', 'python', 'go']
+  languages: ["typescript", "javascript", "python", "go"],
 };
 
 /**
@@ -105,14 +112,14 @@ export class CodebaseIndexer {
     if (config.excludePatterns) {
       this.config.excludePatterns = [
         ...DEFAULT_CONFIG.excludePatterns,
-        ...config.excludePatterns
+        ...config.excludePatterns,
       ];
     }
 
     // Then merge .gitignore patterns with everything
     this.config.excludePatterns = this.mergeGitignorePatterns(
       this.config.rootPath,
-      this.config.excludePatterns
+      this.config.excludePatterns,
     );
   }
 
@@ -124,7 +131,7 @@ export class CodebaseIndexer {
     const root = path.parse(currentPath).root;
 
     while (currentPath !== root) {
-      const gitPath = path.join(currentPath, '.git');
+      const gitPath = path.join(currentPath, ".git");
       if (fs.existsSync(gitPath)) {
         return currentPath;
       }
@@ -137,7 +144,10 @@ export class CodebaseIndexer {
   /**
    * Parse .gitignore and merge patterns with existing excludePatterns
    */
-  private mergeGitignorePatterns(rootPath: string, excludePatterns: string[]): string[] {
+  private mergeGitignorePatterns(
+    rootPath: string,
+    excludePatterns: string[],
+  ): string[] {
     try {
       // Find git root by searching upward
       const gitRoot = this.findGitRoot(rootPath);
@@ -147,31 +157,31 @@ export class CodebaseIndexer {
         return excludePatterns;
       }
 
-      const gitignorePath = path.join(gitRoot, '.gitignore');
+      const gitignorePath = path.join(gitRoot, ".gitignore");
 
       if (!fs.existsSync(gitignorePath)) {
         return excludePatterns;
       }
 
-      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
+      const gitignoreContent = fs.readFileSync(gitignorePath, "utf-8");
       const gitignorePatterns = gitignoreContent
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => {
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => {
           // Filter out empty lines and comments
-          return line.length > 0 && !line.startsWith('#');
+          return line.length > 0 && !line.startsWith("#");
         })
-        .map(pattern => {
+        .map((pattern) => {
           // Convert gitignore patterns to glob patterns
           // Remove leading slash (gitignore uses / for root, glob uses **)
-          if (pattern.startsWith('/')) {
+          if (pattern.startsWith("/")) {
             pattern = pattern.slice(1);
           }
 
           // If pattern doesn't already have **, add it for deep matching
-          if (!pattern.includes('**')) {
+          if (!pattern.includes("**")) {
             // If it ends with /, it's a directory
-            if (pattern.endsWith('/')) {
+            if (pattern.endsWith("/")) {
               pattern = `**/${pattern}**`;
             } else {
               // Could be a file or directory, match both
@@ -197,21 +207,27 @@ export class CodebaseIndexer {
    * Main method to index the entire codebase
    */
   async indexCodebase(): Promise<RefactorableFile[]> {
-    console.log('🔍 Starting codebase indexing...');
+    console.log("🔍 Starting codebase indexing...");
 
     if (process.env.DEBUG || process.env.VERBOSE) {
-      console.log(`📋 Exclude patterns (${this.config.excludePatterns.length} total):`);
-      this.config.excludePatterns.slice(0, 10).forEach(p => console.log(`   - ${p}`));
+      console.log(
+        `📋 Exclude patterns (${this.config.excludePatterns.length} total):`,
+      );
+      this.config.excludePatterns
+        .slice(0, 10)
+        .forEach((p) => console.log(`   - ${p}`));
       if (this.config.excludePatterns.length > 10) {
-        console.log(`   ... and ${this.config.excludePatterns.length - 10} more`);
+        console.log(
+          `   ... and ${this.config.excludePatterns.length - 10} more`,
+        );
       }
     }
 
     const files = await this.discoverFiles();
     console.log(`📁 Discovered ${files.length} files`);
-    
+
     const refactorableFiles: RefactorableFile[] = [];
-    
+
     for (const file of files) {
       try {
         const refactorableFile = await this.analyzeFile(file);
@@ -222,8 +238,10 @@ export class CodebaseIndexer {
         console.warn(`⚠️  Failed to analyze ${file}: ${error}`);
       }
     }
-    
-    console.log(`✅ Successfully indexed ${refactorableFiles.length} refactorable files`);
+
+    console.log(
+      `✅ Successfully indexed ${refactorableFiles.length} refactorable files`,
+    );
     return refactorableFiles;
   }
 
@@ -232,24 +250,24 @@ export class CodebaseIndexer {
    */
   private async discoverFiles(): Promise<string[]> {
     const allFiles: string[] = [];
-    
+
     for (const pattern of this.config.includePatterns) {
       try {
         const files = await glob(pattern, {
           cwd: this.config.rootPath,
           ignore: this.config.excludePatterns,
           absolute: true,
-          nodir: true
+          nodir: true,
         });
         allFiles.push(...files);
       } catch (error) {
         console.warn(`⚠️  Failed to process pattern ${pattern}: ${error}`);
       }
     }
-    
+
     // Remove duplicates and filter by size
     const uniqueFiles = [...new Set(allFiles)];
-    const filteredFiles = uniqueFiles.filter(file => {
+    const filteredFiles = uniqueFiles.filter((file) => {
       try {
         const stats = fs.statSync(file);
         return stats.size <= this.config.maxFileSize;
@@ -257,7 +275,7 @@ export class CodebaseIndexer {
         return false;
       }
     });
-    
+
     // Limit number of files
     return filteredFiles.slice(0, this.config.maxFiles);
   }
@@ -265,21 +283,23 @@ export class CodebaseIndexer {
   /**
    * Analyze a single file and extract refactoring information
    */
-  private async analyzeFile(filePath: string): Promise<RefactorableFile | null> {
+  private async analyzeFile(
+    filePath: string,
+  ): Promise<RefactorableFile | null> {
     const stats = fs.statSync(filePath);
     const relativePath = path.relative(this.config.rootPath, filePath);
     const language = this.detectLanguage(filePath);
-    
+
     if (!this.config.languages.includes(language)) {
       return null;
     }
-    
-    const content = fs.readFileSync(filePath, 'utf-8');
+
+    const content = fs.readFileSync(filePath, "utf-8");
     const symbols = await this.extractSymbols(filePath, content, language);
     const dependencies = this.extractDependencies(content, language);
     const isTestFile = this.isTestFile(filePath);
     const complexity = this.calculateComplexity(content, language);
-    
+
     return {
       path: filePath,
       relativePath,
@@ -289,7 +309,7 @@ export class CodebaseIndexer {
       symbols,
       dependencies,
       isTestFile,
-      complexity
+      complexity,
     };
   }
 
@@ -298,37 +318,41 @@ export class CodebaseIndexer {
    */
   private detectLanguage(filePath: string): string {
     const ext = path.extname(filePath).toLowerCase();
-    
+
     const languageMap: Record<string, string> = {
-      '.ts': 'typescript',
-      '.tsx': 'typescript',
-      '.js': 'javascript',
-      '.jsx': 'javascript',
-      '.py': 'python',
-      '.go': 'go',
-      '.java': 'java',
-      '.cpp': 'cpp',
-      '.c': 'c',
-      '.cs': 'csharp',
-      '.php': 'php',
-      '.rb': 'ruby',
-      '.rs': 'rust'
+      ".ts": "typescript",
+      ".tsx": "typescript",
+      ".js": "javascript",
+      ".jsx": "javascript",
+      ".py": "python",
+      ".go": "go",
+      ".java": "java",
+      ".cpp": "cpp",
+      ".c": "c",
+      ".cs": "csharp",
+      ".php": "php",
+      ".rb": "ruby",
+      ".rs": "rust",
     };
-    
-    return languageMap[ext] || 'other';
+
+    return languageMap[ext] || "other";
   }
 
   /**
    * Extract symbols from a file based on its language
    */
-  private async extractSymbols(filePath: string, content: string, language: string): Promise<SymbolInfo[]> {
+  private async extractSymbols(
+    filePath: string,
+    content: string,
+    language: string,
+  ): Promise<SymbolInfo[]> {
     switch (language) {
-      case 'typescript':
-      case 'javascript':
+      case "typescript":
+      case "javascript":
         return this.extractJSSymbols(filePath, content);
-      case 'python':
+      case "python":
         return this.extractPythonSymbols(content);
-      case 'go':
+      case "go":
         return this.extractGoSymbols(content);
       default:
         return [];
@@ -338,97 +362,113 @@ export class CodebaseIndexer {
   /**
    * Extract symbols from JavaScript/TypeScript files using ts-morph
    */
-  private async extractJSSymbols(filePath: string, content: string): Promise<SymbolInfo[]> {
+  private async extractJSSymbols(
+    filePath: string,
+    content: string,
+  ): Promise<SymbolInfo[]> {
     try {
       if (!this.project) {
         this.project = new Project({
           useInMemoryFileSystem: true,
-          skipAddingFilesFromTsConfig: true
+          skipAddingFilesFromTsConfig: true,
         });
       }
-      
+
       const sourceFile = this.project.createSourceFile(filePath, content);
       const symbols: SymbolInfo[] = [];
-      
+
       // Extract functions
-      sourceFile.getFunctions().forEach(func => {
+      sourceFile.getFunctions().forEach((func) => {
         symbols.push({
           name: func.getName(),
-          type: 'function',
+          type: "function",
           startLine: func.getStartLineNumber(),
           endLine: func.getEndLineNumber(),
           startColumn: func.getStartLinePos(),
           endColumn: func.getEnd(),
           isExported: func.isExported(),
-          isPrivate: func.getName().startsWith('_'),
-          parameters: func.getParameters().map(p => p.getName()),
+          isPrivate: func.getName().startsWith("_"),
+          parameters: func.getParameters().map((p) => p.getName()),
           returnType: func.getReturnTypeNode()?.getText(),
-          documentation: func.getJsDocs().map(doc => doc.getDescription()).join('\n')
+          documentation: func
+            .getJsDocs()
+            .map((doc) => doc.getDescription())
+            .join("\n"),
         });
       });
-      
+
       // Extract classes
-      sourceFile.getClasses().forEach(cls => {
+      sourceFile.getClasses().forEach((cls) => {
         symbols.push({
-          name: cls.getName() || 'AnonymousClass',
-          type: 'class',
+          name: cls.getName() || "AnonymousClass",
+          type: "class",
           startLine: cls.getStartLineNumber(),
           endLine: cls.getEndLineNumber(),
           startColumn: cls.getStartLinePos(),
           endColumn: cls.getEnd(),
           isExported: cls.isExported(),
-          isPrivate: cls.getName()?.startsWith('_') || false,
-          documentation: cls.getJsDocs().map(doc => doc.getDescription()).join('\n')
+          isPrivate: cls.getName()?.startsWith("_") || false,
+          documentation: cls
+            .getJsDocs()
+            .map((doc) => doc.getDescription())
+            .join("\n"),
         });
       });
-      
+
       // Extract interfaces
-      sourceFile.getInterfaces().forEach(iface => {
+      sourceFile.getInterfaces().forEach((iface) => {
         symbols.push({
           name: iface.getName(),
-          type: 'interface',
+          type: "interface",
           startLine: iface.getStartLineNumber(),
           endLine: iface.getEndLineNumber(),
           startColumn: iface.getStartLinePos(),
           endColumn: iface.getEnd(),
           isExported: iface.isExported(),
-          isPrivate: iface.getName().startsWith('_'),
-          documentation: iface.getJsDocs().map(doc => doc.getDescription()).join('\n')
+          isPrivate: iface.getName().startsWith("_"),
+          documentation: iface
+            .getJsDocs()
+            .map((doc) => doc.getDescription())
+            .join("\n"),
         });
       });
-      
+
       // Extract type aliases
-      sourceFile.getTypeAliases().forEach(type => {
+      sourceFile.getTypeAliases().forEach((type) => {
         symbols.push({
           name: type.getName(),
-          type: 'type',
+          type: "type",
           startLine: type.getStartLineNumber(),
           endLine: type.getEndLineNumber(),
           startColumn: type.getStartLinePos(),
           endColumn: type.getEnd(),
           isExported: type.isExported(),
-          isPrivate: type.getName().startsWith('_'),
-          documentation: type.getJsDocs().map(doc => doc.getDescription()).join('\n')
+          isPrivate: type.getName().startsWith("_"),
+          documentation: type
+            .getJsDocs()
+            .map((doc) => doc.getDescription())
+            .join("\n"),
         });
       });
-      
+
       // Extract variables
-      sourceFile.getVariableDeclarations().forEach(variable => {
+      sourceFile.getVariableDeclarations().forEach((variable) => {
         const name = variable.getName();
-        if (name && !name.startsWith('_')) { // Skip private variables
+        if (name && !name.startsWith("_")) {
+          // Skip private variables
           symbols.push({
             name,
-            type: 'variable',
+            type: "variable",
             startLine: variable.getStartLineNumber(),
             endLine: variable.getEndLineNumber(),
             startColumn: variable.getStartLinePos(),
             endColumn: variable.getEnd(),
             isExported: variable.isExported(),
-            isPrivate: false
+            isPrivate: false,
           });
         }
       });
-      
+
       return symbols;
     } catch (error) {
       console.warn(`⚠️  Failed to parse ${filePath}: ${error}`);
@@ -441,42 +481,44 @@ export class CodebaseIndexer {
    */
   private extractPythonSymbols(content: string): SymbolInfo[] {
     const symbols: SymbolInfo[] = [];
-    const lines = content.split('\n');
-    
+    const lines = content.split("\n");
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      
+
       // Function definitions
-      const funcMatch = line.match(/^(async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
+      const funcMatch = line.match(
+        /^(async\s+)?def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/,
+      );
       if (funcMatch) {
         symbols.push({
           name: funcMatch[2],
-          type: 'function',
+          type: "function",
           startLine: i + 1,
           endLine: i + 1,
           startColumn: 0,
           endColumn: line.length,
           isExported: true,
-          isPrivate: funcMatch[2].startsWith('_')
+          isPrivate: funcMatch[2].startsWith("_"),
         });
       }
-      
+
       // Class definitions
       const classMatch = line.match(/^class\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
       if (classMatch) {
         symbols.push({
           name: classMatch[1],
-          type: 'class',
+          type: "class",
           startLine: i + 1,
           endLine: i + 1,
           startColumn: 0,
           endColumn: line.length,
           isExported: true,
-          isPrivate: classMatch[1].startsWith('_')
+          isPrivate: classMatch[1].startsWith("_"),
         });
       }
     }
-    
+
     return symbols;
   }
 
@@ -485,42 +527,42 @@ export class CodebaseIndexer {
    */
   private extractGoSymbols(content: string): SymbolInfo[] {
     const symbols: SymbolInfo[] = [];
-    const lines = content.split('\n');
-    
+    const lines = content.split("\n");
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      
+
       // Function definitions
       const funcMatch = line.match(/^func\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
       if (funcMatch) {
         symbols.push({
           name: funcMatch[1],
-          type: 'function',
+          type: "function",
           startLine: i + 1,
           endLine: i + 1,
           startColumn: 0,
           endColumn: line.length,
-          isExported: funcMatch[1][0] >= 'A' && funcMatch[1][0] <= 'Z',
-          isPrivate: funcMatch[1][0] >= 'a' && funcMatch[1][0] <= 'z'
+          isExported: funcMatch[1][0] >= "A" && funcMatch[1][0] <= "Z",
+          isPrivate: funcMatch[1][0] >= "a" && funcMatch[1][0] <= "z",
         });
       }
-      
+
       // Type definitions
       const typeMatch = line.match(/^type\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
       if (typeMatch) {
         symbols.push({
           name: typeMatch[1],
-          type: 'type',
+          type: "type",
           startLine: i + 1,
           endLine: i + 1,
           startColumn: 0,
           endColumn: line.length,
-          isExported: typeMatch[1][0] >= 'A' && typeMatch[1][0] <= 'Z',
-          isPrivate: typeMatch[1][0] >= 'a' && typeMatch[1][0] <= 'z'
+          isExported: typeMatch[1][0] >= "A" && typeMatch[1][0] <= "Z",
+          isPrivate: typeMatch[1][0] >= "a" && typeMatch[1][0] <= "z",
         });
       }
     }
-    
+
     return symbols;
   }
 
@@ -530,10 +572,10 @@ export class CodebaseIndexer {
   private extractDependencies(content: string, language: string): string[] {
     const dependencies: string[] = [];
     let match: RegExpExecArray | null;
-    
+
     switch (language) {
-      case 'typescript':
-      case 'javascript': {
+      case "typescript":
+      case "javascript": {
         // Extract import statements
         const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g;
         while ((match = importRegex.exec(content)) !== null) {
@@ -542,9 +584,10 @@ export class CodebaseIndexer {
         break;
       }
 
-      case 'python': {
+      case "python": {
         // Extract import statements
-        const pythonImportRegex = /^\s*(?:from\s+([^\s]+)\s+)?import\s+([^\s,]+)/gm;
+        const pythonImportRegex =
+          /^\s*(?:from\s+([^\s]+)\s+)?import\s+([^\s,]+)/gm;
         while ((match = pythonImportRegex.exec(content)) !== null) {
           if (match[1]) {
             dependencies.push(match[1]);
@@ -555,14 +598,16 @@ export class CodebaseIndexer {
         break;
       }
 
-      case 'go': {
+      case "go": {
         // Extract import statements
         // Handle both single line: import "fmt"
         // and multiline: import ( "fmt" "strings" )
         const goImportRegex = /['"]([^'"]+)['"]/g;
-        const importSection = content.match(/import\s*\([\s\S]*?\)|import\s+['"][^'"]+['"]/g);
+        const importSection = content.match(
+          /import\s*\([\s\S]*?\)|import\s+['"][^'"]+['"]/g,
+        );
         if (importSection) {
-          importSection.forEach(section => {
+          importSection.forEach((section) => {
             let importMatch: RegExpExecArray | null;
             while ((importMatch = goImportRegex.exec(section)) !== null) {
               dependencies.push(importMatch[1]);
@@ -572,7 +617,7 @@ export class CodebaseIndexer {
         break;
       }
     }
-    
+
     return dependencies;
   }
 
@@ -582,15 +627,17 @@ export class CodebaseIndexer {
   private isTestFile(filePath: string): boolean {
     const fileName = path.basename(filePath).toLowerCase();
     const dirName = path.dirname(filePath).toLowerCase();
-    
-    return fileName.includes('test') || 
-           fileName.includes('spec') || 
-           dirName.includes('test') || 
-           dirName.includes('spec') ||
-           fileName.endsWith('.test.ts') ||
-           fileName.endsWith('.test.js') ||
-           fileName.endsWith('.spec.ts') ||
-           fileName.endsWith('.spec.js');
+
+    return (
+      fileName.includes("test") ||
+      fileName.includes("spec") ||
+      dirName.includes("test") ||
+      dirName.includes("spec") ||
+      fileName.endsWith(".test.ts") ||
+      fileName.endsWith(".test.js") ||
+      fileName.endsWith(".spec.ts") ||
+      fileName.endsWith(".spec.js")
+    );
   }
 
   /**
@@ -598,26 +645,36 @@ export class CodebaseIndexer {
    */
   private calculateComplexity(content: string, _language: string): number {
     let complexity = 0;
-    const lines = content.split('\n');
-    
+    const lines = content.split("\n");
+
     for (const line of lines) {
       const trimmed = line.trim();
-      
+
       // Count control flow statements
-      if (trimmed.includes('if') || trimmed.includes('else') || 
-          trimmed.includes('for') || trimmed.includes('while') ||
-          trimmed.includes('switch') || trimmed.includes('case') ||
-          trimmed.includes('catch') || trimmed.includes('try')) {
+      if (
+        trimmed.includes("if") ||
+        trimmed.includes("else") ||
+        trimmed.includes("for") ||
+        trimmed.includes("while") ||
+        trimmed.includes("switch") ||
+        trimmed.includes("case") ||
+        trimmed.includes("catch") ||
+        trimmed.includes("try")
+      ) {
         complexity++;
       }
-      
+
       // Count function definitions
-      if (trimmed.includes('function') || trimmed.includes('=>') ||
-          trimmed.includes('def ') || trimmed.includes('func ')) {
+      if (
+        trimmed.includes("function") ||
+        trimmed.includes("=>") ||
+        trimmed.includes("def ") ||
+        trimmed.includes("func ")
+      ) {
         complexity++;
       }
     }
-    
+
     return complexity;
   }
 
@@ -637,25 +694,26 @@ export class CodebaseIndexer {
     let testFiles = 0;
     let totalComplexity = 0;
     let totalSize = 0;
-    
+
     for (const file of files) {
-      languageBreakdown[file.language] = (languageBreakdown[file.language] || 0) + 1;
+      languageBreakdown[file.language] =
+        (languageBreakdown[file.language] || 0) + 1;
       totalSymbols += file.symbols.length;
       totalComplexity += file.complexity;
       totalSize += file.size;
-      
+
       if (file.isTestFile) {
         testFiles++;
       }
     }
-    
+
     return {
       totalFiles: files.length,
       totalSymbols,
       languageBreakdown,
       testFiles,
       averageComplexity: files.length > 0 ? totalComplexity / files.length : 0,
-      totalSize
+      totalSize,
     };
   }
 }

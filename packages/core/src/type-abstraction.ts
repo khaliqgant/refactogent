@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { RefactorableFile } from './indexing.js';
+import * as fs from "fs";
+import * as path from "path";
+import { RefactorableFile } from "./indexing.js";
 
 /**
  * Configuration for type abstraction
@@ -52,28 +52,33 @@ export class TypeAbstraction {
 
   constructor(config: TypeAbstractionConfig) {
     this.config = {
-      typesPath: 'src/types',
-      ...config
+      typesPath: "src/types",
+      ...config,
     };
   }
 
   /**
    * Analyze files for type abstraction opportunities
    */
-  async analyzeAbstractions(files: RefactorableFile[]): Promise<TypeAbstractionResults> {
+  async analyzeAbstractions(
+    files: RefactorableFile[],
+  ): Promise<TypeAbstractionResults> {
     const results: TypeAbstractionResults = {
       centralized: [],
-      local: []
+      local: [],
     };
 
     try {
       // Filter to only TypeScript/JavaScript files
-      const tsFiles = files.filter(file => 
-        file.language === 'typescript' || file.language === 'javascript'
+      const tsFiles = files.filter(
+        (file) =>
+          file.language === "typescript" || file.language === "javascript",
       );
 
       if (this.config.verbose) {
-        console.log(`[TypeAbstraction] Analyzing ${tsFiles.length} TypeScript/JavaScript files for type abstraction opportunities`);
+        console.log(
+          `[TypeAbstraction] Analyzing ${tsFiles.length} TypeScript/JavaScript files for type abstraction opportunities`,
+        );
       }
 
       for (const file of tsFiles) {
@@ -83,18 +88,24 @@ export class TypeAbstraction {
           results.local.push(...fileResults.local);
         } catch (error) {
           if (this.config.verbose) {
-            console.warn(`[TypeAbstraction] Failed to analyze file ${file.path}:`, error);
+            console.warn(
+              `[TypeAbstraction] Failed to analyze file ${file.path}:`,
+              error,
+            );
           }
         }
       }
 
       if (this.config.verbose) {
-        console.log(`[TypeAbstraction] Found ${results.centralized.length} centralized and ${results.local.length} local abstraction opportunities`);
+        console.log(
+          `[TypeAbstraction] Found ${results.centralized.length} centralized and ${results.local.length} local abstraction opportunities`,
+        );
       }
-
     } catch (error) {
-      console.error('[TypeAbstraction] Error during analysis:', error);
-      throw new Error(`Type abstraction analysis failed: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("[TypeAbstraction] Error during analysis:", error);
+      throw new Error(
+        `Type abstraction analysis failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return results;
@@ -108,86 +119,108 @@ export class TypeAbstraction {
 
     // Check for common type file patterns
     const typeFilePatterns = [
-      /\.types\.tsx?$/,           // *.types.ts, *.types.tsx
-      /\.d\.ts$/,                 // *.d.ts (declaration files)
-      /^types\.tsx?$/,            // types.ts, types.tsx
-      /^index\.types\.tsx?$/,     // index.types.ts
+      /\.types\.tsx?$/, // *.types.ts, *.types.tsx
+      /\.d\.ts$/, // *.d.ts (declaration files)
+      /^types\.tsx?$/, // types.ts, types.tsx
+      /^index\.types\.tsx?$/, // index.types.ts
     ];
 
-    return typeFilePatterns.some(pattern => pattern.test(fileName));
+    return typeFilePatterns.some((pattern) => pattern.test(fileName));
   }
 
   /**
    * Analyze a single file for type abstraction opportunities
    */
-  private async analyzeFile(file: RefactorableFile): Promise<TypeAbstractionResults> {
+  private async analyzeFile(
+    file: RefactorableFile,
+  ): Promise<TypeAbstractionResults> {
     const results: TypeAbstractionResults = {
       centralized: [],
-      local: []
+      local: [],
     };
 
     try {
       // Skip files that are already type-only files
       if (this.isTypeOnlyFile(file.path)) {
         if (this.config.verbose) {
-          console.log(`[TypeAbstraction] Skipping type-only file: ${file.path}`);
+          console.log(
+            `[TypeAbstraction] Skipping type-only file: ${file.path}`,
+          );
         }
         return results;
       }
 
-      const content = await fs.promises.readFile(file.path, 'utf-8');
+      const content = await fs.promises.readFile(file.path, "utf-8");
 
       // Basic validation to prevent "Invalid string length" errors
-      if (!content || typeof content !== 'string') {
+      if (!content || typeof content !== "string") {
         if (this.config.verbose) {
-          console.warn(`[TypeAbstraction] Invalid content for file ${file.path}`);
+          console.warn(
+            `[TypeAbstraction] Invalid content for file ${file.path}`,
+          );
         }
         return results;
       }
 
       // Check if file is large enough for local abstraction (100+ lines)
-      const lines = content.split('\n');
+      const lines = content.split("\n");
       const isLargeFile = lines.length >= 100;
 
       // Find type and interface definitions
       const typeMatches = this.findTypeDefinitions(content, file.path);
-      
+
       for (const typeMatch of typeMatches) {
         // Check if type is used in other files
-        const isUsedElsewhere = await this.isTypeUsedElsewhere(typeMatch.name, file.path);
+        const isUsedElsewhere = await this.isTypeUsedElsewhere(
+          typeMatch.name,
+          file.path,
+        );
 
         if (isUsedElsewhere) {
           // Centralized abstraction
-          const targetFile = path.join(this.config.rootPath, this.config.typesPath!, `${typeMatch.name}.ts`);
+          const targetFile = path.join(
+            this.config.rootPath,
+            this.config.typesPath!,
+            `${typeMatch.name}.ts`,
+          );
           results.centralized.push({
             typeName: typeMatch.name,
             sourceFile: file.path,
             targetFile,
             typeContent: typeMatch.content,
             isCentralized: true,
-            importStatements: [`import { ${typeMatch.name} } from './${this.config.typesPath!}/${typeMatch.name}';`],
+            importStatements: [
+              `import { ${typeMatch.name} } from './${this.config.typesPath!}/${typeMatch.name}';`,
+            ],
             startLine: typeMatch.startLine,
-            endLine: typeMatch.endLine
+            endLine: typeMatch.endLine,
           });
         } else if (isLargeFile) {
           // Local abstraction
-          const targetFile = path.join(path.dirname(file.path), `${typeMatch.name}.types.ts`);
+          const targetFile = path.join(
+            path.dirname(file.path),
+            `${typeMatch.name}.types.ts`,
+          );
           results.local.push({
             typeName: typeMatch.name,
             sourceFile: file.path,
             targetFile,
             typeContent: typeMatch.content,
             isCentralized: false,
-            importStatements: [`import { ${typeMatch.name} } from './${typeMatch.name}.types';`],
+            importStatements: [
+              `import { ${typeMatch.name} } from './${typeMatch.name}.types';`,
+            ],
             startLine: typeMatch.startLine,
-            endLine: typeMatch.endLine
+            endLine: typeMatch.endLine,
           });
         }
       }
-
     } catch (error) {
       if (this.config.verbose) {
-        console.warn(`[TypeAbstraction] Error analyzing file ${file.path}:`, error);
+        console.warn(
+          `[TypeAbstraction] Error analyzing file ${file.path}:`,
+          error,
+        );
       }
     }
 
@@ -197,17 +230,32 @@ export class TypeAbstraction {
   /**
    * Find type and interface definitions in file content
    */
-  private findTypeDefinitions(content: string, filePath: string): Array<{name: string, content: string, startLine: number, endLine: number}> {
-    const types: Array<{name: string, content: string, startLine: number, endLine: number}> = [];
+  private findTypeDefinitions(
+    content: string,
+    filePath: string,
+  ): Array<{
+    name: string;
+    content: string;
+    startLine: number;
+    endLine: number;
+  }> {
+    const types: Array<{
+      name: string;
+      content: string;
+      startLine: number;
+      endLine: number;
+    }> = [];
 
     try {
       // More precise regex patterns for type and interface definitions
       // Match: export? interface TypeName { or export? type TypeName =
       // But NOT function declarations or other keywords
-      const interfacePattern = /^(?!.*\bfunction\b).*(?:export\s+)?interface\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\{/;
-      const typePattern = /^(?!.*\bfunction\b).*(?:export\s+)?type\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/;
+      const interfacePattern =
+        /^(?!.*\bfunction\b).*(?:export\s+)?interface\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\{/;
+      const typePattern =
+        /^(?!.*\bfunction\b).*(?:export\s+)?type\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/;
 
-      const lines = content.split('\n');
+      const lines = content.split("\n");
       let inDeclareGlobal = false;
       let declareGlobalBraceCount = 0;
       let inDeclareModule = false;
@@ -217,12 +265,17 @@ export class TypeAbstraction {
         const line = lines[i].trim();
 
         // Skip comments and empty lines
-        if (line.startsWith('//') || line.startsWith('/*') || line.startsWith('*') || line.length === 0) {
+        if (
+          line.startsWith("//") ||
+          line.startsWith("/*") ||
+          line.startsWith("*") ||
+          line.length === 0
+        ) {
           continue;
         }
 
         // Track declare global blocks
-        if (line.includes('declare global')) {
+        if (line.includes("declare global")) {
           inDeclareGlobal = true;
           declareGlobalBraceCount = 0;
         }
@@ -236,11 +289,11 @@ export class TypeAbstraction {
         if (inDeclareGlobal) {
           // Count braces to track when we exit the declare global block
           for (const char of line) {
-            if (char === '{') declareGlobalBraceCount++;
-            if (char === '}') declareGlobalBraceCount--;
+            if (char === "{") declareGlobalBraceCount++;
+            if (char === "}") declareGlobalBraceCount--;
           }
 
-          if (declareGlobalBraceCount === 0 && line.includes('}')) {
+          if (declareGlobalBraceCount === 0 && line.includes("}")) {
             inDeclareGlobal = false;
           }
 
@@ -251,11 +304,11 @@ export class TypeAbstraction {
         if (inDeclareModule) {
           // Count braces to track when we exit the declare module block
           for (const char of line) {
-            if (char === '{') declareModuleBraceCount++;
-            if (char === '}') declareModuleBraceCount--;
+            if (char === "{") declareModuleBraceCount++;
+            if (char === "}") declareModuleBraceCount--;
           }
 
-          if (declareModuleBraceCount === 0 && line.includes('}')) {
+          if (declareModuleBraceCount === 0 && line.includes("}")) {
             inDeclareModule = false;
           }
 
@@ -273,7 +326,7 @@ export class TypeAbstraction {
               name: typeName,
               content: result.content,
               startLine: result.startLine,
-              endLine: result.endLine
+              endLine: result.endLine,
             });
           }
         }
@@ -288,14 +341,17 @@ export class TypeAbstraction {
               name: typeName,
               content: result.content,
               startLine: result.startLine,
-              endLine: result.endLine
+              endLine: result.endLine,
             });
           }
         }
       }
     } catch (error) {
       if (this.config.verbose) {
-        console.warn(`[TypeAbstraction] Error finding type definitions in ${filePath}:`, error);
+        console.warn(
+          `[TypeAbstraction] Error finding type definitions in ${filePath}:`,
+          error,
+        );
       }
     }
 
@@ -305,15 +361,19 @@ export class TypeAbstraction {
   /**
    * Extract the full type definition starting from a line
    */
-  private extractTypeDefinition(content: string, startLine: number, typeName: string): { content: string; startLine: number; endLine: number } | null {
+  private extractTypeDefinition(
+    content: string,
+    startLine: number,
+    typeName: string,
+  ): { content: string; startLine: number; endLine: number } | null {
     try {
-      const lines = content.split('\n');
-      let typeContent = '';
+      const lines = content.split("\n");
+      let typeContent = "";
       let braceCount = 0;
       let foundStart = false;
       let foundOpeningBrace = false;
       let inString = false;
-      let stringChar = '';
+      let stringChar = "";
       let endLine = startLine;
 
       for (let i = startLine; i < lines.length; i++) {
@@ -324,30 +384,30 @@ export class TypeAbstraction {
         }
 
         if (foundStart) {
-          typeContent += line + '\n';
+          typeContent += line + "\n";
           endLine = i;
 
           // Count braces to find the end of the type definition, but ignore strings
           for (let j = 0; j < line.length; j++) {
             const char = line[j];
-            const prevChar = j > 0 ? line[j - 1] : '';
+            const prevChar = j > 0 ? line[j - 1] : "";
 
             // Handle string literals
-            if (!inString && (char === '"' || char === "'" || char === '`')) {
+            if (!inString && (char === '"' || char === "'" || char === "`")) {
               inString = true;
               stringChar = char;
-            } else if (inString && char === stringChar && prevChar !== '\\') {
+            } else if (inString && char === stringChar && prevChar !== "\\") {
               inString = false;
-              stringChar = '';
+              stringChar = "";
             }
 
             // Only count braces when not in strings
             if (!inString) {
-              if (char === '{') {
+              if (char === "{") {
                 braceCount++;
                 foundOpeningBrace = true;
               }
-              if (char === '}') {
+              if (char === "}") {
                 braceCount--;
               }
             }
@@ -357,7 +417,7 @@ export class TypeAbstraction {
           // For type aliases without braces: stop at semicolon
           if (foundOpeningBrace && braceCount === 0) {
             break;
-          } else if (!foundOpeningBrace && line.trim().endsWith(';')) {
+          } else if (!foundOpeningBrace && line.trim().endsWith(";")) {
             break;
           }
         }
@@ -366,23 +426,30 @@ export class TypeAbstraction {
       let result = typeContent.trim();
 
       // Validate that this looks like a real type definition
-      if (result && (result.includes('interface') || result.includes('type')) && result.includes(typeName)) {
+      if (
+        result &&
+        (result.includes("interface") || result.includes("type")) &&
+        result.includes(typeName)
+      ) {
         // Ensure the type has an export keyword
-        if (!result.startsWith('export ')) {
-          result = 'export ' + result;
+        if (!result.startsWith("export ")) {
+          result = "export " + result;
         }
 
         return {
           content: result,
           startLine,
-          endLine
+          endLine,
         };
       }
 
       return null;
     } catch (error) {
       if (this.config.verbose) {
-        console.warn(`[TypeAbstraction] Error extracting type definition for ${typeName}:`, error);
+        console.warn(
+          `[TypeAbstraction] Error extracting type definition for ${typeName}:`,
+          error,
+        );
       }
       return null;
     }
@@ -393,7 +460,10 @@ export class TypeAbstraction {
    * Note: This is a simplified implementation that only checks local usage.
    * Cross-file type detection requires full project indexing.
    */
-  private async isTypeUsedElsewhere(_typeName: string, _sourceFile: string): Promise<boolean> {
+  private async isTypeUsedElsewhere(
+    _typeName: string,
+    _sourceFile: string,
+  ): Promise<boolean> {
     // Currently not implemented - always returns false
     // Future enhancement: integrate with indexing system to search all project files
     return false;
@@ -403,16 +473,19 @@ export class TypeAbstraction {
    * Find the closest type file from a list of candidates
    * Prefers files in the same directory, then parent directories, then shortest path
    */
-  private findClosestTypeFile(currentDir: string, candidates: string[]): string {
+  private findClosestTypeFile(
+    currentDir: string,
+    candidates: string[],
+  ): string {
     if (candidates.length === 0) {
-      throw new Error('No candidate files provided');
+      throw new Error("No candidate files provided");
     }
     if (candidates.length === 1) {
       return candidates[0];
     }
 
     // Score each candidate based on proximity
-    const scored = candidates.map(candidate => {
+    const scored = candidates.map((candidate) => {
       const candidateDir = path.dirname(candidate);
       const relativePath = path.relative(currentDir, candidateDir);
 
@@ -420,11 +493,11 @@ export class TypeAbstraction {
       let score = 0;
 
       // Same directory = lowest score (best)
-      if (relativePath === '') {
+      if (relativePath === "") {
         score = 0;
       }
       // Parent/sibling directory
-      else if (!relativePath.startsWith('..')) {
+      else if (!relativePath.startsWith("..")) {
         // Count directory depth
         score = relativePath.split(path.sep).length;
       }
@@ -447,9 +520,11 @@ export class TypeAbstraction {
    * Resolve type dependencies across extracted .types.ts files
    * Finds references to other extracted types and adds imports
    */
-  private async resolveTypeDependencies(abstractions: TypeAbstractionResult[]): Promise<void> {
+  private async resolveTypeDependencies(
+    abstractions: TypeAbstractionResult[],
+  ): Promise<void> {
     if (this.config.verbose) {
-      console.log('[TypeAbstraction] Resolving type dependencies...');
+      console.log("[TypeAbstraction] Resolving type dependencies...");
     }
 
     // Build a map of type names to their target files
@@ -464,7 +539,10 @@ export class TypeAbstraction {
     // Process each extracted type file
     for (const abstraction of abstractions) {
       try {
-        const content = await fs.promises.readFile(abstraction.targetFile, 'utf-8');
+        const content = await fs.promises.readFile(
+          abstraction.targetFile,
+          "utf-8",
+        );
         const imports: string[] = [];
 
         // Find all type references in the content
@@ -498,7 +576,10 @@ export class TypeAbstraction {
           } else {
             // Multiple files define this type - choose the closest one
             const currentDir = path.dirname(abstraction.targetFile);
-            referencedFile = this.findClosestTypeFile(currentDir, referencedFiles);
+            referencedFile = this.findClosestTypeFile(
+              currentDir,
+              referencedFiles,
+            );
           }
 
           // Skip if it's the same file
@@ -511,28 +592,37 @@ export class TypeAbstraction {
           let relativePath = path.relative(fromDir, referencedFile);
 
           // Ensure the path starts with ./ or ../
-          if (!relativePath.startsWith('.')) {
-            relativePath = './' + relativePath;
+          if (!relativePath.startsWith(".")) {
+            relativePath = "./" + relativePath;
           }
 
           // Remove the .ts extension
-          relativePath = relativePath.replace(/\.ts$/, '');
+          relativePath = relativePath.replace(/\.ts$/, "");
 
           imports.push(`import { ${referencedType} } from '${relativePath}';`);
         }
 
         // If we found imports, prepend them to the file
         if (imports.length > 0) {
-          const updatedContent = imports.join('\n') + '\n\n' + content;
-          await fs.promises.writeFile(abstraction.targetFile, updatedContent, 'utf-8');
+          const updatedContent = imports.join("\n") + "\n\n" + content;
+          await fs.promises.writeFile(
+            abstraction.targetFile,
+            updatedContent,
+            "utf-8",
+          );
 
           if (this.config.verbose) {
-            console.log(`[TypeAbstraction] Added ${imports.length} import(s) to ${abstraction.targetFile}`);
+            console.log(
+              `[TypeAbstraction] Added ${imports.length} import(s) to ${abstraction.targetFile}`,
+            );
           }
         }
       } catch (error) {
         if (this.config.verbose) {
-          console.warn(`[TypeAbstraction] Failed to resolve dependencies for ${abstraction.targetFile}:`, error);
+          console.warn(
+            `[TypeAbstraction] Failed to resolve dependencies for ${abstraction.targetFile}:`,
+            error,
+          );
         }
       }
     }
@@ -544,7 +634,9 @@ export class TypeAbstraction {
   async applyAbstractions(results: TypeAbstractionResults): Promise<void> {
     try {
       if (this.config.verbose) {
-        console.log(`[TypeAbstraction] Applying ${results.centralized.length + results.local.length} type abstractions`);
+        console.log(
+          `[TypeAbstraction] Applying ${results.centralized.length + results.local.length} type abstractions`,
+        );
       }
 
       // Combine all abstractions
@@ -564,17 +656,25 @@ export class TypeAbstraction {
         const sorted = abstractions.sort((a, b) => b.startLine - a.startLine);
 
         if (this.config.verbose) {
-          console.log(`[TypeAbstraction] Processing ${sorted.length} abstractions in ${sourceFile}`);
+          console.log(
+            `[TypeAbstraction] Processing ${sorted.length} abstractions in ${sourceFile}`,
+          );
         }
 
         // Create all type files first
         for (const abstraction of sorted) {
           const targetDir = path.dirname(abstraction.targetFile);
           await fs.promises.mkdir(targetDir, { recursive: true });
-          await fs.promises.writeFile(abstraction.targetFile, abstraction.typeContent, 'utf-8');
+          await fs.promises.writeFile(
+            abstraction.targetFile,
+            abstraction.typeContent,
+            "utf-8",
+          );
 
           if (this.config.verbose) {
-            console.log(`[TypeAbstraction] Created type file: ${abstraction.targetFile}`);
+            console.log(
+              `[TypeAbstraction] Created type file: ${abstraction.targetFile}`,
+            );
           }
         }
 
@@ -586,35 +686,50 @@ export class TypeAbstraction {
       await this.resolveTypeDependencies(allAbstractions);
 
       if (this.config.verbose) {
-        console.log('[TypeAbstraction] Successfully applied all type abstractions');
+        console.log(
+          "[TypeAbstraction] Successfully applied all type abstractions",
+        );
       }
     } catch (error) {
-      console.error('[TypeAbstraction] Error applying abstractions:', error);
-      throw new Error(`Failed to apply type abstractions: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("[TypeAbstraction] Error applying abstractions:", error);
+      throw new Error(
+        `Failed to apply type abstractions: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
   /**
    * Apply a centralized type abstraction
    */
-  private async applyCentralizedAbstraction(result: TypeAbstractionResult): Promise<void> {
+  private async applyCentralizedAbstraction(
+    result: TypeAbstractionResult,
+  ): Promise<void> {
     try {
       // Ensure the target directory exists
       const targetDir = path.dirname(result.targetFile);
       await fs.promises.mkdir(targetDir, { recursive: true });
 
       // Write the type file
-      await fs.promises.writeFile(result.targetFile, result.typeContent, 'utf-8');
+      await fs.promises.writeFile(
+        result.targetFile,
+        result.typeContent,
+        "utf-8",
+      );
 
       if (this.config.verbose) {
-        console.log(`[TypeAbstraction] Created centralized type file: ${result.targetFile}`);
+        console.log(
+          `[TypeAbstraction] Created centralized type file: ${result.targetFile}`,
+        );
       }
 
       // Update the source file: remove type and add import
       await this.updateSourceFile(result);
     } catch (error) {
       if (this.config.verbose) {
-        console.warn(`[TypeAbstraction] Error applying centralized abstraction for ${result.typeName}:`, error);
+        console.warn(
+          `[TypeAbstraction] Error applying centralized abstraction for ${result.typeName}:`,
+          error,
+        );
       }
       throw error;
     }
@@ -623,20 +738,31 @@ export class TypeAbstraction {
   /**
    * Apply a local type abstraction
    */
-  private async applyLocalAbstraction(result: TypeAbstractionResult): Promise<void> {
+  private async applyLocalAbstraction(
+    result: TypeAbstractionResult,
+  ): Promise<void> {
     try {
       // Write the type file
-      await fs.promises.writeFile(result.targetFile, result.typeContent, 'utf-8');
+      await fs.promises.writeFile(
+        result.targetFile,
+        result.typeContent,
+        "utf-8",
+      );
 
       if (this.config.verbose) {
-        console.log(`[TypeAbstraction] Created local type file: ${result.targetFile}`);
+        console.log(
+          `[TypeAbstraction] Created local type file: ${result.targetFile}`,
+        );
       }
 
       // Update the source file: remove type and add import
       await this.updateSourceFile(result);
     } catch (error) {
       if (this.config.verbose) {
-        console.warn(`[TypeAbstraction] Error applying local abstraction for ${result.typeName}:`, error);
+        console.warn(
+          `[TypeAbstraction] Error applying local abstraction for ${result.typeName}:`,
+          error,
+        );
       }
       throw error;
     }
@@ -646,11 +772,14 @@ export class TypeAbstraction {
    * Update the source file to remove multiple types and add their import statements
    * Processing all abstractions from a file at once avoids line number shift issues
    */
-  private async updateSourceFileWithMultipleAbstractions(sourceFile: string, abstractions: TypeAbstractionResult[]): Promise<void> {
+  private async updateSourceFileWithMultipleAbstractions(
+    sourceFile: string,
+    abstractions: TypeAbstractionResult[],
+  ): Promise<void> {
     try {
       // Read the source file
-      const content = await fs.promises.readFile(sourceFile, 'utf-8');
-      let lines = content.split('\n');
+      const content = await fs.promises.readFile(sourceFile, "utf-8");
+      let lines = content.split("\n");
 
       // Find where to insert imports (after last import)
       let importInsertIndex = 0;
@@ -660,20 +789,25 @@ export class TypeAbstraction {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
 
-        if (line.startsWith('import ') || line.startsWith('import{')) {
+        if (line.startsWith("import ") || line.startsWith("import{")) {
           lastImportIndex = i;
-          if (line.includes('{') && !line.includes('}')) {
+          if (line.includes("{") && !line.includes("}")) {
             inMultiLineImport = true;
-          } else if (line.includes('{') && line.includes('}')) {
+          } else if (line.includes("{") && line.includes("}")) {
             inMultiLineImport = false;
           }
         } else if (inMultiLineImport) {
           lastImportIndex = i;
-          if (line.includes('}')) {
+          if (line.includes("}")) {
             inMultiLineImport = false;
           }
         } else {
-          if (lastImportIndex >= 0 && line.length > 0 && !line.startsWith('//') && !line.startsWith('/*')) {
+          if (
+            lastImportIndex >= 0 &&
+            line.length > 0 &&
+            !line.startsWith("//") &&
+            !line.startsWith("/*")
+          ) {
             break;
           }
         }
@@ -690,12 +824,16 @@ export class TypeAbstraction {
       for (const abstraction of abstractions) {
         const sourceDir = path.dirname(abstraction.sourceFile);
         const relativePath = path.relative(sourceDir, abstraction.targetFile);
-        const importPath = relativePath.replace(/\.ts$/, '').replace(/\\/g, '/');
-        const finalImportPath = importPath.startsWith('.') ? importPath : `./${importPath}`;
+        const importPath = relativePath
+          .replace(/\.ts$/, "")
+          .replace(/\\/g, "/");
+        const finalImportPath = importPath.startsWith(".")
+          ? importPath
+          : `./${importPath}`;
 
         // Check if the type was originally exported in the source file
-        const originalLine = content.split('\n')[abstraction.startLine];
-        const wasExported = originalLine.trim().startsWith('export ');
+        const originalLine = content.split("\n")[abstraction.startLine];
+        const wasExported = originalLine.trim().startsWith("export ");
 
         // Always import the type for use within the file
         const importStatement = `import type { ${abstraction.typeName} } from '${finalImportPath}';`;
@@ -715,7 +853,7 @@ export class TypeAbstraction {
       for (const abstraction of abstractions) {
         lines = [
           ...lines.slice(0, abstraction.startLine),
-          ...lines.slice(abstraction.endLine + 1)
+          ...lines.slice(abstraction.endLine + 1),
         ];
 
         // Adjust import insert index if we removed lines before it
@@ -729,19 +867,24 @@ export class TypeAbstraction {
       lines.splice(importInsertIndex, 0, ...importsToAdd);
 
       // Write back
-      const updatedContent = lines.join('\n');
-      await fs.promises.writeFile(sourceFile, updatedContent, 'utf-8');
+      const updatedContent = lines.join("\n");
+      await fs.promises.writeFile(sourceFile, updatedContent, "utf-8");
 
       if (this.config.verbose) {
         console.log(`[TypeAbstraction] Updated source file: ${sourceFile}`);
         for (const abstraction of abstractions) {
-          console.log(`[TypeAbstraction] - Removed type "${abstraction.typeName}" (lines ${abstraction.startLine}-${abstraction.endLine})`);
+          console.log(
+            `[TypeAbstraction] - Removed type "${abstraction.typeName}" (lines ${abstraction.startLine}-${abstraction.endLine})`,
+          );
         }
         console.log(`[TypeAbstraction] - Added ${importsToAdd.length} imports`);
       }
     } catch (error) {
       if (this.config.verbose) {
-        console.warn(`[TypeAbstraction] Error updating source file ${sourceFile}:`, error);
+        console.warn(
+          `[TypeAbstraction] Error updating source file ${sourceFile}:`,
+          error,
+        );
       }
       throw error;
     }
@@ -754,15 +897,17 @@ export class TypeAbstraction {
   private async updateSourceFile(result: TypeAbstractionResult): Promise<void> {
     try {
       // Read the source file
-      const content = await fs.promises.readFile(result.sourceFile, 'utf-8');
-      const lines = content.split('\n');
+      const content = await fs.promises.readFile(result.sourceFile, "utf-8");
+      const lines = content.split("\n");
 
       // Calculate the relative path from source file to target file
       const sourceDir = path.dirname(result.sourceFile);
       const relativePath = path.relative(sourceDir, result.targetFile);
       // Remove the .ts extension and normalize the path
-      const importPath = relativePath.replace(/\.ts$/, '').replace(/\\/g, '/');
-      const finalImportPath = importPath.startsWith('.') ? importPath : `./${importPath}`;
+      const importPath = relativePath.replace(/\.ts$/, "").replace(/\\/g, "/");
+      const finalImportPath = importPath.startsWith(".")
+        ? importPath
+        : `./${importPath}`;
 
       const importStatement = `import { ${result.typeName} } from '${finalImportPath}';`;
 
@@ -776,26 +921,31 @@ export class TypeAbstraction {
         const line = lines[i].trim();
 
         // Check if this line starts an import
-        if (line.startsWith('import ') || line.startsWith('import{')) {
+        if (line.startsWith("import ") || line.startsWith("import{")) {
           lastImportIndex = i;
           // Check if it's a multi-line import (has opening brace but no closing brace)
-          if (line.includes('{') && !line.includes('}')) {
+          if (line.includes("{") && !line.includes("}")) {
             inMultiLineImport = true;
-          } else if (line.includes('{') && line.includes('}')) {
+          } else if (line.includes("{") && line.includes("}")) {
             // Single line import with braces
             inMultiLineImport = false;
           }
         } else if (inMultiLineImport) {
           // We're inside a multi-line import, keep tracking
           lastImportIndex = i;
-          if (line.includes('}')) {
+          if (line.includes("}")) {
             // Found the closing brace, end of multi-line import
             inMultiLineImport = false;
           }
         } else {
           // Not in an import anymore
           // Stop searching after we've passed the imports section
-          if (lastImportIndex >= 0 && line.length > 0 && !line.startsWith('//') && !line.startsWith('/*')) {
+          if (
+            lastImportIndex >= 0 &&
+            line.length > 0 &&
+            !line.startsWith("//") &&
+            !line.startsWith("/*")
+          ) {
             break;
           }
         }
@@ -806,24 +956,33 @@ export class TypeAbstraction {
       }
 
       // Check if the import already exists or if there's already an import from the same file
-      const existingImport = lines.find(line => line.includes(`from '${finalImportPath}'`));
+      const existingImport = lines.find((line) =>
+        line.includes(`from '${finalImportPath}'`),
+      );
 
       let updatedLines: string[];
 
       if (existingImport) {
         // Merge with existing import instead of adding a new one
-        const existingImportIndex = lines.findIndex(line => line.includes(`from '${finalImportPath}'`));
+        const existingImportIndex = lines.findIndex((line) =>
+          line.includes(`from '${finalImportPath}'`),
+        );
         const existingImportLine = lines[existingImportIndex];
 
         // Extract existing imports
-        const importMatch = existingImportLine.match(/import\s*\{([^}]+)\}\s*from/);
+        const importMatch = existingImportLine.match(
+          /import\s*\{([^}]+)\}\s*from/,
+        );
         if (importMatch) {
-          const existingImports = importMatch[1].split(',').map(s => s.trim()).filter(s => s.length > 0);
+          const existingImports = importMatch[1]
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
 
           // Add new type to existing imports if not already present
           if (!existingImports.includes(result.typeName)) {
             existingImports.push(result.typeName);
-            const mergedImportStatement = `import { ${existingImports.join(', ')} } from '${finalImportPath}';`;
+            const mergedImportStatement = `import { ${existingImports.join(", ")} } from '${finalImportPath}';`;
 
             // Replace the existing import line
             lines[existingImportIndex] = mergedImportStatement;
@@ -833,7 +992,7 @@ export class TypeAbstraction {
         // Remove the type definition lines
         updatedLines = [
           ...lines.slice(0, result.startLine),
-          ...lines.slice(result.endLine + 1)
+          ...lines.slice(result.endLine + 1),
         ];
       } else {
         // Insert new import and remove type definition
@@ -844,19 +1003,19 @@ export class TypeAbstraction {
           const withImport = [
             ...lines.slice(0, importInsertIndex),
             importStatement,
-            ...lines.slice(importInsertIndex)
+            ...lines.slice(importInsertIndex),
           ];
 
           // Now remove the type definition (adjust indices for the inserted line)
           updatedLines = [
             ...withImport.slice(0, result.startLine + 1),
-            ...withImport.slice(result.endLine + 2)
+            ...withImport.slice(result.endLine + 2),
           ];
         } else {
           // Import is after the type definition, so remove first, then insert
           const withoutType = [
             ...lines.slice(0, result.startLine),
-            ...lines.slice(result.endLine + 1)
+            ...lines.slice(result.endLine + 1),
           ];
 
           // Calculate the adjusted import index
@@ -866,23 +1025,30 @@ export class TypeAbstraction {
           updatedLines = [
             ...withoutType.slice(0, adjustedImportIndex),
             importStatement,
-            ...withoutType.slice(adjustedImportIndex)
+            ...withoutType.slice(adjustedImportIndex),
           ];
         }
       }
 
       // Write the updated content back to the source file
-      const updatedContent = updatedLines.join('\n');
-      await fs.promises.writeFile(result.sourceFile, updatedContent, 'utf-8');
+      const updatedContent = updatedLines.join("\n");
+      await fs.promises.writeFile(result.sourceFile, updatedContent, "utf-8");
 
       if (this.config.verbose) {
-        console.log(`[TypeAbstraction] Updated source file: ${result.sourceFile}`);
-        console.log(`[TypeAbstraction] - Removed type "${result.typeName}" (lines ${result.startLine}-${result.endLine})`);
+        console.log(
+          `[TypeAbstraction] Updated source file: ${result.sourceFile}`,
+        );
+        console.log(
+          `[TypeAbstraction] - Removed type "${result.typeName}" (lines ${result.startLine}-${result.endLine})`,
+        );
         console.log(`[TypeAbstraction] - Added import: ${importStatement}`);
       }
     } catch (error) {
       if (this.config.verbose) {
-        console.warn(`[TypeAbstraction] Error updating source file ${result.sourceFile}:`, error);
+        console.warn(
+          `[TypeAbstraction] Error updating source file ${result.sourceFile}:`,
+          error,
+        );
       }
       throw error;
     }

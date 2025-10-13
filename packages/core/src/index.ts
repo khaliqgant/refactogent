@@ -1,2 +1,2 @@
-export * from './indexing.js';
-export * from './type-abstraction.js';
+export * from "./indexing.js";
+export * from "./type-abstraction.js";

@@ -29,8 +29,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,js,json,md}\"",
     "clean": "rm -rf dist",
     "check": "npm run format:check && npm run build:check && npm run lint && npm run test",
-    "ci": "npm run clean && npm run check && npm run build",
-    "prepublishOnly": "npm run ci"
+    "ci": "npm run clean && npm run check && npm run build"
   },
   "keywords": [
     "refactoring",
@@ -45,7 +44,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/khaliqgant/refactogent.git",
+    "url": "git+https://github.com/khaliqgant/refactogent.git",
     "directory": "packages/core"
   },
   "bugs": {
@@ -60,6 +59,9 @@
     "README.md",
     "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "glob": "^10.3.10",
     "js-yaml": "^4.1.0",
