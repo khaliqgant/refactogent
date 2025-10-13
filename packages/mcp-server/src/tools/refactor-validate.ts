@@ -5,11 +5,13 @@ import {
   ValidationError,
 } from "../types/index.js";
 import { RefactorCheckpointTool } from "./refactor-checkpoint.js";
+import { getConfig } from "../config/config-loader.js";
 
 export class RefactorValidateTool {
   async execute(args: unknown) {
     const validated = RefactorValidateSchema.parse(args);
     const { checkpointId, autoRollback, skipTests, skipLint, skipTypeCheck } = validated;
+    const config = getConfig();
 
     try {
       console.error("[refactor_validate] Running validation checks...");
@@ -19,33 +21,62 @@ export class RefactorValidateTool {
       let lintPass = true;
       let typeCheckPass = true;
 
-      // Run tests
-      if (!skipTests) {
-        console.error("[refactor_validate] Running tests...");
-        const testResult = await this.runTests();
-        testsPass = testResult.pass;
-        if (!testsPass) {
-          errors.push(...testResult.errors);
+      // Use config to determine what to run (unless explicitly overridden)
+      const shouldRunTests = skipTests ? false : config.validation.runTests;
+      const shouldRunLint = skipLint ? false : config.validation.runLint;
+      const shouldRunTypeCheck = skipTypeCheck ? false : config.validation.runTypeCheck;
+
+      // Run validation checks (in parallel if configured)
+      if (config.validation.parallel) {
+        const results = await Promise.all([
+          shouldRunTests ? this.runTests(config.validation.timeout) : Promise.resolve({ pass: true, errors: [] }),
+          shouldRunLint ? this.runLint(config.validation.timeout) : Promise.resolve({ pass: true, errors: [] }),
+          shouldRunTypeCheck ? this.runTypeCheck(config.validation.timeout) : Promise.resolve({ pass: true, errors: [] }),
+        ]);
+
+        testsPass = results[0].pass;
+        lintPass = results[1].pass;
+        typeCheckPass = results[2].pass;
+        errors.push(...results[0].errors, ...results[1].errors, ...results[2].errors);
+      } else {
+        // Run sequentially
+        if (shouldRunTests) {
+          console.error("[refactor_validate] Running tests...");
+          const testResult = await this.runTests(config.validation.timeout);
+          testsPass = testResult.pass;
+          if (!testsPass) {
+            errors.push(...testResult.errors);
+          }
+        }
+
+        if (shouldRunLint) {
+          console.error("[refactor_validate] Running linter...");
+          const lintResult = await this.runLint(config.validation.timeout);
+          lintPass = lintResult.pass;
+          if (!lintPass) {
+            errors.push(...lintResult.errors);
+          }
+        }
+
+        if (shouldRunTypeCheck) {
+          console.error("[refactor_validate] Running type checker...");
+          const typeCheckResult = await this.runTypeCheck(config.validation.timeout);
+          typeCheckPass = typeCheckResult.pass;
+          if (!typeCheckPass) {
+            errors.push(...typeCheckResult.errors);
+          }
         }
       }
 
-      // Run linting
-      if (!skipLint) {
-        console.error("[refactor_validate] Running linter...");
-        const lintResult = await this.runLint();
-        lintPass = lintResult.pass;
-        if (!lintPass) {
-          errors.push(...lintResult.errors);
-        }
-      }
-
-      // Run type checking
-      if (!skipTypeCheck) {
-        console.error("[refactor_validate] Running type checker...");
-        const typeCheckResult = await this.runTypeCheck();
-        typeCheckPass = typeCheckResult.pass;
-        if (!typeCheckPass) {
-          errors.push(...typeCheckResult.errors);
+      // Run custom validators if configured
+      if (config.validation.customValidators.length > 0) {
+        console.error("[refactor_validate] Running custom validators...");
+        const customResults = await this.runCustomValidators(
+          config.validation.customValidators,
+          config.validation.timeout
+        );
+        if (!customResults.pass) {
+          errors.push(...customResults.errors);
         }
       }
 
@@ -95,7 +126,7 @@ export class RefactorValidateTool {
     }
   }
 
-  private async runTests(): Promise<{ pass: boolean; errors: ValidationError[] }> {
+  private async runTests(timeout?: number): Promise<{ pass: boolean; errors: ValidationError[] }> {
     try {
       // Try to detect test command from package.json
       const testCommand = this.detectTestCommand();
@@ -116,6 +147,7 @@ export class RefactorValidateTool {
         execSync(testCommand, {
           encoding: "utf-8",
           stdio: "pipe",
+          timeout: timeout || undefined,
         });
 
         return { pass: true, errors: [] };
@@ -128,7 +160,7 @@ export class RefactorValidateTool {
     }
   }
 
-  private async runLint(): Promise<{ pass: boolean; errors: ValidationError[] }> {
+  private async runLint(timeout?: number): Promise<{ pass: boolean; errors: ValidationError[] }> {
     try {
       const lintCommand = this.detectLintCommand();
 
@@ -140,6 +172,7 @@ export class RefactorValidateTool {
         execSync(lintCommand, {
           encoding: "utf-8",
           stdio: "pipe",
+          timeout: timeout || undefined,
         });
 
         return { pass: true, errors: [] };
@@ -152,7 +185,7 @@ export class RefactorValidateTool {
     }
   }
 
-  private async runTypeCheck(): Promise<{ pass: boolean; errors: ValidationError[] }> {
+  private async runTypeCheck(timeout?: number): Promise<{ pass: boolean; errors: ValidationError[] }> {
     try {
       // Look for TypeScript
       const hasTSConfig = this.fileExists("tsconfig.json");
@@ -165,6 +198,7 @@ export class RefactorValidateTool {
         execSync("npx tsc --noEmit", {
           encoding: "utf-8",
           stdio: "pipe",
+          timeout: timeout || undefined,
         });
 
         return { pass: true, errors: [] };
@@ -175,6 +209,34 @@ export class RefactorValidateTool {
     } catch {
       return { pass: true, errors: [] };
     }
+  }
+
+  private async runCustomValidators(
+    validators: string[],
+    timeout?: number
+  ): Promise<{ pass: boolean; errors: ValidationError[] }> {
+    const errors: ValidationError[] = [];
+    let allPass = true;
+
+    for (const validator of validators) {
+      try {
+        console.error(`[refactor_validate] Running custom validator: ${validator}`);
+        execSync(validator, {
+          encoding: "utf-8",
+          stdio: "pipe",
+          timeout: timeout || undefined,
+          cwd: process.cwd(),
+        });
+      } catch (error: any) {
+        allPass = false;
+        errors.push({
+          type: "test",
+          message: `Custom validator failed: ${validator}\n${error.stdout || error.stderr || ""}`,
+        });
+      }
+    }
+
+    return { pass: allPass, errors };
   }
 
   private detectTestCommand(): string | null {
@@ -215,8 +277,7 @@ export class RefactorValidateTool {
 
   private fileExists(path: string): boolean {
     try {
-      require("fs").existsSync(`${process.cwd()}/${path}`);
-      return true;
+      return require("fs").existsSync(`${process.cwd()}/${path}`);
     } catch {
       return false;
     }

@@ -1,10 +1,12 @@
 import { execSync } from "child_process";
 import { RefactorCheckpointSchema, RefactorCheckpointOutput } from "../types/index.js";
+import { getConfig } from "../config/config-loader.js";
 
 export class RefactorCheckpointTool {
   async execute(args: unknown) {
     const validated = RefactorCheckpointSchema.parse(args);
     const { message, includeUntracked } = validated;
+    const config = getConfig();
 
     try {
       console.error(`[refactor_checkpoint] Creating checkpoint: ${message}`);
@@ -24,8 +26,13 @@ export class RefactorCheckpointTool {
       const stashMessage = `${checkpointId}: ${message}`;
 
       try {
+        // Use config default if includeUntracked not explicitly provided
+        const shouldIncludeUntracked = includeUntracked !== undefined
+          ? includeUntracked
+          : config.safety.includeUntrackedFiles;
+
         // Stash all changes (staged and unstaged)
-        const stashCommand = includeUntracked
+        const stashCommand = shouldIncludeUntracked
           ? `git stash push -u -m "${stashMessage}"`
           : `git stash push -m "${stashMessage}"`;
 
@@ -52,18 +59,24 @@ No local changes found to checkpoint.
           };
         }
 
+        // Get the stash hash (stable identifier)
+        const stashHash = execSync("git rev-parse stash@{0}", {
+          encoding: "utf-8",
+          stdio: "pipe",
+        }).trim();
+
         // Get list of stashed files
         const filesTracked = this.getStashedFiles();
 
         const output: RefactorCheckpointOutput = {
-          checkpointId,
+          checkpointId: stashHash,
           timestamp: new Date(timestamp).toISOString(),
           filesTracked,
           message,
         };
 
         console.error(
-          `[refactor_checkpoint] Checkpoint created: ${checkpointId} (${filesTracked.length} files)`
+          `[refactor_checkpoint] Checkpoint created: ${stashHash} (${filesTracked.length} files)`
         );
 
         return {
@@ -87,8 +100,8 @@ No local changes found to checkpoint.
 
   private getStashedFiles(): string[] {
     try {
-      // Get files in the most recent stash
-      const output = execSync("git stash show --name-only stash@{0}", {
+      // Get files in the most recent stash (including untracked with --include-untracked)
+      const output = execSync("git stash show --name-only --include-untracked stash@{0}", {
         encoding: "utf-8",
         stdio: "pipe",
       });
@@ -104,26 +117,27 @@ No local changes found to checkpoint.
    */
   static async rollback(checkpointId: string): Promise<void> {
     try {
-      // Find the stash index for this checkpoint
-      const stashList = execSync("git stash list", {
-        encoding: "utf-8",
+      // Verify the stash hash exists
+      try {
+        execSync(`git rev-parse --verify ${checkpointId}`, {
+          stdio: "pipe",
+        });
+      } catch {
+        throw new Error(`Checkpoint not found or invalid hash: ${checkpointId}`);
+      }
+
+      // Reset any local changes first to avoid conflicts
+      execSync("git reset --hard HEAD", {
         stdio: "pipe",
       });
 
-      let stashIndex = -1;
-      for (const [index, line] of stashList.split("\n").entries()) {
-        if (line.includes(checkpointId)) {
-          stashIndex = index;
-          break;
-        }
-      }
+      // Clean any untracked files
+      execSync("git clean -fd", {
+        stdio: "pipe",
+      });
 
-      if (stashIndex === -1) {
-        throw new Error(`Checkpoint not found: ${checkpointId}`);
-      }
-
-      // Apply and drop the stash
-      execSync(`git stash pop stash@{${stashIndex}}`, {
+      // Apply the stash using the hash
+      execSync(`git stash apply ${checkpointId}`, {
         stdio: "pipe",
       });
 

@@ -1,0 +1,125 @@
+# Refactogent Configuration File
+# This file configures the behavior of the Refactogent MCP server
+# Place this file in your project root as .refactogent.yaml
+
+# File/directory patterns to exclude from analysis
+exclude:
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.git/**"
+  - "**/coverage/**"
+  - "**/*.min.js"
+  - "**/*.bundle.js"
+  - "**/.next/**"
+  - "**/.nuxt/**"
+
+# File/directory patterns to include in analysis
+include:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+  - "src/**/*.js"
+  - "src/**/*.jsx"
+  - "packages/*/src/**/*.ts"
+  - "packages/*/src/**/*.tsx"
+
+# Validation settings
+validation:
+  # Whether to run tests during validation
+  runTests: true
+
+  # Whether to run linting during validation
+  runLint: true
+
+  # Whether to run type checking during validation
+  runTypeCheck: true
+
+  # Custom validation scripts to run (relative to project root)
+  # These scripts should exit with code 0 for success, non-zero for failure
+  customValidators: []
+    # Example:
+    # - "./scripts/validate-api.sh"
+    # - "npm run validate-custom"
+
+  # Whether to run validation checks in parallel (faster)
+  parallel: true
+
+  # Timeout for all validation checks in milliseconds (0 = no timeout)
+  # Default is 5 minutes
+  timeout: 300000
+
+# Safety and checkpoint settings
+safety:
+  # Automatically create checkpoints before applying changes
+  autoCheckpoint: true
+
+  # Automatically rollback on validation failure
+  autoRollback: true
+
+  # Maximum acceptable risk score (0-100)
+  # Changes with risk scores above this will be rejected
+  maxRiskScore: 75
+
+  # Require manual confirmation for changes above this risk score
+  requireConfirmationAbove: 50
+
+  # Whether to include untracked files in checkpoints
+  includeUntrackedFiles: false
+
+# AI provider configuration
+ai:
+  # AI provider to use: "anthropic" or "openai"
+  provider: "anthropic"
+
+  # Model to use for the selected provider
+  # Anthropic models: claude-3-5-sonnet-20241022, claude-3-opus-20240229, claude-3-sonnet-20240229
+  # OpenAI models: gpt-4-turbo-preview, gpt-4, gpt-3.5-turbo
+  model: "claude-3-5-sonnet-20241022"
+
+  # Maximum tokens for AI responses
+  maxTokens: 4096
+
+  # Temperature for AI responses (0-1)
+  # Lower = more focused and deterministic
+  # Higher = more creative and varied
+  temperature: 0.7
+
+  # API key (optional - can also use environment variables)
+  # For Anthropic: Set ANTHROPIC_API_KEY env var
+  # For OpenAI: Set OPENAI_API_KEY env var
+  # apiKey: "your-api-key-here"
+
+# Performance optimization settings
+performance:
+  # Enable caching of analysis results
+  caching: true
+
+  # Cache TTL in seconds (how long cached results are valid)
+  cacheTTL: 3600  # 1 hour
+
+  # Run validation checks in parallel
+  parallelValidation: true
+
+  # Maximum number of concurrent analysis operations
+  maxConcurrentAnalysis: 4
+
+  # Enable file system watching for incremental analysis
+  # (Currently not implemented - reserved for future use)
+  watchMode: false
+
+# Path configuration
+paths:
+  # Path to types directory (for type extraction and abstraction)
+  typesPath: "src/types"
+
+  # Output path for generated files
+  outputPath: "dist"
+
+  # Path to test directory
+  testPath: "test"
+
+  # Custom paths for specific file types (optional)
+  customPaths: {}
+    # Example:
+    # components: "src/components"
+    # utils: "src/utils"

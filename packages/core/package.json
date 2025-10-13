@@ -2,10 +2,20 @@
   "name": "@refactogent/core",
   "version": "0.1.0",
   "description": "Refactogent Core - Shared utilities and analysis engine",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsup",
+    "build:tsc": "tsc -p tsconfig.json",
     "build:check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -68,6 +78,7 @@
     "jest": "^29.7.0",
     "prettier": "^3.3.3",
     "ts-jest": "^29.1.2",
+    "tsup": "^8.5.0",
     "typescript": "^5.4.0"
   }
 }
