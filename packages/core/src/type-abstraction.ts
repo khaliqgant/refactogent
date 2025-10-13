@@ -101,6 +101,23 @@ export class TypeAbstraction {
   }
 
   /**
+   * Check if a file is already a type-only file (shouldn't be abstracted further)
+   */
+  private isTypeOnlyFile(filePath: string): boolean {
+    const fileName = path.basename(filePath);
+
+    // Check for common type file patterns
+    const typeFilePatterns = [
+      /\.types\.tsx?$/,           // *.types.ts, *.types.tsx
+      /\.d\.ts$/,                 // *.d.ts (declaration files)
+      /^types\.tsx?$/,            // types.ts, types.tsx
+      /^index\.types\.tsx?$/,     // index.types.ts
+    ];
+
+    return typeFilePatterns.some(pattern => pattern.test(fileName));
+  }
+
+  /**
    * Analyze a single file for type abstraction opportunities
    */
   private async analyzeFile(file: RefactorableFile): Promise<TypeAbstractionResults> {
@@ -110,8 +127,16 @@ export class TypeAbstraction {
     };
 
     try {
+      // Skip files that are already type-only files
+      if (this.isTypeOnlyFile(file.path)) {
+        if (this.config.verbose) {
+          console.log(`[TypeAbstraction] Skipping type-only file: ${file.path}`);
+        }
+        return results;
+      }
+
       const content = await fs.promises.readFile(file.path, 'utf-8');
-      
+
       // Basic validation to prevent "Invalid string length" errors
       if (!content || typeof content !== 'string') {
         if (this.config.verbose) {
