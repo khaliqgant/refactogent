@@ -6,6 +6,7 @@ import {
   RefactorSuggestOutput,
   RefactorSuggestion,
 } from "../types/index.js";
+import { getConfig } from "../config/config-loader.js";
 
 interface AIProvider {
   name: string;
@@ -15,15 +16,22 @@ interface AIProvider {
 class AnthropicProvider implements AIProvider {
   name = "anthropic";
   private client: Anthropic;
+  private model: string;
+  private maxTokens: number;
+  private temperature: number;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model?: string, maxTokens?: number, temperature?: number) {
     this.client = new Anthropic({ apiKey });
+    this.model = model || "claude-3-5-sonnet-20241022";
+    this.maxTokens = maxTokens || 4096;
+    this.temperature = temperature || 0.7;
   }
 
   async generateSuggestions(prompt: string): Promise<string> {
     const response = await this.client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022",
-      max_tokens: 4096,
+      model: this.model,
+      max_tokens: this.maxTokens,
+      temperature: this.temperature,
       messages: [{ role: "user", content: prompt }],
     });
     return response.content[0].type === "text" ? response.content[0].text : "";
@@ -34,10 +42,14 @@ class OpenAIProvider implements AIProvider {
   name = "openai";
   private apiKey: string;
   private model: string;
+  private maxTokens: number;
+  private temperature: number;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model?: string, maxTokens?: number, temperature?: number) {
     this.apiKey = apiKey;
-    this.model = process.env.OPENAI_MODEL || "gpt-4-turbo-preview";
+    this.model = model || "gpt-4-turbo-preview";
+    this.maxTokens = maxTokens || 4096;
+    this.temperature = temperature || 0.7;
   }
 
   async generateSuggestions(prompt: string): Promise<string> {
@@ -50,7 +62,8 @@ class OpenAIProvider implements AIProvider {
       body: JSON.stringify({
         model: this.model,
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 4096,
+        max_tokens: this.maxTokens,
+        temperature: this.temperature,
       }),
     });
 
@@ -67,14 +80,27 @@ export class RefactorSuggestTool {
   private provider: AIProvider | null = null;
 
   constructor(apiKey?: string) {
-    if (apiKey) {
-      // Determine provider from environment or default to Anthropic for backwards compatibility
-      const providerType = process.env.AI_PROVIDER?.toLowerCase() || "anthropic";
+    const config = getConfig();
 
-      if (providerType === "openai") {
-        this.provider = new OpenAIProvider(apiKey);
+    // Use config-based API key if not provided
+    const effectiveApiKey = apiKey || config.ai.apiKey;
+
+    if (effectiveApiKey) {
+      // Use provider from config
+      if (config.ai.provider === "openai") {
+        this.provider = new OpenAIProvider(
+          effectiveApiKey,
+          config.ai.model,
+          config.ai.maxTokens,
+          config.ai.temperature
+        );
       } else {
-        this.provider = new AnthropicProvider(apiKey);
+        this.provider = new AnthropicProvider(
+          effectiveApiKey,
+          config.ai.model,
+          config.ai.maxTokens,
+          config.ai.temperature
+        );
       }
     }
   }

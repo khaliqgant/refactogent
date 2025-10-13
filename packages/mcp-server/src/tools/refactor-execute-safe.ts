@@ -36,12 +36,25 @@ export class RefactorExecuteSafeTool {
         includeUntracked: false,
       });
 
-      // Extract checkpoint ID from response
+      // Extract checkpoint ID from response - try multiple methods for robustness
       const checkpointText = checkpointResponse.content[0].text;
-      const checkpointMatch = checkpointText.match(/\*\*Checkpoint ID\*\*: `([^`]+)`/);
+
+      // Method 1: Try to extract from markdown formatted text
+      let checkpointMatch = checkpointText.match(/\*\*Checkpoint ID\*\*:\s*`([^`]+)`/);
+      if (!checkpointMatch) {
+        // Method 2: Try alternative format with colon and spaces
+        checkpointMatch = checkpointText.match(/Checkpoint ID[:\s]+([a-f0-9]+)/i);
+      }
+      if (!checkpointMatch) {
+        // Method 3: Try to find any git hash pattern (40 hex chars)
+        checkpointMatch = checkpointText.match(/\b([a-f0-9]{40})\b/);
+      }
+
       if (checkpointMatch) {
         checkpointId = checkpointMatch[1];
         console.error(`[refactor_execute_safe] Checkpoint created: ${checkpointId}`);
+      } else {
+        console.warn("[refactor_execute_safe] Could not extract checkpoint ID from response");
       }
 
       // Step 2: Apply changes

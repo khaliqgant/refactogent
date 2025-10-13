@@ -17,10 +17,10 @@
     "build:check": "tsc --noEmit",
     "dev": "tsc && node build/index.js",
     "watch": "tsc --watch",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --passWithNoTests",
-    "test:verbose": "jest --verbose --passWithNoTests",
+    "test:coverage": "jest --coverage",
+    "test:verbose": "jest --verbose",
     "test:inspector": "npm run build && npx @modelcontextprotocol/inspector build/index.js",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
@@ -58,6 +58,7 @@
     "@refactogent/core": "*",
     "dotenv": "^16.4.5",
     "ts-morph": "^27.0.0",
+    "yaml": "^2.8.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

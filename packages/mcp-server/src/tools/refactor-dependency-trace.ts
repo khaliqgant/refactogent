@@ -7,6 +7,7 @@ import {
   DependencyChain,
   CircularDependency,
 } from "../types/index.js";
+import { getRefactorContext } from "../context/index.js";
 
 export class RefactorDependencyTraceTool {
   private project?: Project;
@@ -24,11 +25,14 @@ export class RefactorDependencyTraceTool {
         throw new Error(`File not found: ${targetFile}`);
       }
 
-      // Initialize ts-morph project
-      this.project = new Project({
-        tsConfigFilePath: this.findTsConfig(),
-        skipAddingFilesFromTsConfig: false,
+      // Use shared context instead of managing our own static project
+      const context = getRefactorContext();
+      await context.initialize({
+        rootPath: process.cwd(),
+        includeTests: true,
       });
+
+      this.project = context.getProject();
 
       const sourceFile = this.project.getSourceFile(absolutePath);
       if (!sourceFile) {
@@ -93,23 +97,6 @@ export class RefactorDependencyTraceTool {
       console.error("[refactor_dependency_trace] Error:", error);
       throw error;
     }
-  }
-
-  private findTsConfig(): string | undefined {
-    const cwd = process.cwd();
-    const candidates = [
-      path.join(cwd, "tsconfig.json"),
-      path.join(cwd, "tsconfig.base.json"),
-      path.join(cwd, "packages/*/tsconfig.json"),
-    ];
-
-    for (const candidate of candidates) {
-      if (existsSync(candidate)) {
-        return candidate;
-      }
-    }
-
-    return undefined;
   }
 
   private traceForwardDependencies(filePath: string, maxDepth: number): DependencyChain[] {

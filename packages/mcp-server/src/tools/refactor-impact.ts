@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
-import { CodebaseIndexer } from "@refactogent/core";
 import { RefactorImpactSchema, RefactorImpactOutput } from "../types/index.js";
+import { getRefactorContext } from "../context/index.js";
 
 export class RefactorImpactTool {
   async execute(args: unknown) {
@@ -19,13 +19,14 @@ export class RefactorImpactTool {
         throw new Error(`File does not exist: ${targetFile}`);
       }
 
-      // Index the codebase to build dependency graph
-      const indexer = new CodebaseIndexer({
+      // Use shared context instead of creating new indexer
+      const context = getRefactorContext();
+      await context.initialize({
         rootPath: process.cwd(),
         includeTests: true,
       });
 
-      const files = await indexer.indexCodebase();
+      const files = context.getIndexedFiles();
 
       // Find the target file
       const target = files.find((f: any) => f.path === absolutePath);

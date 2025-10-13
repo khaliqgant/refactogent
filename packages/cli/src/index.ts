@@ -28,7 +28,10 @@ program
   .option('--debug', 'Enable detailed debugging output showing LLM interactions')
   .option('--skip-type-abstraction', 'Skip type abstraction step')
   .option('--types-path <path>', 'Custom path for centralized types', 'src/types')
-  .option('--ignore <patterns>', 'Comma-separated glob patterns to ignore (e.g., "**/*.test.ts,**/fixtures/**")')
+  .option(
+    '--ignore <patterns>',
+    'Comma-separated glob patterns to ignore (e.g., "**/*.test.ts,**/fixtures/**")'
+  )
   .action(async (path, options, command) => {
     const globalOpts = command.parent.opts();
     const logger = new Logger(globalOpts.verbose);

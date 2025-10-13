@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
-import { CodebaseIndexer, RefactorableFile } from "@refactogent/core";
+import { RefactorableFile } from "@refactogent/core";
 import {
   RefactorContextSchema,
   RefactorContextOutput,
@@ -9,6 +9,7 @@ import {
   CoverageInfo,
   ComplexityMetrics,
 } from "../types/index.js";
+import { getRefactorContext } from "../context/index.js";
 
 export class RefactorContextTool {
   async execute(args: unknown) {
@@ -30,13 +31,14 @@ export class RefactorContextTool {
       const stats = fs.statSync(absolutePath);
       const isDirectory = stats.isDirectory();
 
-      // Index the codebase
-      const indexer = new CodebaseIndexer({
+      // Use shared context instead of creating new indexer
+      const context = getRefactorContext();
+      await context.initialize({
         rootPath: isDirectory ? absolutePath : path.dirname(absolutePath),
         includeTests,
       });
 
-      let refactorableFiles: RefactorableFile[] = await indexer.indexCodebase();
+      let refactorableFiles: RefactorableFile[] = context.getIndexedFiles();
 
       // If analyzing a single file, filter to just that file
       if (!isDirectory) {

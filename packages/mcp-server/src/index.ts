@@ -17,6 +17,9 @@ import { RefactorSuggestTool } from "./tools/refactor-suggest.js";
 import { RefactorExecuteSafeTool } from "./tools/refactor-execute-safe.js";
 import { RefactorDependencyTraceTool } from "./tools/refactor-dependency-trace.js";
 import { RefactorTestCoverageTool } from "./tools/refactor-test-coverage.js";
+import { RefactorPreviewTool } from "./tools/refactor-preview.js";
+import { RefactorRenameTool } from "./tools/refactor-rename.js";
+import { RefactorExtractTool } from "./tools/refactor-extract.js";
 import { ProjectHealthResource } from "./resources/project-health.js";
 
 // Load environment variables
@@ -49,6 +52,9 @@ const refactorSuggest = new RefactorSuggestTool(aiApiKey);
 const refactorExecuteSafe = new RefactorExecuteSafeTool();
 const refactorDependencyTrace = new RefactorDependencyTraceTool();
 const refactorTestCoverage = new RefactorTestCoverageTool();
+const refactorPreview = new RefactorPreviewTool();
+const refactorRename = new RefactorRenameTool();
+const refactorExtract = new RefactorExtractTool();
 
 // Initialize resources
 const projectHealth = new ProjectHealthResource();
@@ -295,6 +301,102 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
         },
       },
+      {
+        name: "refactor_preview",
+        description:
+          "Preview refactoring changes as unified diff format before applying them. Takes the same changes array as refactor_execute_safe but generates a preview instead of applying changes. Essential for trust and safety.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            changes: {
+              type: "array",
+              description: "Array of file changes to preview",
+              items: {
+                type: "object",
+                properties: {
+                  filePath: {
+                    type: "string",
+                    description: "Path to the file to change",
+                  },
+                  operation: {
+                    type: "string",
+                    enum: ["update", "create", "delete"],
+                    description: "Type of operation",
+                  },
+                  newContent: {
+                    type: "string",
+                    description: "New file content (required for update/create)",
+                  },
+                },
+                required: ["filePath", "operation"],
+              },
+            },
+          },
+          required: ["changes"],
+        },
+      },
+      {
+        name: "refactor_rename",
+        description:
+          "Safe symbol renaming using ts-morph. Finds all references to a symbol (function, class, variable, etc.) and shows what files would be modified. Supports file-level or project-wide scope. Returns preview of changes.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "File containing the symbol to rename",
+            },
+            symbolName: {
+              type: "string",
+              description: "Current name of the symbol to rename",
+            },
+            newName: {
+              type: "string",
+              description: "New name for the symbol",
+            },
+            scope: {
+              type: "string",
+              enum: ["file", "project"],
+              description: "Scope of rename operation (default: project)",
+              default: "project",
+            },
+          },
+          required: ["filePath", "symbolName", "newName"],
+        },
+      },
+      {
+        name: "refactor_extract",
+        description:
+          "Extract code to a new function or method. Analyzes selected code for variables that need to be parameters, infers return type, creates new function with proper signature, and generates replacement call. Uses ts-morph for AST analysis.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            filePath: {
+              type: "string",
+              description: "File containing the code to extract",
+            },
+            startLine: {
+              type: "number",
+              description: "Starting line number of code to extract",
+            },
+            endLine: {
+              type: "number",
+              description: "Ending line number of code to extract",
+            },
+            newFunctionName: {
+              type: "string",
+              description: "Name for the new extracted function",
+            },
+            extractionType: {
+              type: "string",
+              enum: ["function", "method"],
+              description: "Type of extraction (default: function)",
+              default: "function",
+            },
+          },
+          required: ["filePath", "startLine", "endLine", "newFunctionName"],
+        },
+      },
     ],
   };
 });
@@ -332,6 +434,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "refactor_test_coverage":
         return await refactorTestCoverage.execute(args);
+
+      case "refactor_preview":
+        return await refactorPreview.execute(args);
+
+      case "refactor_rename":
+        return await refactorRename.execute(args);
+
+      case "refactor_extract":
+        return await refactorExtract.execute(args);
 
       default:
         throw new Error(`Unknown tool: ${name}`);

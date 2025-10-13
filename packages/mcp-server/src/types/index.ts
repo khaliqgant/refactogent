@@ -260,3 +260,65 @@ export interface RefactorTestCoverageOutput {
   meetsThreshold?: boolean;
   recommendations: string[];
 }
+
+// Refactor Preview Tool
+export const RefactorPreviewSchema = z.object({
+  changes: z.array(z.object({
+    filePath: z.string().describe("Path to the file to change"),
+    operation: z.enum(["update", "create", "delete"]).describe("Type of operation"),
+    newContent: z.string().optional().describe("New file content (required for update/create)"),
+  })).describe("Array of file changes to preview"),
+});
+
+export interface RefactorPreviewOutput {
+  totalChanges: number;
+  diff: string;
+  summary: {
+    additions: number;
+    deletions: number;
+    filesModified: number;
+    filesCreated: number;
+    filesDeleted: number;
+  };
+}
+
+// Refactor Rename Tool
+export const RefactorRenameSchema = z.object({
+  filePath: z.string().describe("File containing the symbol to rename"),
+  symbolName: z.string().describe("Current name of the symbol to rename"),
+  newName: z.string().describe("New name for the symbol"),
+  scope: z.enum(["file", "project"]).default("project").describe("Scope of rename operation"),
+});
+
+export interface RefactorRenameOutput {
+  success: boolean;
+  originalName: string;
+  newName: string;
+  filesModified: string[];
+  totalReferences: number;
+  scope: "file" | "project";
+  preview: string;
+  error?: string;
+}
+
+// Refactor Extract Tool
+export const RefactorExtractSchema = z.object({
+  filePath: z.string().describe("File containing the code to extract"),
+  startLine: z.number().describe("Starting line number of code to extract"),
+  endLine: z.number().describe("Ending line number of code to extract"),
+  newFunctionName: z.string().describe("Name for the new extracted function"),
+  extractionType: z.enum(["function", "method"]).default("function").describe("Type of extraction"),
+});
+
+export interface RefactorExtractOutput {
+  success: boolean;
+  functionName: string;
+  filePath: string;
+  extractedCode: string;
+  newFunctionSignature: string;
+  replacementCall: string;
+  parameters: string[];
+  returnType: string;
+  preview: string;
+  error?: string;
+}

@@ -244,26 +244,54 @@ export class RefactorTestCoverageTool {
     try {
       const basePath = _targetPath || process.cwd();
 
-      // Count source files (excluding tests)
-      const sourceFiles = execSync(
-        `find "${basePath}" -type f \\( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" \\) ! -path "*/node_modules/*" ! -path "*/dist/*" ! -name "*.test.*" ! -name "*.spec.*" | wc -l`,
-        { encoding: "utf-8", stdio: "pipe" }
-      );
+      // Count files using recursive directory traversal (safer than shell commands)
+      const counts = this.countFilesRecursive(basePath);
 
-      // Count test files
-      const testFiles = execSync(
-        `find "${basePath}" -type f \\( -name "*.test.*" -o -name "*.spec.*" \\) ! -path "*/node_modules/*" | wc -l`,
-        { encoding: "utf-8", stdio: "pipe" }
-      );
-
-      const sourceCount = parseInt(sourceFiles.trim());
-      const testCount = parseInt(testFiles.trim());
-
-      return sourceCount > 0 ? testCount / sourceCount : 0;
+      return counts.sourceCount > 0 ? counts.testCount / counts.sourceCount : 0;
     } catch (error) {
       console.warn("Could not calculate test ratio:", error);
       return 0;
     }
+  }
+
+  private countFilesRecursive(dirPath: string): { sourceCount: number; testCount: number } {
+    let sourceCount = 0;
+    let testCount = 0;
+
+    const walk = (dir: string) => {
+      try {
+        const entries = require("fs").readdirSync(dir, { withFileTypes: true });
+
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+
+          // Skip node_modules, dist, build directories
+          if (entry.isDirectory()) {
+            if (["node_modules", "dist", "build", ".git", "coverage"].includes(entry.name)) {
+              continue;
+            }
+            walk(fullPath);
+          } else if (entry.isFile()) {
+            // Check file extensions
+            const ext = path.extname(entry.name);
+            if ([".ts", ".tsx", ".js", ".jsx"].includes(ext)) {
+              // Check if it's a test file
+              if (entry.name.includes(".test.") || entry.name.includes(".spec.")) {
+                testCount++;
+              } else {
+                sourceCount++;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Skip directories we can't read
+        console.warn(`Could not read directory ${dir}:`, error);
+      }
+    };
+
+    walk(dirPath);
+    return { sourceCount, testCount };
   }
 
   private generateRecommendations(files: FileCoverage[], threshold?: number): string[] {
