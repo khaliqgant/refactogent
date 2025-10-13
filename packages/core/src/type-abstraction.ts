@@ -332,14 +332,39 @@ export class TypeAbstraction {
         console.log(`[TypeAbstraction] Applying ${results.centralized.length + results.local.length} type abstractions`);
       }
 
-      // Apply centralized abstractions
-      for (const result of results.centralized) {
-        await this.applyCentralizedAbstraction(result);
+      // Combine all abstractions
+      const allAbstractions = [...results.centralized, ...results.local];
+
+      // Group abstractions by source file
+      const bySourceFile = new Map<string, TypeAbstractionResult[]>();
+      for (const abstraction of allAbstractions) {
+        const existing = bySourceFile.get(abstraction.sourceFile) || [];
+        existing.push(abstraction);
+        bySourceFile.set(abstraction.sourceFile, existing);
       }
 
-      // Apply local abstractions
-      for (const result of results.local) {
-        await this.applyLocalAbstraction(result);
+      // Process each file: sort by line number descending to avoid index shifts
+      for (const [sourceFile, abstractions] of bySourceFile.entries()) {
+        // Sort by startLine descending (process from bottom to top)
+        const sorted = abstractions.sort((a, b) => b.startLine - a.startLine);
+
+        if (this.config.verbose) {
+          console.log(`[TypeAbstraction] Processing ${sorted.length} abstractions in ${sourceFile}`);
+        }
+
+        // Create all type files first
+        for (const abstraction of sorted) {
+          const targetDir = path.dirname(abstraction.targetFile);
+          await fs.promises.mkdir(targetDir, { recursive: true });
+          await fs.promises.writeFile(abstraction.targetFile, abstraction.typeContent, 'utf-8');
+
+          if (this.config.verbose) {
+            console.log(`[TypeAbstraction] Created type file: ${abstraction.targetFile}`);
+          }
+        }
+
+        // Then update the source file once with all changes
+        await this.updateSourceFileWithMultipleAbstractions(sourceFile, sorted);
       }
 
       if (this.config.verbose) {
@@ -400,7 +425,96 @@ export class TypeAbstraction {
   }
 
   /**
+   * Update the source file to remove multiple types and add their import statements
+   * Processing all abstractions from a file at once avoids line number shift issues
+   */
+  private async updateSourceFileWithMultipleAbstractions(sourceFile: string, abstractions: TypeAbstractionResult[]): Promise<void> {
+    try {
+      // Read the source file
+      const content = await fs.promises.readFile(sourceFile, 'utf-8');
+      let lines = content.split('\n');
+
+      // Find where to insert imports (after last import)
+      let importInsertIndex = 0;
+      let lastImportIndex = -1;
+      let inMultiLineImport = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        if (line.startsWith('import ') || line.startsWith('import{')) {
+          lastImportIndex = i;
+          if (line.includes('{') && !line.includes('}')) {
+            inMultiLineImport = true;
+          } else if (line.includes('{') && line.includes('}')) {
+            inMultiLineImport = false;
+          }
+        } else if (inMultiLineImport) {
+          lastImportIndex = i;
+          if (line.includes('}')) {
+            inMultiLineImport = false;
+          }
+        } else {
+          if (lastImportIndex >= 0 && line.length > 0 && !line.startsWith('//') && !line.startsWith('/*')) {
+            break;
+          }
+        }
+      }
+
+      if (lastImportIndex >= 0) {
+        importInsertIndex = lastImportIndex + 1;
+      }
+
+      // Collect all imports to add
+      const importsToAdd: string[] = [];
+      for (const abstraction of abstractions) {
+        const sourceDir = path.dirname(abstraction.sourceFile);
+        const relativePath = path.relative(sourceDir, abstraction.targetFile);
+        const importPath = relativePath.replace(/\.ts$/, '').replace(/\\/g, '/');
+        const finalImportPath = importPath.startsWith('.') ? importPath : `./${importPath}`;
+        const importStatement = `import { ${abstraction.typeName} } from '${finalImportPath}';`;
+        importsToAdd.push(importStatement);
+      }
+
+      // Remove type definitions (bottom to top, already sorted)
+      for (const abstraction of abstractions) {
+        lines = [
+          ...lines.slice(0, abstraction.startLine),
+          ...lines.slice(abstraction.endLine + 1)
+        ];
+
+        // Adjust import insert index if we removed lines before it
+        if (abstraction.endLine < importInsertIndex) {
+          const linesRemoved = abstraction.endLine - abstraction.startLine + 1;
+          importInsertIndex -= linesRemoved;
+        }
+      }
+
+      // Insert all imports
+      lines.splice(importInsertIndex, 0, ...importsToAdd);
+
+      // Write back
+      const updatedContent = lines.join('\n');
+      await fs.promises.writeFile(sourceFile, updatedContent, 'utf-8');
+
+      if (this.config.verbose) {
+        console.log(`[TypeAbstraction] Updated source file: ${sourceFile}`);
+        for (const abstraction of abstractions) {
+          console.log(`[TypeAbstraction] - Removed type "${abstraction.typeName}" (lines ${abstraction.startLine}-${abstraction.endLine})`);
+        }
+        console.log(`[TypeAbstraction] - Added ${importsToAdd.length} imports`);
+      }
+    } catch (error) {
+      if (this.config.verbose) {
+        console.warn(`[TypeAbstraction] Error updating source file ${sourceFile}:`, error);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Update the source file to remove the type and add the import statement
+   * @deprecated Use updateSourceFileWithMultipleAbstractions instead
    */
   private async updateSourceFile(result: TypeAbstractionResult): Promise<void> {
     try {
@@ -421,15 +535,34 @@ export class TypeAbstraction {
       // Insert after existing imports or at the top of the file
       let importInsertIndex = 0;
       let lastImportIndex = -1;
+      let inMultiLineImport = false;
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
+
+        // Check if this line starts an import
         if (line.startsWith('import ') || line.startsWith('import{')) {
           lastImportIndex = i;
-        }
-        // Stop searching after we've passed the imports section
-        if (lastImportIndex >= 0 && line.length > 0 && !line.startsWith('import') && !line.startsWith('//') && !line.startsWith('/*')) {
-          break;
+          // Check if it's a multi-line import (has opening brace but no closing brace)
+          if (line.includes('{') && !line.includes('}')) {
+            inMultiLineImport = true;
+          } else if (line.includes('{') && line.includes('}')) {
+            // Single line import with braces
+            inMultiLineImport = false;
+          }
+        } else if (inMultiLineImport) {
+          // We're inside a multi-line import, keep tracking
+          lastImportIndex = i;
+          if (line.includes('}')) {
+            // Found the closing brace, end of multi-line import
+            inMultiLineImport = false;
+          }
+        } else {
+          // Not in an import anymore
+          // Stop searching after we've passed the imports section
+          if (lastImportIndex >= 0 && line.length > 0 && !line.startsWith('//') && !line.startsWith('/*')) {
+            break;
+          }
         }
       }
 
