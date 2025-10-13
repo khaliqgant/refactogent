@@ -65,7 +65,7 @@ describe('RefactorCheckpointTool', () => {
       });
 
       const text = result.content[0].text;
-      const checkpointMatch = text.match(/Checkpoint ID[:\s]*`?([a-f0-9]{40})`?/i);
+      const checkpointMatch = text.match(/\*\*Checkpoint ID\*\*:\s*`([a-f0-9]{40})`/i);
 
       expect(checkpointMatch).toBeTruthy();
       expect(checkpointMatch![1]).toHaveLength(40); // Git hash is 40 chars
@@ -153,7 +153,7 @@ describe('RefactorCheckpointTool', () => {
       });
 
       const text = result.content[0].text;
-      const checkpointMatch = text.match(/Checkpoint ID[:\s]*`?([a-f0-9]{40})`?/i);
+      const checkpointMatch = text.match(/\*\*Checkpoint ID\*\*:\s*`([a-f0-9]{40})`/i);
       expect(checkpointMatch).toBeTruthy();
 
       const checkpointId = checkpointMatch![1];
@@ -200,7 +200,7 @@ describe('RefactorCheckpointTool', () => {
       });
 
       const text = result.content[0].text;
-      const checkpointMatch = text.match(/Checkpoint ID[:\s]*`?([a-f0-9]{40})`?/i);
+      const checkpointMatch = text.match(/\*\*Checkpoint ID\*\*:\s*`([a-f0-9]{40})`/i);
       const checkpointId = checkpointMatch![1];
 
       // Make more changes
@@ -237,7 +237,7 @@ describe('RefactorCheckpointTool', () => {
       });
 
       const text = result.content[0].text;
-      const checkpointMatch = text.match(/Checkpoint ID[:\s]*`?([a-f0-9]{40})`?/i);
+      const checkpointMatch = text.match(/\*\*Checkpoint ID\*\*:\s*`([a-f0-9]{40})`/i);
       const checkpointId = checkpointMatch![1];
 
       // Make more changes

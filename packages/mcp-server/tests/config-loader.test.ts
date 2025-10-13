@@ -19,12 +19,16 @@ describe('ConfigLoader', () => {
     testRepo = createTestRepo();
     cwdRestore = withCwd(testRepo.path);
     originalEnv = { ...process.env };
+    // Clear config cache before each test
+    reloadConfig();
   });
 
   afterEach(() => {
     cwdRestore.restore();
     testRepo.cleanup();
     process.env = originalEnv;
+    // Clear config cache after each test
+    reloadConfig();
   });
 
   describe('Default Configuration', () => {

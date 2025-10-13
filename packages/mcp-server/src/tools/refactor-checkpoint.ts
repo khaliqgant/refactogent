@@ -100,8 +100,8 @@ No local changes found to checkpoint.
 
   private getStashedFiles(): string[] {
     try {
-      // Get files in the most recent stash
-      const output = execSync("git stash show --name-only stash@{0}", {
+      // Get files in the most recent stash (including untracked with --include-untracked)
+      const output = execSync("git stash show --name-only --include-untracked stash@{0}", {
         encoding: "utf-8",
         stdio: "pipe",
       });
@@ -125,6 +125,16 @@ No local changes found to checkpoint.
       } catch {
         throw new Error(`Checkpoint not found or invalid hash: ${checkpointId}`);
       }
+
+      // Reset any local changes first to avoid conflicts
+      execSync("git reset --hard HEAD", {
+        stdio: "pipe",
+      });
+
+      // Clean any untracked files
+      execSync("git clean -fd", {
+        stdio: "pipe",
+      });
 
       // Apply the stash using the hash
       execSync(`git stash apply ${checkpointId}`, {

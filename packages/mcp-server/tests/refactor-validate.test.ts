@@ -225,7 +225,7 @@ describe('RefactorValidateTool', () => {
       });
 
       const checkpointText = checkpointResult.content[0].text;
-      const checkpointMatch = checkpointText.match(/Checkpoint ID[:\s]*`?([a-f0-9]{40})`?/i);
+      const checkpointMatch = checkpointText.match(/\*\*Checkpoint ID\*\*:\s*`([a-f0-9]{40})`/i);
 
       if (!checkpointMatch) {
         throw new Error('Could not extract checkpoint ID');
@@ -454,7 +454,7 @@ describe('RefactorValidateTool', () => {
       });
 
       const checkpointText = checkpointResult.content[0].text;
-      const checkpointMatch = checkpointText.match(/Checkpoint ID[:\s]*`?([a-f0-9]{40})`?/i);
+      const checkpointMatch = checkpointText.match(/\*\*Checkpoint ID\*\*:\s*`([a-f0-9]{40})`/i);
 
       if (!checkpointMatch) {
         throw new Error('Could not extract checkpoint ID');
