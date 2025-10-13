@@ -399,19 +399,22 @@ export class TypeAbstraction {
       const content = await fs.promises.readFile(result.sourceFile, 'utf-8');
       const lines = content.split('\n');
 
-      // Remove the type definition lines
-      const updatedLines = [
-        ...lines.slice(0, result.startLine),
-        ...lines.slice(result.endLine + 1)
-      ];
+      // Calculate the relative path from source file to target file
+      const sourceDir = path.dirname(result.sourceFile);
+      const relativePath = path.relative(sourceDir, result.targetFile);
+      // Remove the .ts extension and normalize the path
+      const importPath = relativePath.replace(/\.ts$/, '').replace(/\\/g, '/');
+      const finalImportPath = importPath.startsWith('.') ? importPath : `./${importPath}`;
 
-      // Find the right place to insert the import statement
+      const importStatement = `import { ${result.typeName} } from '${finalImportPath}';`;
+
+      // Find the right place to insert the import statement BEFORE removing lines
       // Insert after existing imports or at the top of the file
       let importInsertIndex = 0;
       let lastImportIndex = -1;
 
-      for (let i = 0; i < updatedLines.length; i++) {
-        const line = updatedLines[i].trim();
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
         if (line.startsWith('import ') || line.startsWith('import{')) {
           lastImportIndex = i;
         }
@@ -425,17 +428,71 @@ export class TypeAbstraction {
         importInsertIndex = lastImportIndex + 1;
       }
 
-      // Calculate the relative path from source file to target file
-      const sourceDir = path.dirname(result.sourceFile);
-      const relativePath = path.relative(sourceDir, result.targetFile);
-      // Remove the .ts extension and normalize the path
-      const importPath = relativePath.replace(/\.ts$/, '').replace(/\\/g, '/');
-      const finalImportPath = importPath.startsWith('.') ? importPath : `./${importPath}`;
+      // Check if the import already exists or if there's already an import from the same file
+      const existingImport = lines.find(line => line.includes(`from '${finalImportPath}'`));
 
-      const importStatement = `import { ${result.typeName} } from '${finalImportPath}';`;
+      let updatedLines: string[];
 
-      // Insert the import statement
-      updatedLines.splice(importInsertIndex, 0, importStatement);
+      if (existingImport) {
+        // Merge with existing import instead of adding a new one
+        const existingImportIndex = lines.findIndex(line => line.includes(`from '${finalImportPath}'`));
+        const existingImportLine = lines[existingImportIndex];
+
+        // Extract existing imports
+        const importMatch = existingImportLine.match(/import\s*\{([^}]+)\}\s*from/);
+        if (importMatch) {
+          const existingImports = importMatch[1].split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+          // Add new type to existing imports if not already present
+          if (!existingImports.includes(result.typeName)) {
+            existingImports.push(result.typeName);
+            const mergedImportStatement = `import { ${existingImports.join(', ')} } from '${finalImportPath}';`;
+
+            // Replace the existing import line
+            lines[existingImportIndex] = mergedImportStatement;
+          }
+        }
+
+        // Remove the type definition lines
+        updatedLines = [
+          ...lines.slice(0, result.startLine),
+          ...lines.slice(result.endLine + 1)
+        ];
+      } else {
+        // Insert new import and remove type definition
+        // We need to handle the case where importInsertIndex might be affected by the removal
+
+        if (importInsertIndex <= result.startLine) {
+          // Import is before the type definition, so insert first, then remove
+          const withImport = [
+            ...lines.slice(0, importInsertIndex),
+            importStatement,
+            ...lines.slice(importInsertIndex)
+          ];
+
+          // Now remove the type definition (adjust indices for the inserted line)
+          updatedLines = [
+            ...withImport.slice(0, result.startLine + 1),
+            ...withImport.slice(result.endLine + 2)
+          ];
+        } else {
+          // Import is after the type definition, so remove first, then insert
+          const withoutType = [
+            ...lines.slice(0, result.startLine),
+            ...lines.slice(result.endLine + 1)
+          ];
+
+          // Calculate the adjusted import index
+          const linesRemoved = result.endLine - result.startLine + 1;
+          const adjustedImportIndex = importInsertIndex - linesRemoved;
+
+          updatedLines = [
+            ...withoutType.slice(0, adjustedImportIndex),
+            importStatement,
+            ...withoutType.slice(adjustedImportIndex)
+          ];
+        }
+      }
 
       // Write the updated content back to the source file
       const updatedContent = updatedLines.join('\n');
