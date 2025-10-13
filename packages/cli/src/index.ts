@@ -28,6 +28,7 @@ program
   .option('--debug', 'Enable detailed debugging output showing LLM interactions')
   .option('--skip-type-abstraction', 'Skip type abstraction step')
   .option('--types-path <path>', 'Custom path for centralized types', 'src/types')
+  .option('--ignore <patterns>', 'Comma-separated glob patterns to ignore (e.g., "**/*.test.ts,**/fixtures/**")')
   .action(async (path, options, command) => {
     const globalOpts = command.parent.opts();
     const logger = new Logger(globalOpts.verbose);
@@ -46,16 +47,23 @@ program
       // Step 1: Index the codebase
       logger.log(OutputFormatter.info('Starting codebase indexing...'));
 
+      // Parse ignore patterns if provided
+      const excludePatterns = options.ignore
+        ? options.ignore.split(',').map((p: string) => p.trim())
+        : undefined;
+
       // Log debug information if verbose
       logger.debug('Indexer configuration', {
         rootPath: path,
         includeTests: options.includeTests || false,
+        excludePatterns,
         verbose: globalOpts.verbose,
       });
 
       const indexer = new CodebaseIndexer({
         rootPath: path,
         includeTests: options.includeTests || false,
+        ...(excludePatterns && { excludePatterns }),
       });
 
       const refactorableFiles: RefactorableFile[] = await indexer.indexCodebase();
