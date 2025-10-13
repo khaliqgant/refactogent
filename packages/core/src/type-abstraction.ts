@@ -317,10 +317,15 @@ export class TypeAbstraction {
         }
       }
 
-      const result = typeContent.trim();
+      let result = typeContent.trim();
 
       // Validate that this looks like a real type definition
       if (result && (result.includes('interface') || result.includes('type')) && result.includes(typeName)) {
+        // Ensure the type has an export keyword
+        if (!result.startsWith('export ')) {
+          result = 'export ' + result;
+        }
+
         return {
           content: result,
           startLine,
@@ -346,6 +351,88 @@ export class TypeAbstraction {
     // Currently not implemented - always returns false
     // Future enhancement: integrate with indexing system to search all project files
     return false;
+  }
+
+  /**
+   * Resolve type dependencies across extracted .types.ts files
+   * Finds references to other extracted types and adds imports
+   */
+  private async resolveTypeDependencies(abstractions: TypeAbstractionResult[]): Promise<void> {
+    if (this.config.verbose) {
+      console.log('[TypeAbstraction] Resolving type dependencies...');
+    }
+
+    // Build a map of type names to their target files
+    const typeMap = new Map<string, string>();
+    for (const abstraction of abstractions) {
+      typeMap.set(abstraction.typeName, abstraction.targetFile);
+    }
+
+    // Process each extracted type file
+    for (const abstraction of abstractions) {
+      try {
+        const content = await fs.promises.readFile(abstraction.targetFile, 'utf-8');
+        const imports: string[] = [];
+
+        // Find all type references in the content
+        // Match identifier patterns that could be type references
+        const typeReferencePattern = /\b([A-Z][a-zA-Z0-9_]*)\b/g;
+        const matches = content.matchAll(typeReferencePattern);
+
+        const referencedTypes = new Set<string>();
+        for (const match of matches) {
+          const referencedType = match[1];
+
+          // Skip if it's the type being defined itself
+          if (referencedType === abstraction.typeName) {
+            continue;
+          }
+
+          // Check if this type was also extracted
+          if (typeMap.has(referencedType)) {
+            referencedTypes.add(referencedType);
+          }
+        }
+
+        // Generate imports for referenced types
+        for (const referencedType of referencedTypes) {
+          const referencedFile = typeMap.get(referencedType)!;
+
+          // Skip if it's the same file
+          if (referencedFile === abstraction.targetFile) {
+            continue;
+          }
+
+          // Calculate relative path
+          const fromDir = path.dirname(abstraction.targetFile);
+          let relativePath = path.relative(fromDir, referencedFile);
+
+          // Ensure the path starts with ./ or ../
+          if (!relativePath.startsWith('.')) {
+            relativePath = './' + relativePath;
+          }
+
+          // Remove the .ts extension
+          relativePath = relativePath.replace(/\.ts$/, '');
+
+          imports.push(`import { ${referencedType} } from '${relativePath}';`);
+        }
+
+        // If we found imports, prepend them to the file
+        if (imports.length > 0) {
+          const updatedContent = imports.join('\n') + '\n\n' + content;
+          await fs.promises.writeFile(abstraction.targetFile, updatedContent, 'utf-8');
+
+          if (this.config.verbose) {
+            console.log(`[TypeAbstraction] Added ${imports.length} import(s) to ${abstraction.targetFile}`);
+          }
+        }
+      } catch (error) {
+        if (this.config.verbose) {
+          console.warn(`[TypeAbstraction] Failed to resolve dependencies for ${abstraction.targetFile}:`, error);
+        }
+      }
+    }
   }
 
   /**
@@ -391,6 +478,9 @@ export class TypeAbstraction {
         // Then update the source file once with all changes
         await this.updateSourceFileWithMultipleAbstractions(sourceFile, sorted);
       }
+
+      // After all files are created, resolve type dependencies
+      await this.resolveTypeDependencies(allAbstractions);
 
       if (this.config.verbose) {
         console.log('[TypeAbstraction] Successfully applied all type abstractions');
@@ -490,16 +580,33 @@ export class TypeAbstraction {
         importInsertIndex = lastImportIndex + 1;
       }
 
-      // Collect all imports to add
+      // Collect all imports and re-exports to add
       const importsToAdd: string[] = [];
+      const typeImportsToAdd: string[] = [];
+
       for (const abstraction of abstractions) {
         const sourceDir = path.dirname(abstraction.sourceFile);
         const relativePath = path.relative(sourceDir, abstraction.targetFile);
         const importPath = relativePath.replace(/\.ts$/, '').replace(/\\/g, '/');
         const finalImportPath = importPath.startsWith('.') ? importPath : `./${importPath}`;
-        const importStatement = `import { ${abstraction.typeName} } from '${finalImportPath}';`;
-        importsToAdd.push(importStatement);
+
+        // Check if the type was originally exported in the source file
+        const originalLine = content.split('\n')[abstraction.startLine];
+        const wasExported = originalLine.trim().startsWith('export ');
+
+        // Always import the type for use within the file
+        const importStatement = `import type { ${abstraction.typeName} } from '${finalImportPath}';`;
+        typeImportsToAdd.push(importStatement);
+
+        if (wasExported) {
+          // Also re-export it using export type {} from syntax (required for isolatedModules)
+          const exportStatement = `export type { ${abstraction.typeName} } from '${finalImportPath}';`;
+          importsToAdd.push(exportStatement);
+        }
       }
+
+      // Combine type imports and re-exports
+      importsToAdd.unshift(...typeImportsToAdd);
 
       // Remove type definitions (bottom to top, already sorted)
       for (const abstraction of abstractions) {
