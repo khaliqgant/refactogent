@@ -1,44 +1,68 @@
 # Refactogent
 
-> AI-powered refactoring with safety guardrails for Claude Code
+> Intelligent code refactoring - with or without AI
 
-Transform how you refactor code with intelligent analysis, safety checkpoints, and structured workflows designed for AI-assisted development.
+Transform how you refactor code with intelligent analysis, safety checkpoints, and structured workflows. Use it standalone for deterministic refactoring, or with AI for intelligent, context-aware changes.
 
 ## 🎯 What is Refactogent?
 
-Refactogent provides Claude with powerful tools for **safe, intelligent refactoring** through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). It doesn't try to replace Claude's intelligence—it enhances it with:
+Refactogent is a **dual-mode refactoring tool** that works two ways:
 
+### Mode 1: Standalone CLI (Deterministic)
+Run automated refactoring directly without AI. Perfect for:
+- **Type extraction**: Automatically extract interfaces/types to separate files
+- **Batch operations**: Process entire codebases at once
+- **CI/CD integration**: Consistent, repeatable refactoring
+- **Quick wins**: Apply best practices without AI overhead
+
+### Mode 2: MCP Server (AI-Assisted)
+Enhance Claude or other AI assistants with refactoring superpowers via [Model Context Protocol (MCP)](https://modelcontextprotocol.io):
 - 🔍 **Deep codebase analysis** with dependency mapping
 - 🛡️ **Safety checkpoints** with automatic rollback
 - 🧪 **Validation workflows** (tests, linting, type checking)
 - 📊 **Impact analysis** showing blast radius of changes
-- 🤖 **AI-powered suggestions** using Claude's intelligence
+- 🤖 **AI-powered suggestions** using the AI's intelligence
+
+**Key insight**: The CLI handles deterministic operations (like type extraction) while the MCP server gives AI the tools to orchestrate complex, context-aware refactorings using those same primitives.
 
 ## 🚀 Quick Start
 
-### Option 1: MCP Server (Recommended for Claude Code)
+### Mode 1: Standalone CLI (No AI Required)
 
 ```bash
-# Install globally
+# Install CLI
+npm install -g refactogent
+
+# Run automated type extraction
+refactogent refactor ./src
+
+# With options
+refactogent refactor ./src \
+  --ignore "**/*.test.ts" \
+  --types-path "src/types" \
+  --dry-run
+
+# Verify changes
+npm run build  # Your tests should pass!
+```
+
+**What it does**: Automatically extracts interface/type definitions from implementation files, creates `.types.ts` files, and updates imports. All changes are deterministic and safe.
+
+See [CLI documentation](./packages/cli/README.md) for all commands.
+
+### Mode 2: MCP Server (AI-Assisted)
+
+```bash
+# Install MCP server
 npm install -g @refactogent/mcp-server
 
 # Configure with Claude Code
 claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
 ```
 
+**What it does**: Gives Claude (or other AI) access to refactoring tools like `refactor_context`, `refactor_checkpoint`, `refactor_validate`, etc. The AI orchestrates complex refactorings using its intelligence while the tools provide safety and validation.
+
 See [MCP Server documentation](./packages/mcp-server/README.md) for detailed setup.
-
-### Option 2: CLI Tool
-
-```bash
-# Install CLI
-npm install -g refactogent
-
-# Analyze your project
-refactogent refactor ./src
-```
-
-See [CLI documentation](./packages/cli/README.md) for all commands.
 
 ## 📦 Packages
 
@@ -134,60 +158,109 @@ npm test
 
 ## 📋 Key Features
 
-### For Claude Code (MCP Server)
+### Mode 1: Standalone CLI (Deterministic Refactoring)
+
+**Direct refactoring without AI - just run and apply:**
+
+- **Type Abstraction**: Automatically extract interfaces/types to `.types.ts` files
+- **Smart Import Management**: Handles multi-line imports, merges duplicates
+- **Batch Processing**: Process entire directories at once
+- **Flexible Ignore Patterns**: Skip specific files or directories with `--ignore`
+- **Dry Run Mode**: Preview changes before applying
+- **Multi-language Support**: TypeScript, JavaScript, Python, Go
+- **Zero Dependencies on AI**: Fast, deterministic, repeatable
+
+**Use when**: You want automated, consistent refactoring without AI decision-making.
+
+### Mode 2: MCP Server (AI-Assisted Intelligence)
+
+**Tools that enhance AI's refactoring capabilities:**
 
 - **refactor_context**: Deep codebase analysis with dependency graphs
 - **refactor_checkpoint**: Git-based safety checkpoints with rollback
 - **refactor_validate**: Automated testing, linting, and type checking
 - **refactor_impact**: Blast radius analysis for proposed changes
 - **refactor_suggest**: AI-powered refactoring suggestions
-- **project-health**: Comprehensive project health metrics
+- **refactor_execute_safe**: Safe change application with auto-rollback
+- **refactor_dependency_trace**: Forward/backward dependency tracing
+- **refactor_test_coverage**: Real coverage analysis with recommendations
 
-### For Standalone Use (CLI)
+**Use when**: You want AI to make intelligent, context-aware refactoring decisions with safety guardrails.
 
-- **Type Abstraction**: Extract and centralize duplicate types
-- **Project Indexing**: Fast symbol extraction and dependency mapping
-- **Multi-language Support**: TypeScript, JavaScript, Python, Go
-- **Complexity Analysis**: Cyclomatic complexity for functions
-- **Test File Detection**: Automatic test file identification
+**Note**: Type abstraction is NOT exposed via MCP because AI can handle it better using `refactor_execute_safe` with full context awareness.
 
 ## 🎯 Use Cases
 
-### Safe Refactoring with Claude
+### Mode 1: Standalone CLI - Batch Type Extraction
+
+```bash
+# Before: Types mixed with implementation across 50 files
+# After: Clean separation with .types.ts files
+
+$ refactogent refactor ./src/components --ignore "**/*.test.ts"
+🚀 RefactoGent: Complete AI-Powered Refactoring Workflow
+📁 Discovered 50 files
+✅ Successfully indexed 50 files with 120 symbols
+✅ Found 35 type abstraction opportunities
+✅ Successfully applied 35 type abstractions
+
+$ npm run build
+✓ Build passes - all imports resolved correctly!
+```
+
+**Result**: All interface and type definitions extracted to co-located `.types.ts` files, imports updated, multi-line imports preserved.
+
+### Mode 2: AI-Assisted - Safe Complex Refactoring
 
 ```
 User: "Extract types from src/components/UserProfile.tsx"
 
-Claude:
-1. Uses refactor_context to analyze the file
+Claude (using MCP):
+1. Uses refactor_context to analyze the file and its dependencies
 2. Uses refactor_checkpoint to create a safety point
-3. Extracts types to a separate file
-4. Updates imports
+3. Extracts types to a separate file with context-aware naming
+4. Updates imports in all dependent files
 5. Uses refactor_validate to run tests
 6. If tests fail, auto-rolls back to checkpoint
 ```
 
-### Impact Analysis Before Changes
+### Mode 2: AI-Assisted - Impact Analysis
 
 ```
 User: "What's the impact of changing the UserService class?"
 
-Claude:
+Claude (using MCP):
 1. Uses refactor_impact to analyze dependencies
 2. Reports: "47 files depend on this. High risk (82/100)"
-3. Suggests breaking the refactor into smaller steps
+3. Uses refactor_dependency_trace to show the chain
+4. Suggests breaking the refactor into smaller steps
 ```
 
-### AI-Powered Suggestions
+### Mode 2: AI-Assisted - Intelligent Suggestions
 
 ```
 User: "Improve code quality in src/services"
 
-Claude:
+Claude (using MCP):
 1. Uses refactor_suggest on each file
 2. Prioritizes high-impact, low-risk suggestions
-3. Applies refactorings incrementally with validation
+3. Uses refactor_execute_safe to apply changes incrementally
+4. Validates after each change with automatic rollback
 ```
+
+### When to Use Each Mode
+
+**Use CLI Mode** when:
+- You want fast, automated batch operations
+- Changes are deterministic (type extraction, formatting)
+- Running in CI/CD pipelines
+- You don't need context-aware decision making
+
+**Use MCP Mode** when:
+- Changes require understanding context and intent
+- You need impact analysis before proceeding
+- Refactoring affects multiple interconnected files
+- You want AI to make intelligent decisions with safety nets
 
 ## 🚦 Roadmap
 
