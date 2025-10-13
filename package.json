@@ -1,6 +1,6 @@
 {
   "name": "refactogent",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "type": "module",
   "description": "AI-powered refactoring agent for JavaScript and TypeScript projects",
   "main": "packages/cli/dist/index.js",
