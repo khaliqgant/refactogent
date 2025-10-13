@@ -210,6 +210,8 @@ export class TypeAbstraction {
       const lines = content.split('\n');
       let inDeclareGlobal = false;
       let declareGlobalBraceCount = 0;
+      let inDeclareModule = false;
+      let declareModuleBraceCount = 0;
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -225,6 +227,12 @@ export class TypeAbstraction {
           declareGlobalBraceCount = 0;
         }
 
+        // Track declare module blocks (for module augmentation)
+        if (line.match(/declare\s+module\s+['"`]/)) {
+          inDeclareModule = true;
+          declareModuleBraceCount = 0;
+        }
+
         if (inDeclareGlobal) {
           // Count braces to track when we exit the declare global block
           for (const char of line) {
@@ -237,6 +245,21 @@ export class TypeAbstraction {
           }
 
           // Skip extracting types inside declare global blocks
+          continue;
+        }
+
+        if (inDeclareModule) {
+          // Count braces to track when we exit the declare module block
+          for (const char of line) {
+            if (char === '{') declareModuleBraceCount++;
+            if (char === '}') declareModuleBraceCount--;
+          }
+
+          if (declareModuleBraceCount === 0 && line.includes('}')) {
+            inDeclareModule = false;
+          }
+
+          // Skip extracting types inside declare module blocks (module augmentation)
           continue;
         }
 
@@ -377,6 +400,50 @@ export class TypeAbstraction {
   }
 
   /**
+   * Find the closest type file from a list of candidates
+   * Prefers files in the same directory, then parent directories, then shortest path
+   */
+  private findClosestTypeFile(currentDir: string, candidates: string[]): string {
+    if (candidates.length === 0) {
+      throw new Error('No candidate files provided');
+    }
+    if (candidates.length === 1) {
+      return candidates[0];
+    }
+
+    // Score each candidate based on proximity
+    const scored = candidates.map(candidate => {
+      const candidateDir = path.dirname(candidate);
+      const relativePath = path.relative(currentDir, candidateDir);
+
+      // Calculate distance score
+      let score = 0;
+
+      // Same directory = lowest score (best)
+      if (relativePath === '') {
+        score = 0;
+      }
+      // Parent/sibling directory
+      else if (!relativePath.startsWith('..')) {
+        // Count directory depth
+        score = relativePath.split(path.sep).length;
+      }
+      // Different branch (needs to go up with ..)
+      else {
+        // Count how many levels up we need to go
+        const upLevels = (relativePath.match(/\.\./g) || []).length;
+        score = upLevels * 100; // Heavily penalize going up the tree
+      }
+
+      return { file: candidate, score };
+    });
+
+    // Sort by score (lower is better) and return the best match
+    scored.sort((a, b) => a.score - b.score);
+    return scored[0].file;
+  }
+
+  /**
    * Resolve type dependencies across extracted .types.ts files
    * Finds references to other extracted types and adds imports
    */
@@ -386,9 +453,12 @@ export class TypeAbstraction {
     }
 
     // Build a map of type names to their target files
-    const typeMap = new Map<string, string>();
+    // Allow multiple files per type name (handle duplicates)
+    const typeMap = new Map<string, string[]>();
     for (const abstraction of abstractions) {
-      typeMap.set(abstraction.typeName, abstraction.targetFile);
+      const existing = typeMap.get(abstraction.typeName) || [];
+      existing.push(abstraction.targetFile);
+      typeMap.set(abstraction.typeName, existing);
     }
 
     // Process each extracted type file
@@ -419,7 +489,17 @@ export class TypeAbstraction {
 
         // Generate imports for referenced types
         for (const referencedType of referencedTypes) {
-          const referencedFile = typeMap.get(referencedType)!;
+          const referencedFiles = typeMap.get(referencedType)!;
+
+          // If multiple files define this type, prefer the closest one
+          let referencedFile: string;
+          if (referencedFiles.length === 1) {
+            referencedFile = referencedFiles[0];
+          } else {
+            // Multiple files define this type - choose the closest one
+            const currentDir = path.dirname(abstraction.targetFile);
+            referencedFile = this.findClosestTypeFile(currentDir, referencedFiles);
+          }
 
           // Skip if it's the same file
           if (referencedFile === abstraction.targetFile) {
