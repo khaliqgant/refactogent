@@ -208,12 +208,35 @@ export class TypeAbstraction {
       const typePattern = /^(?!.*\bfunction\b).*(?:export\s+)?type\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/;
 
       const lines = content.split('\n');
+      let inDeclareGlobal = false;
+      let declareGlobalBraceCount = 0;
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
 
         // Skip comments and empty lines
         if (line.startsWith('//') || line.startsWith('/*') || line.startsWith('*') || line.length === 0) {
+          continue;
+        }
+
+        // Track declare global blocks
+        if (line.includes('declare global')) {
+          inDeclareGlobal = true;
+          declareGlobalBraceCount = 0;
+        }
+
+        if (inDeclareGlobal) {
+          // Count braces to track when we exit the declare global block
+          for (const char of line) {
+            if (char === '{') declareGlobalBraceCount++;
+            if (char === '}') declareGlobalBraceCount--;
+          }
+
+          if (declareGlobalBraceCount === 0 && line.includes('}')) {
+            inDeclareGlobal = false;
+          }
+
+          // Skip extracting types inside declare global blocks
           continue;
         }
 
