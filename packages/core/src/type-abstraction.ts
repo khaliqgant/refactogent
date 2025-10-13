@@ -240,6 +240,7 @@ export class TypeAbstraction {
       let typeContent = '';
       let braceCount = 0;
       let foundStart = false;
+      let foundOpeningBrace = false;
       let inString = false;
       let stringChar = '';
       let endLine = startLine;
@@ -271,13 +272,21 @@ export class TypeAbstraction {
 
             // Only count braces when not in strings
             if (!inString) {
-              if (char === '{') braceCount++;
-              if (char === '}') braceCount--;
+              if (char === '{') {
+                braceCount++;
+                foundOpeningBrace = true;
+              }
+              if (char === '}') {
+                braceCount--;
+              }
             }
           }
 
-          // If we've closed all braces and found a semicolon or new type/interface, we're done
-          if (braceCount === 0 && (line.includes(';') || line.trim().endsWith('}'))) {
+          // For interfaces: stop when we've closed all braces (braceCount reaches 0 after finding opening brace)
+          // For type aliases without braces: stop at semicolon
+          if (foundOpeningBrace && braceCount === 0) {
+            break;
+          } else if (!foundOpeningBrace && line.trim().endsWith(';')) {
             break;
           }
         }
