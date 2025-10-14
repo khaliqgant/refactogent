@@ -1,0 +1,52 @@
+{
+  "name": "refactogent",
+  "displayName": "Refactogent - Safe Code Refactoring",
+  "description": "Expert refactoring agent with safety checkpoints, impact analysis, and automatic validation",
+  "version": "0.1.0",
+  "author": "Refactogent Team",
+  "repository": "https://github.com/khaliqgant/refactogent",
+  "homepage": "https://github.com/khaliqgant/refactogent#readme",
+  "license": "MIT",
+  "category": "development",
+  "tags": [
+    "refactoring",
+    "code-quality",
+    "typescript",
+    "javascript",
+    "testing",
+    "safety",
+    "validation"
+  ],
+  "features": [
+    "🔍 Deep codebase analysis with dependency mapping",
+    "🛡️ Safety checkpoints with automatic rollback",
+    "📊 Impact analysis and risk scoring",
+    "🤖 AI-powered refactoring suggestions",
+    "✅ Automated test and type validation",
+    "🔄 Safe execution with auto-rollback on failure"
+  ],
+  "requirements": {
+    "mcp": {
+      "servers": {
+        "refactogent": {
+          "required": true,
+          "command": "npx",
+          "args": ["-y", "@refactogent/mcp-server"]
+        }
+      }
+    }
+  },
+  "agents": [
+    {
+      "name": "refactoring-expert",
+      "displayName": "Refactoring Expert",
+      "description": "Specialized agent for safe, intelligent code refactoring using refactogent tools",
+      "file": "agents/refactoring-expert.md"
+    }
+  ],
+  "documentation": {
+    "installation": "README.md#installation",
+    "quickstart": "README.md#quick-start",
+    "usage": ".claude-plugin/docs/USAGE.md"
+  }
+}

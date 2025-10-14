@@ -64,6 +64,17 @@ claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
 
 See [MCP Server documentation](./packages/mcp-server/README.md) for detailed setup.
 
+### Mode 3: Claude Code Plugin (Enhanced Experience)
+
+```bash
+# Install the refactoring expert plugin in Claude Code
+/plugin marketplace add khaliqgant/refactogent
+```
+
+**What it does**: Adds a specialized "refactoring-expert" agent to Claude Code that automatically follows best practices for safe refactoring. The agent knows when to analyze context, check impact, create checkpoints, and validate changes.
+
+See [Plugin documentation](./.claude-plugin/README.md) for installation and usage.
+
 ## 📦 Packages
 
 This monorepo contains three packages:

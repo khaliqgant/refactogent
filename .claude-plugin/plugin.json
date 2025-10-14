@@ -1,0 +1,16 @@
+{
+  "name": "refactogent",
+  "version": "0.1.0",
+  "description": "Intelligent code refactoring with safety checkpoints and validation",
+  "author": "Refactogent Team",
+  "repository": "https://github.com/khaliqgant/refactogent",
+  "license": "MIT",
+  "keywords": [
+    "refactoring",
+    "code-quality",
+    "typescript",
+    "javascript",
+    "safety",
+    "validation"
+  ]
+}
