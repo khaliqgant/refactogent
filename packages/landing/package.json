@@ -1,0 +1,23 @@
+{
+  "name": "@refactogent/landing",
+  "version": "0.1.0",
+  "description": "Refactogent landing page - marketing site for refactogent",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "setup": "./setup-aws.sh",
+    "deploy": "npm run deploy:check && npm run deploy:s3 && npm run deploy:invalidate",
+    "deploy:check": "node -e \"try { require('./.aws-config.json'); } catch(e) { console.error('❌ AWS not configured. Run: npm run setup'); process.exit(1); }\"",
+    "deploy:s3": "aws s3 sync . s3://$(node -e \"console.log(require('./.aws-config.json').bucketName)\") --exclude '*.sh' --exclude '*.json' --exclude '*.md' --exclude 'package.json' --exclude 'package-lock.json' --exclude 'node_modules/*' --cache-control 'public, max-age=31536000, immutable' --exclude 'index.html' && aws s3 cp index.html s3://$(node -e \"console.log(require('./.aws-config.json').bucketName)\")/index.html --cache-control 'public, max-age=3600, must-revalidate' --content-type 'text/html'",
+    "deploy:invalidate": "aws cloudfront create-invalidation --distribution-id $(node -e \"console.log(require('./.aws-config.json').distributionId)\") --paths '/*'",
+    "dev": "python3 -m http.server 8080 || python -m http.server 8080",
+    "clean": "rm -f .aws-config.json"
+  },
+  "keywords": [
+    "refactoring",
+    "landing-page",
+    "marketing"
+  ],
+  "author": "Refactogent Team",
+  "license": "MIT"
+}
