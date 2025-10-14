@@ -62,7 +62,7 @@ Add to your Claude Code configuration (`~/.config/claude/mcp.json`):
 }
 ```
 
-#### Option 3: Without AI Suggestions (7/8 tools still work)
+#### Option 3: Without AI Suggestions (Recommended for Claude Code)
 
 ```json
 {
@@ -75,7 +75,39 @@ Add to your Claude Code configuration (`~/.config/claude/mcp.json`):
 }
 ```
 
-> **Note**: Only the `refactor_suggest` tool requires an AI API key. The other 7 tools work independently.
+> **Note**: Only the `refactor_suggest` tool requires an AI API key. **If you're using refactogent with Claude or another AI assistant, you don't need the API key** - the AI can analyze code itself using `refactor_context` instead of calling `refactor_suggest`. The API key is only needed for standalone CLI usage of `refactor_suggest`.
+
+###  Why Does the MCP Server Need Its Own API Key? (Spoiler: You Probably Don't!)
+
+**TL;DR**: If you're using Claude or another AI assistant, **you don't need an API key**. The API key is only for the `refactor_suggest` tool, which is redundant when an AI is already in the loop.
+
+#### When You DON'T Need an API Key
+
+✅ Using with Claude Code / Claude Desktop
+✅ Using with any AI assistant via MCP
+✅ AI can read code and suggest refactorings itself using `refactor_context`
+
+#### When You DO Need an API Key
+
+❌ Using `refactor_suggest` from CLI directly (without an AI)
+❌ Want refactogent to generate suggestions autonomously
+
+#### Technical Details
+
+The MCP server runs as a **separate Node.js process**:
+
+```
+┌─────────────────┐
+│   Claude Code   │ ← Already has AI + your API key
+└────────┬────────┘
+         │ MCP Protocol
+         ↓
+┌─────────────────┐
+│ Refactogent MCP │ ← refactor_suggest would call AI again (redundant!)
+└─────────────────┘
+```
+
+The `refactor_suggest` tool was designed for standalone CLI use, but when Claude is already analyzing your code, it's redundant to call another AI API.
 
 ### Set API Key (Optional, for AI suggestions)
 
@@ -97,15 +129,16 @@ The API key is **only required** for the `refactor_suggest` tool. All other tool
 
 ## 🛠️ Available Tools
 
-All 8 tools for comprehensive refactoring workflows:
+All tools for comprehensive refactoring workflows:
 
 | Tool | Purpose | Requires API Key |
 |------|---------|-----------------|
 | `refactor_context` | Analyze codebase structure and dependencies | No |
+| `refactor_analyze` | Get opinionated refactoring suggestions based on static analysis | No |
 | `refactor_checkpoint` | Create safety rollback points (git stash) | No |
 | `refactor_validate` | Run tests, linting, type checking | No |
 | `refactor_impact` | Analyze blast radius of changes | No |
-| `refactor_suggest` | AI-powered refactoring suggestions | Yes ✅ |
+| `refactor_suggest` | AI-powered refactoring suggestions (requires API key) | Yes |
 | `refactor_execute_safe` | Safely execute changes with auto-rollback | No |
 | `refactor_dependency_trace` | Trace import/dependency chains | No |
 | `refactor_test_coverage` | Analyze real test coverage | No |
@@ -139,7 +172,60 @@ AI uses refactor_context:
 
 ---
 
-### 2. `refactor_checkpoint` - Create Safety Rollback Point
+### 2. `refactor_analyze` - Get Opinionated Refactoring Suggestions
+
+Analyze code for refactoring opportunities based on static analysis metrics.
+
+**Use when**: You want objective, data-driven suggestions on what needs refactoring. Perfect for Claude or other AI assistants to understand where to focus.
+
+```typescript
+User: "What should I refactor in src/services?"
+
+AI uses refactor_analyze:
+{
+  "path": "src/services"
+}
+
+// Returns: Prioritized opportunities based on:
+// - File size (>300 lines = warning)
+// - Function length (>50 lines = warning)
+// - Function complexity (>10 = warning)
+// - Class size (>15 methods = warning)
+```
+
+**Returns**:
+- List of refactoring opportunities sorted by severity (high/medium/low)
+- Specific locations (file, line numbers, symbol names)
+- Metrics (current value vs threshold)
+- Actionable suggestions for each opportunity
+- Effort and impact estimates
+- Overall recommendations
+
+**Example Output**:
+```
+🔴 HIGH: Function 'processPayment' is very complex
+  File: src/services/payment.ts
+  Lines: 45-180
+  Complexity: 25 (threshold: 10)
+  💡 Suggestion: Break into smaller functions using early returns...
+  Effort: ⏰⏰ medium | Impact: 💥💥💥 high
+
+🟡 MEDIUM: File is getting large
+  File: src/services/user.ts
+  Size: 380 lines (threshold: 300)
+  💡 Suggestion: Extract related functions into separate modules...
+```
+
+**Why use this instead of refactor_suggest?**
+- No API key needed
+- Based on objective metrics (not AI hallucination)
+- Consistent, repeatable results
+- Fast (pure static analysis)
+- Perfect for guiding AI on what to refactor
+
+---
+
+### 3. `refactor_checkpoint` - Create Safety Rollback Point
 
 Create a git stash checkpoint before making changes.
 

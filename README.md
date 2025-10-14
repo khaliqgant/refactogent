@@ -62,6 +62,8 @@ claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
 
 **What it does**: Gives Claude (or other AI) access to refactoring tools like `refactor_context`, `refactor_checkpoint`, `refactor_validate`, etc. The AI orchestrates complex refactorings using its intelligence while the tools provide safety and validation.
 
+**No API Key Needed**: All tools work without configuration when using with Claude. The `refactor_suggest` tool (which calls AI) is redundant when Claude is already analyzing your code!
+
 See [MCP Server documentation](./packages/mcp-server/README.md) for detailed setup.
 
 ## 📦 Packages

@@ -20,6 +20,7 @@ import { RefactorTestCoverageTool } from "./tools/refactor-test-coverage.js";
 import { RefactorPreviewTool } from "./tools/refactor-preview.js";
 import { RefactorRenameTool } from "./tools/refactor-rename.js";
 import { RefactorExtractTool } from "./tools/refactor-extract.js";
+import { RefactorAnalyzeTool } from "./tools/refactor-analyze.js";
 import { ProjectHealthResource } from "./resources/project-health.js";
 
 // Load environment variables
@@ -55,6 +56,7 @@ const refactorTestCoverage = new RefactorTestCoverageTool();
 const refactorPreview = new RefactorPreviewTool();
 const refactorRename = new RefactorRenameTool();
 const refactorExtract = new RefactorExtractTool();
+const refactorAnalyze = new RefactorAnalyzeTool();
 
 // Initialize resources
 const projectHealth = new ProjectHealthResource();
@@ -162,9 +164,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "refactor_analyze",
+        description:
+          "Analyze code for refactoring opportunities based on static analysis metrics (file size, function length, complexity, class size). Provides opinionated, actionable suggestions without requiring an AI API key. Perfect for guiding AI assistants on what needs refactoring.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              description: "File or directory path to analyze for refactoring opportunities",
+            },
+          },
+          required: ["path"],
+        },
+      },
+      {
         name: "refactor_suggest",
         description:
-          "Use AI to analyze code and suggest intelligent refactoring improvements. Supports Claude (Anthropic) and GPT (OpenAI). Returns prioritized suggestions with risk scores and reasoning.",
+          "Use AI to analyze code and suggest intelligent refactoring improvements. Supports Claude (Anthropic) and GPT (OpenAI). Requires API key. Note: When using with AI assistants like Claude, consider using refactor_analyze instead (no API key needed, provides objective metrics).",
         inputSchema: {
           type: "object",
           properties: {
@@ -422,6 +439,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "refactor_impact":
         return await refactorImpact.execute(args);
+
+      case "refactor_analyze":
+        return await refactorAnalyze.execute(args);
 
       case "refactor_suggest":
         return await refactorSuggest.execute(args);
