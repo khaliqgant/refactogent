@@ -16,12 +16,8 @@
       "Bash(git log:*)",
       "Bash(git commit:*)",
       "Bash(npm run lint:*)",
-      "Bash(cat:*)",
-      "Bash(npm run build:check:*)",
-      "Bash(npx tsc:*)",
-      "Bash(npm run test:coverage:*)",
-      "Bash(find:*)",
-      "Read(//home/khaliqgant/**)"
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
