@@ -77,6 +77,28 @@ Add to your Claude Code configuration (`~/.config/claude/mcp.json`):
 
 > **Note**: Only the `refactor_suggest` tool requires an AI API key. The other 7 tools work independently.
 
+### Why Does the MCP Server Need Its Own API Key?
+
+The MCP server runs as a **separate Node.js process** from Claude Code (or other AI clients). This means:
+
+- **Claude Code** has your API key for the main conversation
+- **Refactogent MCP Server** is a standalone process that doesn't have access to that key
+- When `refactor_suggest` needs AI analysis, it must call the API independently
+
+Think of it this way:
+```
+┌─────────────────┐
+│   Claude Code   │ ← Has your API key
+└────────┬────────┘
+         │ MCP Protocol (no API key shared)
+         ↓
+┌─────────────────┐
+│ Refactogent MCP │ ← Needs its own API key for refactor_suggest
+└─────────────────┘
+```
+
+**Good news**: You can use the same API key for both! Just configure it in the MCP server settings.
+
 ### Set API Key (Optional, for AI suggestions)
 
 For Anthropic/Claude:

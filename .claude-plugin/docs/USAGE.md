@@ -43,6 +43,27 @@ Edit `~/.claude/config.json`:
 }
 ```
 
+**Optional: Enable AI-Powered Suggestions**
+
+The `refactor_suggest` tool requires an API key. Add it to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "refactogent": {
+      "command": "npx",
+      "args": ["-y", "@refactogent/mcp-server"],
+      "env": {
+        "ANTHROPIC_API_KEY": "your-key-here",
+        "AI_PROVIDER": "anthropic"
+      }
+    }
+  }
+}
+```
+
+> **Note**: The MCP server runs as a separate process and needs its own API key for AI suggestions. 7 out of 8 tools work without it. See [MCP Server docs](../../packages/mcp-server/README.md#why-does-the-mcp-server-need-its-own-api-key) for details.
+
 ### 3. Verify Installation
 
 In Claude Code:

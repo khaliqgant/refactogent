@@ -58,9 +58,14 @@ npm install -g @refactogent/mcp-server
 
 # Configure with Claude Code
 claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
+
+# Optional: Enable AI-powered suggestions (requires API key)
+# Edit MCP config to add your API key for refactor_suggest tool
 ```
 
 **What it does**: Gives Claude (or other AI) access to refactoring tools like `refactor_context`, `refactor_checkpoint`, `refactor_validate`, etc. The AI orchestrates complex refactorings using its intelligence while the tools provide safety and validation.
+
+**API Key Note**: The `refactor_suggest` tool needs an API key since the MCP server runs as a separate process. 7 out of 8 tools work without it. See [MCP Server documentation](./packages/mcp-server/README.md) for API key setup.
 
 See [MCP Server documentation](./packages/mcp-server/README.md) for detailed setup.
 

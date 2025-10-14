@@ -21,7 +21,8 @@
       "Bash(npx tsc:*)",
       "Bash(npm run test:coverage:*)",
       "Bash(find:*)",
-      "Read(//home/khaliqgant/**)"
+      "Read(//home/khaliqgant/**)",
+      "WebFetch(domain:www.anthropic.com)"
     ],
     "deny": [],
     "ask": []

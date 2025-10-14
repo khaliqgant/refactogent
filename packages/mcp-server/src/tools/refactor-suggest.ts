@@ -114,9 +114,52 @@ export class RefactorSuggestTool {
 
       // Check if AI provider is configured
       if (!this.provider) {
-        throw new Error(
-          "AI provider not configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY with AI_PROVIDER environment variable."
-        );
+        const helpfulError = `AI provider not configured for refactor_suggest.
+
+The refactor_suggest tool requires an API key to generate AI-powered suggestions.
+
+To fix this, configure your MCP server with an API key:
+
+Option 1: Environment Variables
+  export ANTHROPIC_API_KEY="your-key-here"
+  export AI_PROVIDER="anthropic"  # or "openai"
+
+Option 2: MCP Server Configuration
+  In your Claude Code MCP config (~/.claude/config.json or similar):
+  {
+    "mcpServers": {
+      "refactogent": {
+        "command": "npx",
+        "args": ["-y", "@refactogent/mcp-server"],
+        "env": {
+          "ANTHROPIC_API_KEY": "your-key-here",
+          "AI_PROVIDER": "anthropic"
+        }
+      }
+    }
+  }
+
+Option 3: Project Configuration
+  Create .refactogent.json in your project root:
+  {
+    "ai": {
+      "provider": "anthropic",
+      "apiKey": "your-key-here"
+    }
+  }
+
+Note: The MCP server runs as a separate process from Claude Code and needs
+its own API key. This is different from the API key Claude Code uses.
+
+Why is this needed?
+- The MCP server is a standalone Node.js process
+- It doesn't have access to Claude Code's API key
+- refactor_suggest needs to call the AI API independently
+
+Other refactogent tools (context, impact, checkpoint, validate, etc.) work
+without an API key and use static analysis only.`;
+
+        throw new Error(helpfulError);
       }
 
       // Read the file
