@@ -181,7 +181,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "refactor_suggest",
         description:
-          "[DEPRECATED for AI assistants - use refactor_analyze instead] Use AI to analyze code and suggest intelligent refactoring improvements. Supports Claude (Anthropic) and GPT (OpenAI). Returns prioritized suggestions with risk scores and reasoning. Redundant when AI is already in the loop.",
+          "Use AI to analyze code and suggest intelligent refactoring improvements. Supports Claude (Anthropic) and GPT (OpenAI). Requires API key. Note: When using with AI assistants like Claude, consider using refactor_analyze instead (no API key needed, provides objective metrics).",
         inputSchema: {
           type: "object",
           properties: {

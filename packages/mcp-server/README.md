@@ -134,11 +134,11 @@ All tools for comprehensive refactoring workflows:
 | Tool | Purpose | Requires API Key |
 |------|---------|-----------------|
 | `refactor_context` | Analyze codebase structure and dependencies | No |
-| `refactor_analyze` | **NEW!** Get opinionated refactoring suggestions based on static analysis | No |
+| `refactor_analyze` | Get opinionated refactoring suggestions based on static analysis | No |
 | `refactor_checkpoint` | Create safety rollback points (git stash) | No |
 | `refactor_validate` | Run tests, linting, type checking | No |
 | `refactor_impact` | Analyze blast radius of changes | No |
-| `refactor_suggest` | ~~AI-powered suggestions~~ (deprecated, use `refactor_analyze`) | Yes |
+| `refactor_suggest` | AI-powered refactoring suggestions (requires API key) | Yes |
 | `refactor_execute_safe` | Safely execute changes with auto-rollback | No |
 | `refactor_dependency_trace` | Trace import/dependency chains | No |
 | `refactor_test_coverage` | Analyze real test coverage | No |
@@ -174,7 +174,7 @@ AI uses refactor_context:
 
 ### 2. `refactor_analyze` - Get Opinionated Refactoring Suggestions
 
-**NEW!** Analyze code for refactoring opportunities based on static analysis metrics.
+Analyze code for refactoring opportunities based on static analysis metrics.
 
 **Use when**: You want objective, data-driven suggestions on what needs refactoring. Perfect for Claude or other AI assistants to understand where to focus.
 
