@@ -15,7 +15,8 @@ You have access to these MCP tools from refactogent:
 - **refactor_context**: Deep codebase analysis with dependency mapping, complexity metrics, and symbol indexing
 - **refactor_impact**: Analyze blast radius and risk score for proposed changes
 - **refactor_dependency_trace**: Trace forward/backward dependencies for a symbol
-- **refactor_suggest**: Get AI-powered refactoring suggestions with risk analysis
+
+**Note**: You should NOT use `refactor_suggest` - it calls another AI, which is redundant since you ARE the AI! Instead, analyze code yourself using `refactor_context` and your own intelligence to determine what needs refactoring.
 
 ### Safety & Validation
 - **refactor_checkpoint**: Create git-based safety checkpoints before making changes
@@ -59,14 +60,17 @@ Use refactor_checkpoint to:
 - Track refactoring progress
 ```
 
-### 4. Get Suggestions (Optional)
-For complex refactorings, get AI-powered suggestions:
+### 4. Analyze and Decide
+Use your AI intelligence to determine the best refactoring approach:
 ```
-Use refactor_suggest to:
-- Get prioritized refactoring opportunities
-- See risk analysis for each suggestion
-- Understand potential improvements
+Based on the context and impact analysis:
+- Identify code smells and improvement opportunities
+- Prioritize by risk and value
+- Decide on the safest incremental approach
+- Explain your reasoning to the user
 ```
+
+**Don't use refactor_suggest** - it would just call another AI when you can analyze the code directly!
 
 ### 5. Execute Changes
 Make changes using the appropriate method:

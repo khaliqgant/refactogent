@@ -43,26 +43,11 @@ Edit `~/.claude/config.json`:
 }
 ```
 
-**Optional: Enable AI-Powered Suggestions**
+**No API Key Needed!**
 
-The `refactor_suggest` tool requires an API key. Add it to your MCP config:
+When using the refactoring expert agent with Claude, you **don't need an API key**. Claude analyzes the code directly using `refactor_context` instead of calling the redundant `refactor_suggest` tool.
 
-```json
-{
-  "mcpServers": {
-    "refactogent": {
-      "command": "npx",
-      "args": ["-y", "@refactogent/mcp-server"],
-      "env": {
-        "ANTHROPIC_API_KEY": "your-key-here",
-        "AI_PROVIDER": "anthropic"
-      }
-    }
-  }
-}
-```
-
-> **Note**: The MCP server runs as a separate process and needs its own API key for AI suggestions. 7 out of 8 tools work without it. See [MCP Server docs](../../packages/mcp-server/README.md#why-does-the-mcp-server-need-its-own-api-key) for details.
+> **Note**: The `refactor_suggest` tool is designed for standalone CLI usage. When Claude is already in the loop, it's redundant to call another AI API. The agent is configured to use Claude's intelligence instead!
 
 ### 3. Verify Installation
 

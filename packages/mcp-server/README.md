@@ -62,7 +62,7 @@ Add to your Claude Code configuration (`~/.config/claude/mcp.json`):
 }
 ```
 
-#### Option 3: Without AI Suggestions (7/8 tools still work)
+#### Option 3: Without AI Suggestions (Recommended for Claude Code)
 
 ```json
 {
@@ -75,29 +75,39 @@ Add to your Claude Code configuration (`~/.config/claude/mcp.json`):
 }
 ```
 
-> **Note**: Only the `refactor_suggest` tool requires an AI API key. The other 7 tools work independently.
+> **Note**: Only the `refactor_suggest` tool requires an AI API key. **If you're using refactogent with Claude or another AI assistant, you don't need the API key** - the AI can analyze code itself using `refactor_context` instead of calling `refactor_suggest`. The API key is only needed for standalone CLI usage of `refactor_suggest`.
 
-### Why Does the MCP Server Need Its Own API Key?
+### Why Does the MCP Server Need Its Own API Key? (Spoiler: You Probably Don't!)
 
-The MCP server runs as a **separate Node.js process** from Claude Code (or other AI clients). This means:
+**TL;DR**: If you're using Claude or another AI assistant, **you don't need an API key**. The API key is only for the `refactor_suggest` tool, which is redundant when an AI is already in the loop.
 
-- **Claude Code** has your API key for the main conversation
-- **Refactogent MCP Server** is a standalone process that doesn't have access to that key
-- When `refactor_suggest` needs AI analysis, it must call the API independently
+#### When You DON'T Need an API Key
 
-Think of it this way:
+✅ Using with Claude Code / Claude Desktop
+✅ Using with any AI assistant via MCP
+✅ AI can read code and suggest refactorings itself using `refactor_context`
+
+#### When You DO Need an API Key
+
+❌ Using `refactor_suggest` from CLI directly (without an AI)
+❌ Want refactogent to generate suggestions autonomously
+
+#### Technical Details
+
+The MCP server runs as a **separate Node.js process**:
+
 ```
 ┌─────────────────┐
-│   Claude Code   │ ← Has your API key
+│   Claude Code   │ ← Already has AI + your API key
 └────────┬────────┘
-         │ MCP Protocol (no API key shared)
+         │ MCP Protocol
          ↓
 ┌─────────────────┐
-│ Refactogent MCP │ ← Needs its own API key for refactor_suggest
+│ Refactogent MCP │ ← refactor_suggest would call AI again (redundant!)
 └─────────────────┘
 ```
 
-**Good news**: You can use the same API key for both! Just configure it in the MCP server settings.
+The `refactor_suggest` tool was designed for standalone CLI use, but when Claude is already analyzing your code, it's redundant to call another AI API.
 
 ### Set API Key (Optional, for AI suggestions)
 
