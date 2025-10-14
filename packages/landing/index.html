@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO Meta Tags -->
+    <title>Refactogent - AI-Powered Code Refactoring for JavaScript & TypeScript</title>
+    <meta name="description" content="Intelligent code refactoring with or without AI. Standalone CLI for deterministic refactoring or MCP server for AI-assisted changes with Claude. Extract types, analyze dependencies, and refactor safely.">
+    <meta name="keywords" content="refactoring, javascript, typescript, ai, code quality, static analysis, claude, mcp, type extraction">
+    <meta name="author" content="Refactogent Team">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://refactogent.com/">
+    <meta property="og:title" content="Refactogent - AI-Powered Code Refactoring">
+    <meta property="og:description" content="Transform how you refactor code with intelligent analysis, safety checkpoints, and structured workflows. Works standalone or with AI.">
+    <meta property="og:image" content="https://refactogent.com/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://refactogent.com/">
+    <meta property="twitter:title" content="Refactogent - AI-Powered Code Refactoring">
+    <meta property="twitter:description" content="Transform how you refactor code with intelligent analysis, safety checkpoints, and structured workflows.">
+    <meta property="twitter:image" content="https://refactogent.com/og-image.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        }
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+    </style>
+
+    <!-- JSON-LD Schema -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Refactogent",
+        "applicationCategory": "DeveloperApplication",
+        "description": "AI-powered refactoring agent for JavaScript and TypeScript projects",
+        "operatingSystem": "Cross-platform",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Organization",
+            "name": "Refactogent Team"
+        }
+    }
+    </script>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold gradient-text">Refactogent</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-gray-700 hover:text-primary transition">Features</a>
+                    <a href="#how-it-works" class="text-gray-700 hover:text-primary transition">How It Works</a>
+                    <a href="#use-cases" class="text-gray-700 hover:text-primary transition">Use Cases</a>
+                    <a href="https://github.com/khaliqgant/refactogent" class="text-gray-700 hover:text-primary transition">Docs</a>
+                    <a href="https://github.com/khaliqgant/refactogent" class="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition">
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-20 pb-32 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center">
+                <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+                    Intelligent Code Refactoring<br/>
+                    <span class="gradient-text">With or Without AI</span>
+                </h1>
+                <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                    Transform how you refactor code with intelligent analysis, safety checkpoints, and structured workflows.
+                    Use standalone for deterministic refactoring, or with AI for context-aware changes.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <div class="w-full sm:w-auto">
+                        <div class="code-block p-4 text-left">
+                            <code class="text-green-400 text-sm">npm install -g refactogent</code>
+                        </div>
+                    </div>
+                    <a href="https://github.com/khaliqgant/refactogent" class="inline-block bg-gray-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition">
+                        View Documentation →
+                    </a>
+                </div>
+                <p class="text-sm text-gray-500 mt-4">Open source • MIT License • TypeScript, JavaScript, Python, Go</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dual Mode Section -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Two Modes, One Tool</h2>
+                <p class="text-xl text-gray-600">Choose the right approach for your refactoring needs</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Standalone CLI -->
+                <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-8 border border-gray-200">
+                    <div class="mb-6">
+                        <div class="inline-block bg-gray-900 text-white px-4 py-2 rounded-lg font-semibold mb-4">
+                            Mode 1: Standalone CLI
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-3">Deterministic Refactoring</h3>
+                        <p class="text-gray-600">Automated refactoring without AI. Fast, consistent, repeatable.</p>
+                    </div>
+
+                    <div class="code-block p-4 mb-6">
+                        <pre class="text-green-400 text-sm overflow-x-auto"><code># Extract types automatically
+refactogent refactor ./src
+
+# Batch process with options
+refactogent refactor ./src \
+  --ignore "**/*.test.ts" \
+  --types-path "src/types" \
+  --dry-run</code></pre>
+                    </div>
+
+                    <ul class="space-y-3">
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Type extraction to .types.ts files</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Batch processing for entire codebases</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Perfect for CI/CD pipelines</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Zero AI dependencies</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- MCP Server -->
+                <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-8 border border-indigo-200">
+                    <div class="mb-6">
+                        <div class="inline-block gradient-bg text-white px-4 py-2 rounded-lg font-semibold mb-4">
+                            Mode 2: MCP Server
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900 mb-3">AI-Assisted Intelligence</h3>
+                        <p class="text-gray-600">Enhance Claude with refactoring superpowers via MCP.</p>
+                    </div>
+
+                    <div class="code-block p-4 mb-6">
+                        <pre class="text-green-400 text-sm overflow-x-auto"><code># Install MCP server
+npm install -g @refactogent/mcp-server
+
+# Configure with Claude
+claude mcp add --transport stdio \
+  refactogent -- npx -y \
+  @refactogent/mcp-server</code></pre>
+                    </div>
+
+                    <ul class="space-y-3">
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-indigo-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Deep codebase analysis with AI</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-indigo-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Safety checkpoints with rollback</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-indigo-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Impact analysis & blast radius</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-indigo-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-gray-700">Context-aware suggestions</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Powerful Features</h2>
+                <p class="text-xl text-gray-600">Everything you need for safe, intelligent refactoring</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Type Abstraction</h3>
+                    <p class="text-gray-600">Automatically extract interfaces and types to separate .types.ts files with smart import management.</p>
+                </div>
+
+                <div class="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Safety Checkpoints</h3>
+                    <p class="text-gray-600">Git-based safety points with automatic rollback if validation fails. Never break your code.</p>
+                </div>
+
+                <div class="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Impact Analysis</h3>
+                    <p class="text-gray-600">Understand the blast radius of changes with dependency tracing and risk scoring.</p>
+                </div>
+
+                <div class="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Automated Validation</h3>
+                    <p class="text-gray-600">Run tests, linting, and type checking automatically after refactoring changes.</p>
+                </div>
+
+                <div class="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Deep Code Analysis</h3>
+                    <p class="text-gray-600">AST-based parsing with complexity metrics, dependency mapping, and symbol indexing.</p>
+                </div>
+
+                <div class="bg-white rounded-xl p-8 shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Multi-Language</h3>
+                    <p class="text-gray-600">TypeScript, JavaScript, Python, and Go support with language-specific optimizations.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">How It Works</h2>
+                <p class="text-xl text-gray-600">Simple workflow, powerful results</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-16">
+                <!-- CLI Workflow -->
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-8 flex items-center">
+                        <span class="bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">1</span>
+                        CLI Workflow
+                    </h3>
+                    <div class="space-y-6">
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 font-bold">1</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-1">Install & Run</h4>
+                                <p class="text-gray-600 text-sm">Install globally and run on your codebase</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 font-bold">2</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-1">Automatic Analysis</h4>
+                                <p class="text-gray-600 text-sm">AST parsing finds refactoring opportunities</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 font-bold">3</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-1">Apply Changes</h4>
+                                <p class="text-gray-600 text-sm">Types extracted, imports updated automatically</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 font-bold">4</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-1">Verify</h4>
+                                <p class="text-gray-600 text-sm">Run your build and tests - everything works</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MCP Workflow -->
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-8 flex items-center">
+                        <span class="gradient-bg text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm">2</span>
+                        MCP Workflow
+                    </h3>
+                    <div class="space-y-6">
+                        <div class="flex items-start">
+                            <div class="bg-purple-100 text-purple-600 w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 font-bold">1</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-1">Configure MCP</h4>
+                                <p class="text-gray-600 text-sm">Add Refactogent to Claude's MCP config</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-purple-100 text-purple-600 w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 font-bold">2</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-1">Create Checkpoint</h4>
+                                <p class="text-gray-600 text-sm">AI creates git safety point before changes</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-purple-100 text-purple-600 w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 font-bold">3</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-1">Analyze & Execute</h4>
+                                <p class="text-gray-600 text-sm">AI analyzes context and makes intelligent changes</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="bg-purple-100 text-purple-600 w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 font-bold">4</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-1">Validate</h4>
+                                <p class="text-gray-600 text-sm">Auto-runs tests, rolls back if needed</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases -->
+    <section id="use-cases" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-900 mb-4">Use Cases</h2>
+                <p class="text-xl text-gray-600">Real scenarios, real solutions</p>
+            </div>
+
+            <div class="space-y-12">
+                <!-- Use Case 1 -->
+                <div class="bg-white rounded-2xl p-8 shadow-sm">
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <div>
+                            <div class="inline-block bg-gray-900 text-white px-3 py-1 rounded text-sm font-semibold mb-4">CLI Mode</div>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-4">Batch Type Extraction</h3>
+                            <p class="text-gray-600 mb-4">Extract types from 50+ files in seconds. Clean separation of interfaces and implementation with automatic import updates.</p>
+                            <ul class="space-y-2">
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    35 type abstractions applied
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    All imports updated correctly
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Build passes first try
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="code-block p-6">
+                            <pre class="text-green-400 text-sm overflow-x-auto"><code>$ refactogent refactor ./src \
+  --ignore "**/*.test.ts"
+
+🚀 RefactoGent: Complete Refactoring
+📁 Discovered 50 files
+✅ Indexed 50 files with 120 symbols
+✅ Found 35 type abstractions
+✅ Applied 35 type abstractions
+
+$ npm run build
+✓ Build passes!</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case 2 -->
+                <div class="bg-white rounded-2xl p-8 shadow-sm">
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <div class="order-2 md:order-1 code-block p-6">
+                            <pre class="text-green-400 text-sm overflow-x-auto"><code>User: "What's the impact of
+changing UserService?"
+
+Claude:
+1. Analyzing dependencies...
+2. Found 47 dependent files
+3. Risk score: 82/100 (High)
+4. Suggesting incremental approach
+
+Create checkpoint? [Y/n]</code></pre>
+                        </div>
+                        <div class="order-1 md:order-2">
+                            <div class="inline-block gradient-bg text-white px-3 py-1 rounded text-sm font-semibold mb-4">MCP Mode</div>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-4">Impact Analysis</h3>
+                            <p class="text-gray-600 mb-4">Understand blast radius before making changes. AI traces dependencies and suggests safe refactoring strategies.</p>
+                            <ul class="space-y-2">
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Dependency chain visualization
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Risk scoring for changes
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Incremental refactoring suggestions
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case 3 -->
+                <div class="bg-white rounded-2xl p-8 shadow-sm">
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <div>
+                            <div class="inline-block gradient-bg text-white px-3 py-1 rounded text-sm font-semibold mb-4">MCP Mode</div>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-4">Safe Refactoring with Rollback</h3>
+                            <p class="text-gray-600 mb-4">AI makes intelligent changes with automatic checkpoints. If tests fail, instant rollback to safety.</p>
+                            <ul class="space-y-2">
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Automatic git checkpoints
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Test validation after changes
+                                </li>
+                                <li class="flex items-center text-gray-700">
+                                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    One-click rollback on failure
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="code-block p-6">
+                            <pre class="text-green-400 text-sm overflow-x-auto"><code>User: "Extract UserProfile types"
+
+Claude:
+1. Created checkpoint #abc123
+2. Analyzing UserProfile.tsx...
+3. Extracting 8 type definitions
+4. Updating 12 import statements
+5. Running tests...
+   ❌ 2 tests failed
+6. Rolling back to checkpoint
+7. Analyzing failures...
+8. Suggesting fixes...</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 bg-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-4xl font-bold text-gray-900 mb-6">Ready to Transform Your Refactoring?</h2>
+            <p class="text-xl text-gray-600 mb-8">Open source, MIT licensed, and ready to use today</p>
+
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-gray-50 rounded-xl p-6 text-left border border-gray-200">
+                    <h3 class="font-bold text-gray-900 mb-4">Quick Start - CLI</h3>
+                    <div class="code-block p-4">
+                        <code class="text-green-400 text-sm">npm install -g refactogent</code>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-6 text-left border border-gray-200">
+                    <h3 class="font-bold text-gray-900 mb-4">Quick Start - MCP</h3>
+                    <div class="code-block p-4">
+                        <code class="text-green-400 text-sm">npm i -g @refactogent/mcp-server</code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="https://github.com/khaliqgant/refactogent" class="inline-block bg-gray-900 text-white px-8 py-4 rounded-lg font-semibold hover:bg-gray-800 transition text-lg">
+                    View on GitHub →
+                </a>
+                <a href="https://github.com/khaliqgant/refactogent#readme" class="inline-block bg-white text-gray-900 px-8 py-4 rounded-lg font-semibold hover:bg-gray-50 transition text-lg border-2 border-gray-900">
+                    Read Documentation
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <h4 class="text-white font-bold mb-4">Refactogent</h4>
+                    <p class="text-sm">Intelligent code refactoring with or without AI</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#features" class="hover:text-white transition">Features</a></li>
+                        <li><a href="#use-cases" class="hover:text-white transition">Use Cases</a></li>
+                        <li><a href="https://github.com/khaliqgant/refactogent#readme" class="hover:text-white transition">Documentation</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Resources</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="https://github.com/khaliqgant/refactogent" class="hover:text-white transition">GitHub</a></li>
+                        <li><a href="https://github.com/khaliqgant/refactogent/issues" class="hover:text-white transition">Issues</a></li>
+                        <li><a href="https://github.com/khaliqgant/refactogent/discussions" class="hover:text-white transition">Discussions</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Legal</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="https://github.com/khaliqgant/refactogent/blob/main/LICENSE" class="hover:text-white transition">MIT License</a></li>
+                        <li><a href="https://github.com/khaliqgant/refactogent/blob/main/SECURITY.md" class="hover:text-white transition">Security</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-sm">
+                <p>&copy; 2025 Refactogent Team. Open source under MIT License.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
