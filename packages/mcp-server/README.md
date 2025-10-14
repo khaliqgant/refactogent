@@ -129,15 +129,16 @@ The API key is **only required** for the `refactor_suggest` tool. All other tool
 
 ## 🛠️ Available Tools
 
-All 8 tools for comprehensive refactoring workflows:
+All tools for comprehensive refactoring workflows:
 
 | Tool | Purpose | Requires API Key |
 |------|---------|-----------------|
 | `refactor_context` | Analyze codebase structure and dependencies | No |
+| `refactor_analyze` | **NEW!** Get opinionated refactoring suggestions based on static analysis | No |
 | `refactor_checkpoint` | Create safety rollback points (git stash) | No |
 | `refactor_validate` | Run tests, linting, type checking | No |
 | `refactor_impact` | Analyze blast radius of changes | No |
-| `refactor_suggest` | AI-powered refactoring suggestions | Yes ✅ |
+| `refactor_suggest` | ~~AI-powered suggestions~~ (deprecated, use `refactor_analyze`) | Yes |
 | `refactor_execute_safe` | Safely execute changes with auto-rollback | No |
 | `refactor_dependency_trace` | Trace import/dependency chains | No |
 | `refactor_test_coverage` | Analyze real test coverage | No |
@@ -171,7 +172,60 @@ AI uses refactor_context:
 
 ---
 
-### 2. `refactor_checkpoint` - Create Safety Rollback Point
+### 2. `refactor_analyze` - Get Opinionated Refactoring Suggestions
+
+**NEW!** Analyze code for refactoring opportunities based on static analysis metrics.
+
+**Use when**: You want objective, data-driven suggestions on what needs refactoring. Perfect for Claude or other AI assistants to understand where to focus.
+
+```typescript
+User: "What should I refactor in src/services?"
+
+AI uses refactor_analyze:
+{
+  "path": "src/services"
+}
+
+// Returns: Prioritized opportunities based on:
+// - File size (>300 lines = warning)
+// - Function length (>50 lines = warning)
+// - Function complexity (>10 = warning)
+// - Class size (>15 methods = warning)
+```
+
+**Returns**:
+- List of refactoring opportunities sorted by severity (high/medium/low)
+- Specific locations (file, line numbers, symbol names)
+- Metrics (current value vs threshold)
+- Actionable suggestions for each opportunity
+- Effort and impact estimates
+- Overall recommendations
+
+**Example Output**:
+```
+🔴 HIGH: Function 'processPayment' is very complex
+  File: src/services/payment.ts
+  Lines: 45-180
+  Complexity: 25 (threshold: 10)
+  💡 Suggestion: Break into smaller functions using early returns...
+  Effort: ⏰⏰ medium | Impact: 💥💥💥 high
+
+🟡 MEDIUM: File is getting large
+  File: src/services/user.ts
+  Size: 380 lines (threshold: 300)
+  💡 Suggestion: Extract related functions into separate modules...
+```
+
+**Why use this instead of refactor_suggest?**
+- No API key needed
+- Based on objective metrics (not AI hallucination)
+- Consistent, repeatable results
+- Fast (pure static analysis)
+- Perfect for guiding AI on what to refactor
+
+---
+
+### 3. `refactor_checkpoint` - Create Safety Rollback Point
 
 Create a git stash checkpoint before making changes.
 
