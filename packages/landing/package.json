@@ -5,6 +5,10 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "build": "echo 'No build needed for static site'",
+    "test": "echo 'No tests for static site'",
+    "lint": "echo 'No linting needed for static site'",
+    "format": "echo 'No formatting needed for static site'",
     "setup": "./setup-aws.sh",
     "deploy": "npm run deploy:check && npm run deploy:s3 && npm run deploy:invalidate",
     "deploy:check": "node -e \"try { require('./.aws-config.json'); } catch(e) { console.error('❌ AWS not configured. Run: npm run setup'); process.exit(1); }\"",
