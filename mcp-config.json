@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "refactogent": {
+      "command": "npx",
+      "args": ["-y", "@refactogent/mcp-server"],
+      "description": "Intelligent code refactoring with safety guardrails and validation",
+      "capabilities": [
+        "Deep codebase analysis with dependency mapping",
+        "Git-based safety checkpoints with automatic rollback",
+        "Automated validation (tests, linting, type checking)",
+        "Impact analysis showing blast radius of changes",
+        "Type extraction to separate files",
+        "Forward and backward dependency tracing",
+        "Test coverage analysis with recommendations",
+        "Dead code detection",
+        "Opinionated static analysis suggestions"
+      ]
+    }
+  }
+}

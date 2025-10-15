@@ -21,6 +21,7 @@ import { RefactorPreviewTool } from "./tools/refactor-preview.js";
 import { RefactorRenameTool } from "./tools/refactor-rename.js";
 import { RefactorExtractTool } from "./tools/refactor-extract.js";
 import { RefactorAnalyzeTool } from "./tools/refactor-analyze.js";
+import { RefactorFindDeadCodeTool } from "./tools/refactor-find-dead-code.js";
 import { ProjectHealthResource } from "./resources/project-health.js";
 
 // Load environment variables
@@ -57,6 +58,7 @@ const refactorPreview = new RefactorPreviewTool();
 const refactorRename = new RefactorRenameTool();
 const refactorExtract = new RefactorExtractTool();
 const refactorAnalyze = new RefactorAnalyzeTool();
+const refactorFindDeadCode = new RefactorFindDeadCodeTool();
 
 // Initialize resources
 const projectHealth = new ProjectHealthResource();
@@ -414,6 +416,29 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["filePath", "startLine", "endLine", "newFunctionName"],
         },
       },
+      {
+        name: "refactor_find_dead_code",
+        description:
+          "Find unused exports, unreachable code, and other dead code that can be safely removed. Uses entry-point based reachability analysis to determine what's actually used in the application.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            entryPoints: {
+              type: "array",
+              items: {
+                type: "string",
+              },
+              description: "Entry point files (e.g., ['src/index.ts', 'src/server.ts'])",
+            },
+            includeTests: {
+              type: "boolean",
+              description: "Include test files in analysis",
+              default: true,
+            },
+          },
+          required: ["entryPoints"],
+        },
+      },
     ],
   };
 });
@@ -463,6 +488,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case "refactor_extract":
         return await refactorExtract.execute(args);
+
+      case "refactor_find_dead_code":
+        return await refactorFindDeadCode.execute(args);
 
       default:
         throw new Error(`Unknown tool: ${name}`);
