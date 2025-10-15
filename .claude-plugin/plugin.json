@@ -1,25 +1,13 @@
 {
   "name": "refactogent",
-  "version": "0.7.3",
   "description": "Intelligent code refactoring with safety guardrails, impact analysis, and automated validation",
+  "version": "0.7.3",
   "author": {
     "name": "Refactogent Contributors",
-    "url": "https://github.com/khaliqgant/refactogent"
+    "email": "khaliqgant@gmail.com"
   },
   "homepage": "https://github.com/khaliqgant/refactogent",
   "repository": "https://github.com/khaliqgant/refactogent",
   "license": "MIT",
-  "keywords": [
-    "refactoring",
-    "code-quality",
-    "typescript",
-    "javascript",
-    "python",
-    "go",
-    "safety",
-    "testing",
-    "analysis"
-  ],
-  "agents": "./agents",
-  "mcpServers": "./mcp-config.json"
+  "keywords": ["refactoring", "code-quality", "typescript", "javascript", "python", "go", "safety", "testing", "analysis", "mcp"]
 }
