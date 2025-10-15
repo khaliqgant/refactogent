@@ -360,7 +360,7 @@ Could not analyze dead code.
    */
   private resolveImport(fromFile: string, specifier: string): string | null {
     const dir = path.dirname(fromFile);
-    let resolved = path.resolve(dir, specifier);
+    const resolved = path.resolve(dir, specifier);
 
     // Try different extensions
     const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'];
