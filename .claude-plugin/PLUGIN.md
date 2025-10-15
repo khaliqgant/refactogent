@@ -72,11 +72,12 @@ The plugin configures access to these refactoring tools:
 
 ```
 refactogent/
-├── plugin.json              # Plugin manifest
-├── mcp-config.json          # MCP server configuration
-├── agents/                  # Sub-agent definitions
-│   └── refactoring-specialist.md
-└── PLUGIN.md               # This file
+└── .claude-plugin/
+    ├── plugin.json              # Plugin manifest
+    ├── mcp-config.json          # MCP server configuration
+    ├── agents/                  # Sub-agent definitions
+    │   └── refactoring-specialist.md
+    └── PLUGIN.md               # This file
 ```
 
 ## Example Workflows
@@ -133,7 +134,7 @@ To share this plugin with the community:
    ```bash
    git clone https://github.com/khaliqgant/refactogent.git refactogent-plugin
    cd refactogent-plugin
-   # Keep only: plugin.json, mcp-config.json, agents/, PLUGIN.md, LICENSE
+   # Keep only: .claude-plugin/, LICENSE, README.md
    ```
 
 3. **Submit to Claude Code marketplace** (instructions coming soon)
@@ -205,7 +206,7 @@ To modify the plugin:
 
 1. **Edit agent definition**:
    ```bash
-   # Edit agents/refactoring-specialist.md
+   # Edit .claude-plugin/agents/refactoring-specialist.md
    # Update capabilities, examples, etc.
    ```
 
@@ -220,7 +221,7 @@ To modify the plugin:
 
 3. **Update version**:
    ```bash
-   # In plugin.json and package.json
+   # In .claude-plugin/plugin.json and package.json
    # Follow semver
    ```
 
