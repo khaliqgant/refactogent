@@ -11,21 +11,16 @@
   "plugins": [
     {
       "name": "refactogent",
-      "source": {
-        "source": "github",
-        "repo": "khaliqgant/refactogent"
-      },
+      "source": "khaliqgant/refactogent",
       "description": "Intelligent code refactoring with safety guardrails, impact analysis, and automated validation",
       "version": "0.7.3",
       "author": {
-        "name": "Refactogent Contributors",
-        "email": "khaliqgant@gmail.com"
+        "name": "Refactogent Contributors"
       },
       "homepage": "https://github.com/khaliqgant/refactogent",
       "repository": "https://github.com/khaliqgant/refactogent",
       "license": "MIT",
-      "keywords": ["refactoring", "code-quality", "typescript", "javascript", "python", "go", "safety", "testing", "analysis", "mcp"],
-      "category": "code-quality"
+      "keywords": ["refactoring", "code-quality", "typescript", "javascript", "python", "go", "safety", "testing", "analysis", "mcp"]
     }
   ]
 }
