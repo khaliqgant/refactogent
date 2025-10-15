@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "refactogent",
-      "source": "khaliqgant/refactogent",
+      "source": ".",
       "description": "Intelligent code refactoring with safety guardrails, impact analysis, and automated validation",
       "version": "0.7.3",
       "author": {
