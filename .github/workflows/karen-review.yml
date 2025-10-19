@@ -1,9 +1,6 @@
 name: Karen Code Review
-
 on:
   push:
-    branches: [main]
-  pull_request:
     branches: [main]
 
 jobs:
@@ -12,14 +9,22 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Karen Review
         uses: khaliqgant/karen-action@v1
         with:
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          auto_update_readme: true
-          post_comment: true
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          auto_update_readme: true  # Automatically update badge in README
           generate_badge: true
-          min_score: 50
+          post_comment: true
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .karen/ README.md
+          git diff --staged --quiet || git commit -m "Update Karen review [skip ci]"
+          git push
