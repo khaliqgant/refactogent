@@ -1,0 +1,21 @@
+name: Karen Code Review
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  karen-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Karen Review
+        uses: khaliqgant/karen-action@latest
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          post_comment: true
+          generate_badge: true
+          min_score: 50
