@@ -1,5 +1,10 @@
 # Refactogent
 
+<!-- karen-badge-start -->
+![Karen Score](.karen/badges/score-badge.svg)
+<!-- karen-badge-end -->
+
+
 > Intelligent code refactoring - with or without AI
 
 Transform how you refactor code with intelligent analysis, safety checkpoints, and structured workflows. Use it standalone for deterministic refactoring, or with AI for intelligent, context-aware changes.
