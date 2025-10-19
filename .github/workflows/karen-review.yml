@@ -16,6 +16,7 @@ jobs:
         uses: khaliqgant/karen-action@v1
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          auto_update_readme: true
           post_comment: true
           generate_badge: true
           min_score: 50
