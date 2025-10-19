@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Karen Review
-        uses: khaliqgant/karen-action@latest
+        uses: khaliqgant/karen-action@v1
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           post_comment: true
