@@ -21,6 +21,9 @@
       "Bash(npx tsc:*)",
       "Bash(npm run test:coverage:*)",
       "Bash(find:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git cherry-pick:*)",
       "Read(//home/khaliqgant/**)",
       "WebFetch(domain:www.anthropic.com)"
     ],
