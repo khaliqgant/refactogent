@@ -77,7 +77,7 @@ Add to your Claude Code configuration (`~/.config/claude/mcp.json`):
 
 > **Note**: Only the `refactor_suggest` tool requires an AI API key. **If you're using refactogent with Claude or another AI assistant, you don't need the API key** - the AI can analyze code itself using `refactor_context` instead of calling `refactor_suggest`. The API key is only needed for standalone CLI usage of `refactor_suggest`.
 
-###  Why Does the MCP Server Need Its Own API Key? (Spoiler: You Probably Don't!)
+### Why Does the MCP Server Need Its Own API Key? (Spoiler: You Probably Don't!)
 
 **TL;DR**: If you're using Claude or another AI assistant, **you don't need an API key**. The API key is only for the `refactor_suggest` tool, which is redundant when an AI is already in the loop.
 

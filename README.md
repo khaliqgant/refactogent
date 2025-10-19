@@ -58,6 +58,9 @@ npm install -g @refactogent/mcp-server
 
 # Configure with Claude Code
 claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
+
+# Optional: Enable AI-powered suggestions (requires API key)
+# Edit MCP config to add your API key for refactor_suggest tool
 ```
 
 **What it does**: Gives Claude (or other AI) access to refactoring tools like `refactor_context`, `refactor_checkpoint`, `refactor_validate`, etc. The AI orchestrates complex refactorings using its intelligence while the tools provide safety and validation.
@@ -65,6 +68,17 @@ claude mcp add --transport stdio refactogent -- npx -y @refactogent/mcp-server
 **No API Key Needed**: All tools work without configuration when using with Claude. The `refactor_suggest` tool (which calls AI) is redundant when Claude is already analyzing your code!
 
 See [MCP Server documentation](./packages/mcp-server/README.md) for detailed setup.
+
+### Mode 3: Claude Code Plugin (Enhanced Experience)
+
+```bash
+# Install the refactoring expert plugin in Claude Code
+/plugin marketplace add khaliqgant/refactogent
+```
+
+**What it does**: Adds a specialized "refactoring-expert" agent to Claude Code that automatically follows best practices for safe refactoring. The agent knows when to analyze context, check impact, create checkpoints, and validate changes.
+
+See [Plugin documentation](./.claude-plugin/README.md) for installation and usage.
 
 ## 📦 Packages
 
